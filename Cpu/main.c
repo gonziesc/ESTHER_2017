@@ -3,9 +3,9 @@
 archivoConfigCPU* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionKernel;
-int cliente;
+int32_t cliente;
 char* buffer;
-int main(int argc, char**argv) {
+int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
 	ConectarConKernel();
 	return EXIT_SUCCESS;
@@ -14,7 +14,7 @@ void Configuracion(char* dir){
 	t_archivoConfig = malloc(sizeof(archivoConfigCPU));
 	configuracionCpu(t_archivoConfig, config, dir);
 }
-int ConectarConKernel(){
+int32_t ConectarConKernel(){
 	llenarSocketAdrrConIp(&direccionKernel,t_archivoConfig->IP_KERNEL,
 					t_archivoConfig->PUERTO_KERNEL);
 
@@ -29,7 +29,7 @@ int ConectarConKernel(){
 		buffer = malloc(1000);
 
 		while (1) {
-			int bytesRecibidos = recv(cliente, buffer, 1000, 0);
+			int32_t bytesRecibidos = recv(cliente, buffer, 1000, 0);
 			if (bytesRecibidos <= 0) {
 				perror("El chabón se desconectó o bla.");
 				return 1;

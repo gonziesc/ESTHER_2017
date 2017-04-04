@@ -33,7 +33,7 @@ void configuracionMemoria(archivoConfigMemoria *unArchivo, t_config* config, cha
 }
 
 void configuracionKernel(archivoConfigKernel *unArchivo, t_config* config, char *dir){
-	int i = 0;
+	int32_t i = 0;
 	config = config_create(dir);
 	unArchivo->PUERTO_CPU = config_get_int_value(config, "PUERTO_CPU");
 	printf("PUERTO_CPU: %d\n", unArchivo->PUERTO_CPU);

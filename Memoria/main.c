@@ -3,13 +3,13 @@
 archivoConfigMemoria* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionServidor;
-int servidor;
-int activado;
-int cliente;
+int32_t servidor;
+int32_t activado;
+int32_t cliente;
 struct sockaddr_in direccionCliente;
-unsigned int tamanoDireccion;
+uint32_t tamanoDireccion;
 char* buffer;
-int main(int argc, char**argv) {
+int32_t main(int argc, char**argv) {
 
 	printf("memoria \n");
 	configuracion(argv[1]);
@@ -24,7 +24,7 @@ void configuracion(char *dir){
 	configuracionMemoria(t_archivoConfig, config, dir);
 }
 
-int levantarConexion(){
+int32_t levantarConexion(){
 	llenarSocketAdrr(&direccionServidor,t_archivoConfig->PUERTO);
 
 		servidor = socket(AF_INET, SOCK_STREAM, 0);
@@ -48,7 +48,7 @@ int levantarConexion(){
 		buffer = malloc(1000);
 
 		while (1) {
-			int bytesRecibidos = recv(cliente, buffer, 1000, 0);
+			int32_t bytesRecibidos = recv(cliente, buffer, 1000, 0);
 			if (bytesRecibidos <= 0) {
 				perror("El CLIENTE se desconectó");
 				return 1;

@@ -2,13 +2,13 @@
 archivoConfigFS* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionServidor;
-int servidor;
-int activado;
+int32_t servidor;
+int32_t activado;
 struct sockaddr_in direccionCliente;
-unsigned int tamanoDireccion;
-int cliente;
+uint32_t tamanoDireccion;
+int32_t cliente;
 char* buffer;
-int main(int argc, char**argv) {
+int32_t main(int argc, char**argv) {
 	configuracion(argv[1]);
 	levantarConexion();
 	return EXIT_SUCCESS;
@@ -17,7 +17,7 @@ void configuracion(char * dir){
 	t_archivoConfig = malloc(sizeof(archivoConfigFS));
 	configuracionFS(t_archivoConfig, config, dir);
 }
-int levantarConexion(){
+int32_t levantarConexion(){
 	llenarSocketAdrr(&direccionServidor,t_archivoConfig->PUERTO_KERNEL);
 		servidor = socket(AF_INET, SOCK_STREAM, 0);
 		activado = 1;
@@ -35,7 +35,7 @@ int levantarConexion(){
 		printf("Recibí una conexión en %d!!\n", cliente);
 		buffer = malloc(1000);
 		while (1) {
-			int bytesRecibidos = recv(cliente, buffer, 1000, 0);
+			int32_t bytesRecibidos = recv(cliente, buffer, 1000, 0);
 			if (bytesRecibidos <= 0) {
 				perror("Kernel se desconectó");
 				return 1;

@@ -16,8 +16,8 @@
 
 
 
-configuracion(char*);
-levantarConexion();
+void configuracion(char*);
+int32_t levantarConexion();
 
 
 

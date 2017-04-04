@@ -7,47 +7,47 @@
 #include <string.h>
 
 typedef struct{
-	int PUERTO;
-	int MARCOS;
-	int MARCOS_SIZE;
-	int ENTRADAS_CACHE;
-	int CACHE_X_PROC;
+	int32_t PUERTO;
+	int32_t MARCOS;
+	int32_t MARCOS_SIZE;
+	int32_t ENTRADAS_CACHE;
+	int32_t CACHE_X_PROC;
 	char* REEMPLAZO_CACHE;
-	int RETARDO_MEMORIA;
+	int32_t RETARDO_MEMORIA;
 }archivoConfigMemoria;
 
 typedef struct{
-	int PUERTO_PROG;
-		int PUERTO_CPU;
+	int32_t PUERTO_PROG;
+	int32_t PUERTO_CPU;
 		char* IP_MEMORIA;
-		int PUERTO_MEMORIA;
+		int32_t PUERTO_MEMORIA;
 		char* IP_FS;
-		int PUERTO_FS;
-		int QUANTUM;
-		int QUANTUM_SLEEP;
+		int32_t PUERTO_FS;
+		int32_t QUANTUM;
+		int32_t QUANTUM_SLEEP;
 		char* ALGORITMO;
-		int GRADO_MULTIPROG;
+		int32_t GRADO_MULTIPROG;
 		char** SEM_IDS; //ojo memoria
 		char** SEM_INIT;
 		char** SHARED_VARS;
-		int STACK_SIZE;
+		int32_t STACK_SIZE;
 }archivoConfigKernel;
 
 typedef struct{
 	char *IP_KERNEL;
-	int PUERTO_KERNEL;
+	int32_t PUERTO_KERNEL;
 }archivoConfigCPU;
 
 
 typedef struct{
 	char *IP_KERNEL;
-	int PUERTO_KERNEL;
+	int32_t PUERTO_KERNEL;
 }archivoConfigConsola;
 
 
 typedef struct{
 	char *PUERTO_MONTAJE;
-	int PUERTO_KERNEL;
+	int32_t PUERTO_KERNEL;
 }archivoConfigFS;
 
 void configuracionMemoria(archivoConfigMemoria *, t_config* , char *);

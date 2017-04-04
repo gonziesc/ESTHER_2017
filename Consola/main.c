@@ -3,9 +3,9 @@
 archivoConfigConsola* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionKernel;
-int cliente;
+int32_t cliente;
 
-int main(int argc, char**argv) {
+int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
 	ConectarseConKernel();
 	return EXIT_SUCCESS;
@@ -14,7 +14,7 @@ void Configuracion(char* dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigConsola));
 	configuracionConsola(t_archivoConfig, config, dir);
 }
-int ConectarseConKernel() {
+int32_t ConectarseConKernel() {
 	llenarSocketAdrrConIp(&direccionKernel, t_archivoConfig->IP_KERNEL,
 			t_archivoConfig->PUERTO_KERNEL);
 	cliente = socket(AF_INET, SOCK_STREAM, 0);
