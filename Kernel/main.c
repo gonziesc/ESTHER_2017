@@ -39,4 +39,5 @@ void configuracion(archivoConfigKernel *unArchivo, t_config* config, char dir[])
 	//unArchivo->SEM_IDS = config_get_array_value(config, "SEM_IDS");
 	//unArchivo->SEM_INIT  = config_get_array_value(config, "SEM_INIT");
 	//unArchivo->SHARED_VARS = config_get_array_value(config, "SHARED_VARS");
+	//ojo ips, solo impre el primero. ojo arrays.
 }
