@@ -9,7 +9,7 @@
 int main(int argc, char**argv){
 	archivoConfigKernel* t_archivoConfig = malloc(sizeof(archivoConfigKernel));
 	t_config *config = malloc(sizeof(t_config));
-	printf("arranquemos, so\n");
+	printf("arranquemos, so jeje\n");
 	configuracion(t_archivoConfig, config, argv[1]);
 
 	return EXIT_SUCCESS;
