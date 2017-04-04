@@ -36,6 +36,8 @@ typedef struct{
 typedef struct{
 	char *IP_KERNEL;
 	int32_t PUERTO_KERNEL;
+	char *IP_MEMORIA;
+	int32_t PUERTO_MEMORIA;
 }archivoConfigCPU;
 
 

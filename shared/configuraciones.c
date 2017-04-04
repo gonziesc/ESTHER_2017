@@ -90,18 +90,24 @@ void configuracionCpu(archivoConfigCPU *unArchivo, t_config* config, char *dir){
 
  		unArchivo->PUERTO_KERNEL = config_get_int_value(config, "PUERTO_KERNEL");
  		printf("PUERTO_KERNEL: %d\n", unArchivo->PUERTO_KERNEL);
+
+ 		unArchivo->IP_MEMORIA = config_get_string_value(config, "IP_MEMORIA");
+ 		printf("IP_MEMORIA: %s\n", unArchivo->IP_MEMORIA);
+
+
+ 		unArchivo->PUERTO_MEMORIA = config_get_int_value(config, "PUERTO_MEMORIA");
+ 		printf("PUERTO_MEMORIA: %d\n", unArchivo->PUERTO_MEMORIA);
  }
 
 void configuracionConsola(archivoConfigConsola *unArchivo, t_config* config, char* dir){
 
-	config = config_create(dir);
+			config = config_create(dir);
 
 	 		unArchivo->IP_KERNEL = config_get_string_value(config, "IP_KERNEL");
 	 		printf("IP_KERNEL: %s\n", unArchivo->IP_KERNEL);
 
 	 		unArchivo->PUERTO_KERNEL = config_get_int_value(config, "PUERTO_KERNEL");
 	 		printf("PUERTO_KERNEL: %d\n", unArchivo->PUERTO_KERNEL);
-
 
 }
 

@@ -4,10 +4,16 @@ archivoConfigConsola* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionKernel;
 int32_t cliente;
+struct sockaddr_in direccionMem;
+int32_t clienteMEM;
+int32_t buffer;
+int32_t bytesRecibidos;
+
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
 	ConectarseConKernel();
+
 	return EXIT_SUCCESS;
 }
 void Configuracion(char* dir) {
@@ -34,3 +40,6 @@ int32_t ConectarseConKernel() {
 		send(cliente, mensaje, strlen(mensaje), 0);
 	}
 }
+
+
+
