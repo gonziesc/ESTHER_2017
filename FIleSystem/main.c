@@ -8,7 +8,6 @@
 
 
 int main(int argc, char**argv){
-	printf("arranquemos, so \n");
 	char *ipFs = "127.0.0.3";
 	int puertoFs = 5003;
 		//configuracion(t_archivoConfig, config, argv[1]);
