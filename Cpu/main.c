@@ -24,7 +24,20 @@ int main(int argc, char**argv){
 				perror("No se pudo conectar");
 				return 1;
 			}
-			while(1){};
+			char* buffer = malloc(1000);
+
+				while (1) {
+					int bytesRecibidos = recv(cliente, buffer, 1000, 0);
+					if (bytesRecibidos <= 0) {
+						perror("El chabón se desconectó o bla.");
+						return 1;
+					}
+
+					buffer[bytesRecibidos] = '\0';
+					printf("Me llegaron %d bytes con %s\n", bytesRecibidos, buffer);
+				}
+
+				free(buffer);
 
 		return EXIT_SUCCESS;
 }

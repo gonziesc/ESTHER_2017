@@ -48,14 +48,29 @@ int main(int argc, char**argv){
 		printf("Estoy escuchando\n");
 		listen(servidor, 100);
 
-		//------------------------------
+		struct sockaddr_in direccionMem;
+		direccionMem.sin_family = AF_INET;
+		direccionMem.sin_addr.s_addr = inet_addr(t_archivoConfig->IP_MEMORIA);
+		direccionMem.sin_port = htons(t_archivoConfig->PUERTO_MEMORIA);
+
+			int clienteMEM = socket(AF_INET, SOCK_STREAM, 0);
+			if (connect(clienteMEM, (void*) &direccionMem, sizeof(direccionMem)) != 0) {
+				perror("No se pudo conectar");
+				return 1;
+			}
+			struct sockaddr_in direccionFs;
+			direccionFs.sin_family = AF_INET;
+			direccionFs.sin_addr.s_addr = inet_addr(t_archivoConfig->IP_FS);
+			direccionFs.sin_port = htons(t_archivoConfig->PUERTO_FS);
+
+					int clientefs = socket(AF_INET, SOCK_STREAM, 0);
+					if (connect(clientefs, (void*) &direccionFs, sizeof(direccionFs)) != 0) {
+						perror("No se pudo conectar");
+						return 1;
+					}
 
 
-		//int cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
 
-		//printf("Kernel recibio una conexión en %d!!\n", cliente);
-
-	//	char* buffer = malloc(1000);
 		 FD_SET(servidor, &master);
 		        // seguir la pista del descriptor de fichero mayor
 		        fdmax = servidor; // por ahora es éste
@@ -96,7 +111,10 @@ int main(int argc, char**argv){
 		                                       close(i); // bye!
 		                                       FD_CLR(i, &master); // eliminar del conjunto maestro
 		                                   } else {
+		                                	   nbytes[buf] = '\0';
 		                                	   printf("Me llegaron %d bytes con %s\n", nbytes, buf);
+		                                	   send(clientefs, buf, nbytes, 0);
+		                                	   send(clienteMEM, buf, nbytes, 0);
 		                                       // tenemos datos de algún cliente
 		                                       for(j = 0; j <= fdmax; j++) {
 		                                           // ¡enviar a todo el mundo!
@@ -128,6 +146,8 @@ void configuracion(archivoConfigKernel *unArchivo, t_config* config, char *dir){
 	printf("PUERTO_PROG: %d\n", unArchivo->PUERTO_PROG);
 	unArchivo->IP_MEMORIA  = config_get_string_value(config, "IP_MEMORIA");
 	printf("IP_MEMORIA: %s\n", unArchivo->IP_MEMORIA);
+	unArchivo->PUERTO_MEMORIA = config_get_int_value(config, "PUERTO_MEMORIA");
+	printf("PUERTO_MEMORIA: %d\n", unArchivo->PUERTO_MEMORIA);
 	unArchivo->IP_FS = config_get_string_value(config, "IP_FS");
 	printf("IP_FS: %s\n", unArchivo->IP_FS);
 	unArchivo->PUERTO_FS  = config_get_int_value(config, "PUERTO_FS");
