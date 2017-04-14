@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <ejemplo.c>
 
 void configuracion(archivoConfigKernel *, t_config* , char *);
 
@@ -22,8 +23,11 @@ int main(int argc, char**argv){
     fd_set master;   // conjunto maestro de descriptores de fichero
 	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
 	archivoConfigKernel* t_archivoConfig = malloc(sizeof(archivoConfigKernel));
+	ejemplo * holaa = malloc(sizeof(ejemplo));
+	holaa->chau = 8;
+
 	t_config *config = malloc(sizeof(t_config));
-	printf("arranquemos, so \n");
+	printf("arranquemos, so, %d \n", holaa->chau);
 	configuracion(t_archivoConfig, config, argv[1]);
 
 	 FD_ZERO(&master);    // borra los conjuntos maestro y temporal
