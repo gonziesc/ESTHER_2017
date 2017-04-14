@@ -30,8 +30,12 @@ int main(int argc, char**argv){
 
 		while (1) {
 			char mensaje[1000];
-			scanf("%s", mensaje);
 
+			scanf("%s", mensaje);
+			if(strlen(mensaje) > 100){
+				prinft("mensaje muy largo");
+				return 1;
+			}
 			send(cliente, mensaje, strlen(mensaje), 0);
 		}
 
