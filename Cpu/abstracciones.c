@@ -1,4 +1,4 @@
  typedef struct{
-	char IP_KERNEL;
+	char *IP_KERNEL;
 	int PUERTO_KERNEL;
 }archivoConfigCPU;

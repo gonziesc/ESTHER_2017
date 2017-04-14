@@ -12,16 +12,14 @@
 
 
 int main(int argc, char**argv){
-		char *ipMem = "127.0.0.2";
-		int puertoMem = 5002;
 		archivoConfigMemoria* t_archivoConfig = malloc(sizeof(archivoConfigMemoria));
 		t_config *config = malloc(sizeof(t_config));
-		printf("memoria\n");
+		printf("memoria \n");
 		configuracion(t_archivoConfig, config, argv[1]);
 		struct sockaddr_in direccionServidor;
 		direccionServidor.sin_family = AF_INET;
-		direccionServidor.sin_addr.s_addr = inet_addr(ipMem);
-		direccionServidor.sin_port = htons(puertoMem);
+		direccionServidor.sin_addr.s_addr = INADDR_ANY;
+		direccionServidor.sin_port = htons(t_archivoConfig->PUERTO);
 
 			int servidor = socket(AF_INET, SOCK_STREAM, 0);
 
@@ -64,11 +62,11 @@ int main(int argc, char**argv){
 		return EXIT_SUCCESS;
 }
 
-void configuracion(archivoConfigMemoria *unArchivo, t_config* config, char dir[]){
+void configuracion(archivoConfigMemoria *unArchivo, t_config* config, char *dir){
 
 		config = config_create(dir);
-
-		unArchivo->PUERTO = config_get_int_value(config, "PUERTO_CPU");
+		printf("memoria %s\n", dir);
+		unArchivo->PUERTO = config_get_int_value(config, "PUERTO");
 		printf("PUERTO: %d\n", unArchivo->PUERTO);
 
 		unArchivo->MARCOS = config_get_int_value(config, "MARCOS");
@@ -80,7 +78,7 @@ void configuracion(archivoConfigMemoria *unArchivo, t_config* config, char dir[]
 		unArchivo->ENTRADAS_CACHE = config_get_int_value(config, "ENTRADAS_CACHE");
 		printf("ENTRADAS_CACHE: %d\n", unArchivo->ENTRADAS_CACHE);
 
-		unArchivo->CACHE_X_PROC = config_get_int_value(config, "CACHE_X_PROC");
+		unArchivo->CACHE_X_PROC = config_get_int_value(config, "CACHE_X_PROG");
 		printf("CACHE_X_PROC: %d\n", unArchivo->CACHE_X_PROC);
 
 		unArchivo->REEMPLAZO_CACHE = config_get_string_value(config, "REEMPLAZO_CACHE");
