@@ -42,7 +42,7 @@ int main(int argc, char**argv){
 		return EXIT_SUCCESS;
 }
 
-void configuracion(archivoConfigConsola *unArchivo, t_config* config, char dir[]){
+void configuracion(archivoConfigConsola *unArchivo, t_config* config, char* dir[]){
 
 	config = config_create(dir);
 
