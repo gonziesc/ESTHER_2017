@@ -12,6 +12,7 @@
 
 void configuracion(archivoConfigKernel *, t_config* , char *);
 
+
 int main(int argc, char**argv){
 	struct sockaddr_in direccionCliente;
 	unsigned int tamanoDireccion;
