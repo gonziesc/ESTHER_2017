@@ -7,7 +7,6 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <netinet/in.h>
-#include <tads.c>
 #include <conexiones.c>
 #include <configuracion.h>
 
@@ -29,6 +28,7 @@ int main(int argc, char**argv){
 			perror("No se pudo conectar");
 			return 1;
 		}
+		send(cliente, "hola, soy consola", sizeof("hola, soy consola"), 0);
 
 		while (1) {
 			char mensaje[1000];

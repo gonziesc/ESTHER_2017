@@ -35,7 +35,7 @@ int main(int argc, char**argv){
 		struct sockaddr_in direccionCliente;
 		unsigned int tamanoDireccion;
 		int cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-
+		send(cliente, "hola, soy fs", sizeof("hola, soy fs"), 0);
 		printf("Recibí una conexión en %d!!\n", cliente);
 
 		//------------------------------

@@ -31,24 +31,7 @@ int main(int argc, char**argv){
 	 FD_ZERO(&master);    // borra los conjuntos maestro y temporal
 	    FD_ZERO(&read_fds);
 
-	struct sockaddr_in direccionServidor;
-	direccionServidor.sin_family = AF_INET;
-	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(5000);
-	 memset(&(direccionServidor.sin_zero), '\0', 8);
 
-		int servidor = socket(AF_INET, SOCK_STREAM, 0);
-
-		int activado = 1;
-		setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
-
-		if (bind(servidor, (void*) &direccionServidor, sizeof(direccionServidor)) != 0) {
-			perror("Falló el bind");
-			return 1;
-		}
-
-		printf("Estoy escuchando\n");
-		listen(servidor, 100);
 
 		struct sockaddr_in direccionMem;
 		direccionMem.sin_family = AF_INET;
@@ -60,6 +43,14 @@ int main(int argc, char**argv){
 				perror("No se pudo conectar");
 				return 1;
 			}
+			send(clienteMEM, "hola, soy Kernel", sizeof("hola, soy Kernel"), 0);
+			char* buffer = malloc(1000);
+			int bytesRecibidos = recv(clienteMEM, buffer, 1000, 0);
+			while(bytesRecibidos<=0){
+				bytesRecibidos = recv(clienteMEM, buffer, 100, 0);
+			}
+
+			printf("me llego de memoria: %s\n", buffer);
 			struct sockaddr_in direccionFs;
 			direccionFs.sin_family = AF_INET;
 			direccionFs.sin_addr.s_addr = inet_addr(t_archivoConfig->IP_FS);
@@ -70,8 +61,31 @@ int main(int argc, char**argv){
 						perror("No se pudo conectar");
 						return 1;
 					}
+					send(clientefs, "hola, soy Kernel", sizeof("hola, soy Kernel"), 0);
+					char* bufferFs = malloc(1000);
+							int bytesRecibidosFs = recv(clientefs, bufferFs, 1000, 0);
+							while(bytesRecibidosFs<=0){
+								bytesRecibidosFs = recv(clientefs, bufferFs, 100, 0);
+							}
+					printf("me llego de fs: %s\n", bufferFs);
+					struct sockaddr_in direccionServidor;
+						direccionServidor.sin_family = AF_INET;
+						direccionServidor.sin_addr.s_addr = INADDR_ANY;
+						direccionServidor.sin_port = htons(5000);
+						 memset(&(direccionServidor.sin_zero), '\0', 8);
 
+							int servidor = socket(AF_INET, SOCK_STREAM, 0);
 
+							int activado = 1;
+							setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
+
+							if (bind(servidor, (void*) &direccionServidor, sizeof(direccionServidor)) != 0) {
+								perror("Falló el bind");
+								return 1;
+							}
+
+							printf("Estoy escuchando\n");
+							listen(servidor, 100);
 
 		 FD_SET(servidor, &master);
 		        // seguir la pista del descriptor de fichero mayor
@@ -115,20 +129,23 @@ int main(int argc, char**argv){
 		                                   } else {
 		                                	   nbytes[buf] = '\0';
 		                                	   printf("Me llegaron %d bytes con %s\n", nbytes, buf);
-		                                	   send(clientefs, buf, nbytes, 0);
-		                                	   send(clienteMEM, buf, nbytes, 0);
-		                                       // tenemos datos de algún cliente
-		                                       for(j = 0; j <= fdmax; j++) {
-		                                           // ¡enviar a todo el mundo!
-		                                           if (FD_ISSET(j, &master)) {
-		                                               // excepto al listener y a nosotros mismos
-		                                               if (j != servidor && j != i) {
-		                                                   if (send(j, buf, nbytes, 0) == -1) {
-		                                                       perror("send");
-		                                                   }
-		                                               }
-		                                           }
-		                                       }
+		                                	   if(buf[0] != 'h'){
+		                                		   send(clientefs, buf, nbytes, 0);
+		                                		   		                                	   send(clienteMEM, buf, nbytes, 0);
+		                                		   		                                       // tenemos datos de algún cliente
+		                                		   		                                       for(j = 0; j <= fdmax; j++) {
+		                                		   		                                           // ¡enviar a todo el mundo!
+		                                		   		                                           if (FD_ISSET(j, &master)) {
+		                                		   		                                               // excepto al listener y a nosotros mismos
+		                                		   		                                               if (j != servidor && j != i) {
+		                                		   		                                                   if (send(j, buf, nbytes, 0) == -1) {
+		                                		   		                                                       perror("send");
+		                                		   		                                                   }
+		                                		   		                                               }
+		                                		   		                                           }
+		                                		   		                                       }
+		                                	   }
+
 		                                   }
 		                               }
 		                           }

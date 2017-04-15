@@ -29,6 +29,8 @@ int main(int argc, char**argv){
 				perror("No se pudo conectar");
 				return 1;
 			}
+			send(cliente, "hola, soy cpu", sizeof("hola, soy cpu"), 0);
+
 			char* buffer = malloc(1000);
 
 				while (1) {

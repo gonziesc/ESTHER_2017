@@ -40,8 +40,8 @@ int main(int argc, char**argv){
 			struct sockaddr_in direccionCliente;
 			unsigned int tamanoDireccion;
 			int cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-
 			printf("Recibí una conexión en %d!!\n", cliente);
+			send(cliente, "hola, soy memoria", sizeof("hola, soy memoria"), 0);
 
 			//------------------------------
 
