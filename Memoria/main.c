@@ -2,12 +2,13 @@
 #include<stdlib.h>
 #include <string.h>
 #include <commons/config.h>
-#include "abstracciones.c"
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <conexiones.c>
+#include <configuracion.h>
 
 
 
@@ -15,7 +16,7 @@ int main(int argc, char**argv){
 		archivoConfigMemoria* t_archivoConfig = malloc(sizeof(archivoConfigMemoria));
 		t_config *config = malloc(sizeof(t_config));
 		printf("memoria \n");
-		configuracion(t_archivoConfig, config, argv[1]);
+		configuracionMemoria(t_archivoConfig, config, argv[1]);
 		struct sockaddr_in direccionServidor;
 		direccionServidor.sin_family = AF_INET;
 		direccionServidor.sin_addr.s_addr = INADDR_ANY;
@@ -62,29 +63,3 @@ int main(int argc, char**argv){
 		return EXIT_SUCCESS;
 }
 
-void configuracion(archivoConfigMemoria *unArchivo, t_config* config, char *dir){
-
-		config = config_create(dir);
-		printf("memoria %s\n", dir);
-		unArchivo->PUERTO = config_get_int_value(config, "PUERTO");
-		printf("PUERTO: %d\n", unArchivo->PUERTO);
-
-		unArchivo->MARCOS = config_get_int_value(config, "MARCOS");
-		printf("MARCOS: %d\n", unArchivo->MARCOS);
-
-		unArchivo->MARCOS_SIZE = config_get_int_value(config, "MARCOS_SIZE");
-		printf("MARCOS_SIZE: %d\n", unArchivo->MARCOS_SIZE);
-
-		unArchivo->ENTRADAS_CACHE = config_get_int_value(config, "ENTRADAS_CACHE");
-		printf("ENTRADAS_CACHE: %d\n", unArchivo->ENTRADAS_CACHE);
-
-		unArchivo->CACHE_X_PROC = config_get_int_value(config, "CACHE_X_PROG");
-		printf("CACHE_X_PROC: %d\n", unArchivo->CACHE_X_PROC);
-
-		unArchivo->REEMPLAZO_CACHE = config_get_string_value(config, "REEMPLAZO_CACHE");
-		printf("REEMPLAZO_CACHE: %s\n", unArchivo->REEMPLAZO_CACHE);
-
-		unArchivo->RETARDO_MEMORIA = config_get_int_value(config, "RETARDO_MEMORIA");
-		printf("RETARDO_MEMORIA: %d\n", unArchivo->RETARDO_MEMORIA);
-
-}

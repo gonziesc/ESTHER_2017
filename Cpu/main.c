@@ -4,19 +4,20 @@
 #include <commons/config.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include "abstracciones.c"
 #include <unistd.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <conexiones.c>
+#include <configuracion.h>
 
-void configuracion(archivoConfigCPU *, t_config* , char *);
+
 
 int main(int argc, char**argv){
 
 		archivoConfigCPU* t_archivoConfig = malloc(sizeof(archivoConfigCPU));
  		t_config *config = malloc(sizeof(t_config));
  		printf("cpu \n");
- 		configuracion(t_archivoConfig, config, argv[1]);
+ 		configuracionCpu(t_archivoConfig, config, argv[1]);
 
 		struct sockaddr_in direccionKernel;
 		direccionKernel.sin_family = AF_INET;
@@ -46,13 +47,4 @@ int main(int argc, char**argv){
 		return EXIT_SUCCESS;
 }
 
-void configuracion(archivoConfigCPU *unArchivo, t_config* config, char *dir){
 
- 		config = config_create(dir);
-
- 		unArchivo->IP_KERNEL = config_get_string_value(config, "IP_KERNEL");
- 		printf("IP_KERNEL: %s\n", unArchivo->IP_KERNEL);
-
- 		unArchivo->PUERTO_KERNEL = config_get_int_value(config, "PUERTO_KERNEL");
- 		printf("PUERTO_KERNEL: %d\n", unArchivo->PUERTO_KERNEL);
- }

@@ -4,17 +4,19 @@
 #include <commons/config.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include "abstracciones.c"
 #include <unistd.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include <tads.c>
+#include <conexiones.c>
+#include <configuracion.h>
 
-void configuracion(archivoConfigConsola *, t_config* , char *);
+
 
 int main(int argc, char**argv){
 	archivoConfigConsola* t_archivoConfig = malloc(sizeof(archivoConfigConsola));
 	t_config *config = malloc(sizeof(t_config));
-	configuracion(t_archivoConfig, config, argv[1]);
+	configuracionConsola(t_archivoConfig, config, argv[1]);
 
 
 	struct sockaddr_in direccionKernel;
@@ -33,7 +35,7 @@ int main(int argc, char**argv){
 
 			scanf("%s", mensaje);
 			if(strlen(mensaje) > 100){
-				prinft("mensaje muy largo");
+				printf("mensaje muy largo");
 				return 1;
 			}
 			send(cliente, mensaje, strlen(mensaje), 0);
@@ -46,15 +48,4 @@ int main(int argc, char**argv){
 		return EXIT_SUCCESS;
 }
 
-void configuracion(archivoConfigConsola *unArchivo, t_config* config, char* dir){
 
-	config = config_create(dir);
-
-	 		unArchivo->IP_KERNEL = config_get_string_value(config, "IP_KERNEL");
-	 		printf("IP_KERNEL: %s\n", unArchivo->IP_KERNEL);
-
-	 		unArchivo->PUERTO_KERNEL = config_get_int_value(config, "PUERTO_KERNEL");
-	 		printf("PUERTO_KERNEL: %d\n", unArchivo->PUERTO_KERNEL);
-
-
-}

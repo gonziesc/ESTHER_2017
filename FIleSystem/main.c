@@ -4,17 +4,18 @@
 #include <commons/config.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-
+#include <conexiones.c>
+#include <configuracion.h>
 
 
 int main(int argc, char**argv){
-	char *ipFs = "127.0.0.3";
-	int puertoFs = 5003;
-		//configuracion(t_archivoConfig, config, argv[1]);
+	archivoConfigFS* t_archivoConfig = malloc(sizeof(archivoConfigFS));
+	t_config *config = malloc(sizeof(t_config));
+	configuracionFS(t_archivoConfig, config, argv[1]);
 	struct sockaddr_in direccionServidor;
 	direccionServidor.sin_family = AF_INET;
-	direccionServidor.sin_addr.s_addr = inet_addr(ipFs);
-	direccionServidor.sin_port = htons(puertoFs);
+	direccionServidor.sin_addr.s_addr = INADDR_ANY;
+	direccionServidor.sin_port = htons(t_archivoConfig->PUERTO_KERNEL);
 
 		int servidor = socket(AF_INET, SOCK_STREAM, 0);
 
