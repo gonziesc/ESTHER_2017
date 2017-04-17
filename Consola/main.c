@@ -7,9 +7,9 @@ int main(int argc, char**argv) {
 	configuracionConsola(t_archivoConfig, config, argv[1]);
 
 	struct sockaddr_in direccionKernel;
-	direccionKernel.sin_family = AF_INET;
-	direccionKernel.sin_addr.s_addr = inet_addr(t_archivoConfig->IP_KERNEL);
-	direccionKernel.sin_port = htons(t_archivoConfig->PUERTO_KERNEL);
+	llenarSocketAdrrConIp(&direccionKernel,t_archivoConfig->IP_KERNEL,
+					t_archivoConfig->PUERTO_KERNEL);
+
 
 	int cliente = socket(AF_INET, SOCK_STREAM, 0);
 	if (connect(cliente, (void*) &direccionKernel, sizeof(direccionKernel))

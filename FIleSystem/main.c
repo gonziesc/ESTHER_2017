@@ -5,9 +5,7 @@ int main(int argc, char**argv) {
 	t_config *config = malloc(sizeof(t_config));
 	configuracionFS(t_archivoConfig, config, argv[1]);
 	struct sockaddr_in direccionServidor;
-	direccionServidor.sin_family = AF_INET;
-	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(t_archivoConfig->PUERTO_KERNEL);
+	llenarSocketAdrr(&direccionServidor,t_archivoConfig->PUERTO_KERNEL);
 
 	int servidor = socket(AF_INET, SOCK_STREAM, 0);
 

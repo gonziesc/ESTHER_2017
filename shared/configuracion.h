@@ -1,7 +1,10 @@
 #ifndef CONFIGURACION_H_
 #define CONFIGURACION_H_
 
-
+#include <commons/config.h>
+#include<stdio.h>
+#include<stdlib.h>
+#include <string.h>
 
 typedef struct{
 	int PUERTO;

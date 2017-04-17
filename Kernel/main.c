@@ -20,9 +20,10 @@ int main(int argc, char**argv) {
 	FD_ZERO(&read_fds);
 
 	struct sockaddr_in direccionMem;
-	direccionMem.sin_family = AF_INET;
-	direccionMem.sin_addr.s_addr = inet_addr(t_archivoConfig->IP_MEMORIA);
-	direccionMem.sin_port = htons(t_archivoConfig->PUERTO_MEMORIA);
+	llenarSocketAdrrConIp(&direccionMem,
+			t_archivoConfig->IP_MEMORIA,
+			t_archivoConfig->PUERTO_MEMORIA
+			);
 
 	int clienteMEM = socket(AF_INET, SOCK_STREAM, 0);
 	if (connect(clienteMEM, (void*) &direccionMem, sizeof(direccionMem)) != 0) {
@@ -38,10 +39,10 @@ int main(int argc, char**argv) {
 
 	printf("me llego de memoria: %s\n", buffer);
 	struct sockaddr_in direccionFs;
-	direccionFs.sin_family = AF_INET;
-	direccionFs.sin_addr.s_addr = inet_addr(t_archivoConfig->IP_FS);
-	direccionFs.sin_port = htons(t_archivoConfig->PUERTO_FS);
-
+	llenarSocketAdrrConIp(&direccionFs,
+				t_archivoConfig->IP_FS,
+				t_archivoConfig->PUERTO_FS
+				);
 	int clientefs = socket(AF_INET, SOCK_STREAM, 0);
 	if (connect(clientefs, (void*) &direccionFs, sizeof(direccionFs)) != 0) {
 		perror("No se pudo conectar");
@@ -55,10 +56,7 @@ int main(int argc, char**argv) {
 	}
 	printf("me llego de fs: %s\n", bufferFs);
 	struct sockaddr_in direccionServidor;
-	direccionServidor.sin_family = AF_INET;
-	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(5000);
-	memset(&(direccionServidor.sin_zero), '\0', 8);
+	llenarSocketAdrr(&direccionServidor,5000);
 
 	int servidor = socket(AF_INET, SOCK_STREAM, 0);
 

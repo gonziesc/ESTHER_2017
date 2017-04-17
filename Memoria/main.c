@@ -7,9 +7,7 @@ int main(int argc, char**argv) {
 	printf("memoria \n");
 	configuracionMemoria(t_archivoConfig, config, argv[1]);
 	struct sockaddr_in direccionServidor;
-	direccionServidor.sin_family = AF_INET;
-	direccionServidor.sin_addr.s_addr = INADDR_ANY;
-	direccionServidor.sin_port = htons(t_archivoConfig->PUERTO);
+	llenarSocketAdrr(&direccionServidor,t_archivoConfig->PUERTO);
 
 	int servidor = socket(AF_INET, SOCK_STREAM, 0);
 
