@@ -1,11 +1,4 @@
-#include<stdio.h>
-#include<stdlib.h>
-#include <string.h>
-#include <commons/config.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <conexiones.c>
-#include <configuracion.h>
+#include "main.h"
 
 int main(int argc, char**argv) {
 	archivoConfigFS* t_archivoConfig = malloc(sizeof(archivoConfigFS));
@@ -58,6 +51,3 @@ int main(int argc, char**argv) {
 	return EXIT_SUCCESS;
 }
 
-//void configuracion(archivoConfigKernel *unArchivo, t_config* config, char dir[]){
-
-//}
