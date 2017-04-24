@@ -16,7 +16,8 @@
 
 
 
-
+void Configuracion(char *);
+int ConectarConKernel();
 
 
 

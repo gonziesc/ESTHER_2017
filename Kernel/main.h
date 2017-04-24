@@ -18,7 +18,10 @@
 
 
 
-
+void configuracion(char*);
+int conectarConMemoria();
+int ConectarConFS();
+int levantarServidor();
 
 
 

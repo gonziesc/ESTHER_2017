@@ -16,7 +16,8 @@
 
 
 
-
+configuracion(char*);
+levantarConexion();
 
 
 

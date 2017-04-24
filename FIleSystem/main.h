@@ -14,7 +14,8 @@
 
 
 
-
+void configuracion(char*);
+int levantarConexion();
 
 
 

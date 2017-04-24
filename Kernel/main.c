@@ -1,51 +1,62 @@
 #include "main.h"
 
+struct sockaddr_in direccionCliente;
+unsigned int tamanoDireccion;
+int fdmax;
+int newfd;        // descriptor de socket de nueva conexión aceptada
+char buf[256];    // buffer para datos del cliente
+int nbytes;
+int i, j;
+fd_set master;   // conjunto maestro de descriptores de fichero
+fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
+archivoConfigKernel* t_archivoConfig;
+t_config *config;
+struct sockaddr_in direccionMem;
+int clienteMEM;
+char* buffer;
+int servidor;
+int activado;
+int clientefs;
+int bytesRecibidos;
+struct sockaddr_in direccionFs;
+struct sockaddr_in direccionServidor;
+
 int main(int argc, char**argv) {
-	struct sockaddr_in direccionCliente;
-	unsigned int tamanoDireccion;
-	int fdmax;
-	int newfd;        // descriptor de socket de nueva conexión aceptada
-	char buf[256];    // buffer para datos del cliente
-	int nbytes;
-	int i, j;
-	fd_set master;   // conjunto maestro de descriptores de fichero
-	fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
-	archivoConfigKernel* t_archivoConfig = malloc(sizeof(archivoConfigKernel));
+	configuracion(argv[1]);
+	conectarConMemoria();
+	ConectarConFS();
+	levantarServidor();
+	return EXIT_SUCCESS;
+}
 
-	t_config *config = malloc(sizeof(t_config));
-	printf("arranquemos, so\n");
-	configuracionKernel(t_archivoConfig, config, argv[1]);
-
-	FD_ZERO(&master);    // borra los conjuntos maestro y temporal
-	FD_ZERO(&read_fds);
-
-	struct sockaddr_in direccionMem;
-	llenarSocketAdrrConIp(&direccionMem,
-			t_archivoConfig->IP_MEMORIA,
-			t_archivoConfig->PUERTO_MEMORIA
-			);
-
-	int clienteMEM = socket(AF_INET, SOCK_STREAM, 0);
+void configuracion(char*dir) {
+	t_archivoConfig = malloc(sizeof(archivoConfigKernel));
+	configuracionKernel(t_archivoConfig, config, dir);
+}
+int conectarConMemoria() {
+	llenarSocketAdrrConIp(&direccionMem, t_archivoConfig->IP_MEMORIA,
+			t_archivoConfig->PUERTO_MEMORIA);
+	clienteMEM = socket(AF_INET, SOCK_STREAM, 0);
 	if (connect(clienteMEM, (void*) &direccionMem, sizeof(direccionMem)) != 0) {
-		perror("No se pudo conectar");
+		perror("No se pudo conectar con memoria");
 		return 1;
 	}
 	send(clienteMEM, "hola, soy Kernel", sizeof("hola, soy Kernel"), 0);
-	char* buffer = malloc(1000);
-	int bytesRecibidos = recv(clienteMEM, buffer, 1000, 0);
+	buffer = malloc(1000);
+	bytesRecibidos = recv(clienteMEM, buffer, 1000, 0);
 	while (bytesRecibidos <= 0) {
 		bytesRecibidos = recv(clienteMEM, buffer, 100, 0);
 	}
 
 	printf("me llego de memoria: %s\n", buffer);
-	struct sockaddr_in direccionFs;
-	llenarSocketAdrrConIp(&direccionFs,
-				t_archivoConfig->IP_FS,
-				t_archivoConfig->PUERTO_FS
-				);
-	int clientefs = socket(AF_INET, SOCK_STREAM, 0);
+	return 0;
+}
+int ConectarConFS() {
+	llenarSocketAdrrConIp(&direccionFs, t_archivoConfig->IP_FS,
+			t_archivoConfig->PUERTO_FS);
+	clientefs = socket(AF_INET, SOCK_STREAM, 0);
 	if (connect(clientefs, (void*) &direccionFs, sizeof(direccionFs)) != 0) {
-		perror("No se pudo conectar");
+		perror("No se pudo conectar con fs");
 		return 1;
 	}
 	send(clientefs, "hola, soy Kernel", sizeof("hola, soy Kernel"), 0);
@@ -55,27 +66,27 @@ int main(int argc, char**argv) {
 		bytesRecibidosFs = recv(clientefs, bufferFs, 100, 0);
 	}
 	printf("me llego de fs: %s\n", bufferFs);
-	struct sockaddr_in direccionServidor;
-	llenarSocketAdrr(&direccionServidor,5000);
-
-	int servidor = socket(AF_INET, SOCK_STREAM, 0);
-
-	int activado = 1;
+	return 0;
+}
+int levantarServidor() {
+	FD_ZERO(&master);    // borra los conjuntos maestro y temporal
+	FD_ZERO(&read_fds);
+	llenarSocketAdrr(&direccionServidor, 5000);
+	servidor = socket(AF_INET, SOCK_STREAM, 0);
+	activado = 1;
 	setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
-
 	if (bind(servidor, (void*) &direccionServidor, sizeof(direccionServidor))
 			!= 0) {
 		perror("Falló el bind");
 		return 1;
 	}
-
 	printf("Estoy escuchando\n");
 	listen(servidor, 100);
 
 	FD_SET(servidor, &master);
 	// seguir la pista del descriptor de fichero mayor
 	fdmax = servidor; // por ahora es éste
-	for (;;) {
+	while (1) {
 		read_fds = master; // cópialo
 		if (select(fdmax + 1, &read_fds, NULL, NULL, NULL) == -1) {
 			perror("select");
@@ -137,6 +148,4 @@ int main(int argc, char**argv) {
 			}
 		}
 	}
-
-	return EXIT_SUCCESS;
 }
