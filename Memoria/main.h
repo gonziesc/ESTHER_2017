@@ -17,7 +17,7 @@
 
 
 
-void ConfiguracionMem(char*);
+void configuracion(char*);
 int32_t levantarConexion();
 
 
