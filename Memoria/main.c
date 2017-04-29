@@ -1,5 +1,4 @@
 #include "main.h"
-
 archivoConfigMemoria* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionServidor;
@@ -10,20 +9,15 @@ struct sockaddr_in direccionCliente;
 unsigned int tamanoDireccion;
 char* buffer;
 int main(int argc, char**argv) {
-
-	printf("memoria \n");
-	configuracion(argv[1]);
+	ConfiguracionMem(argv[1]);
 	levantarConexion();
-
 	return EXIT_SUCCESS;
 }
-
-void configuracion(char *dir){
+void ConfiguracionMem(char *dir){
 	t_archivoConfig = malloc(
 				sizeof(archivoConfigMemoria));
 	configuracionMemoria(t_archivoConfig, config, dir);
 }
-
 int levantarConexion(){
 	llenarSocketAdrr(&direccionServidor,t_archivoConfig->PUERTO);
 
