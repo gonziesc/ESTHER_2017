@@ -53,9 +53,8 @@ void Serializar(int32_t id, int32_t tamanioArchivo, void* buffer,int32_t  socket
 	}
 }
 
-void Deserializar(void* buffer,int32_t  socket, void* archivoDesempaquetado){
-	int32_t id;
-	recv(socket, &id, tamanioInt32, 0);
+void Deserializar(int32_t id, void* buffer,int32_t  socket){
+	void* archivoDesempaquetado;
 	switch(id){
 		case ok:{
 			printf("Ok");
