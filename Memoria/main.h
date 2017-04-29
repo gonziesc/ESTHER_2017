@@ -13,7 +13,17 @@
 #include <conexiones.c>
 #include <configuracion.h>
 
-void ConfiguracionMem(char *);
-int levantarConexion();
+
+
+
+
+void ConfiguracionMem(char*);
+int32_t levantarConexion();
+
+
+
+
+
+
 
 #endif

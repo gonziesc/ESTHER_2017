@@ -19,9 +19,9 @@
 
 
 void configuracion(char*);
-int conectarConMemoria();
-int ConectarConFS();
-int levantarServidor();
+int32_t conectarConMemoria();
+int32_t ConectarConFS();
+int32_t levantarServidor();
 
 
 

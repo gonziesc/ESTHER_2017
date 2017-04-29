@@ -1,27 +1,27 @@
 #include "main.h"
 
 struct sockaddr_in direccionCliente;
-unsigned int tamanoDireccion;
-int fdmax;
-int newfd;        // descriptor de socket de nueva conexión aceptada
+uint32_t tamanoDireccion;
+int32_t fdmax;
+int32_t newfd;        // descriptor de socket de nueva conexión aceptada
 char buf[256];    // buffer para datos del cliente
-int nbytes;
-int i, j;
+int32_t nbytes;
+int32_t i, j;
 fd_set master;   // conjunto maestro de descriptores de fichero
 fd_set read_fds; // conjunto temporal de descriptores de fichero para select()
 archivoConfigKernel* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionMem;
-int clienteMEM;
+int32_t clienteMEM;
 char* buffer;
-int servidor;
-int activado;
-int clientefs;
-int bytesRecibidos;
+int32_t servidor;
+int32_t activado;
+int32_t clientefs;
+int32_t bytesRecibidos;
 struct sockaddr_in direccionFs;
 struct sockaddr_in direccionServidor;
 
-int main(int argc, char**argv) {
+int32_t main(int argc, char**argv) {
 	configuracion(argv[1]);
 	conectarConMemoria();
 	ConectarConFS();
@@ -33,7 +33,7 @@ void configuracion(char*dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigKernel));
 	configuracionKernel(t_archivoConfig, config, dir);
 }
-int conectarConMemoria() {
+int32_t conectarConMemoria() {
 	llenarSocketAdrrConIp(&direccionMem, t_archivoConfig->IP_MEMORIA,
 			t_archivoConfig->PUERTO_MEMORIA);
 	clienteMEM = socket(AF_INET, SOCK_STREAM, 0);
@@ -51,7 +51,7 @@ int conectarConMemoria() {
 	printf("me llego de memoria: %s\n", buffer);
 	return 0;
 }
-int ConectarConFS() {
+int32_t ConectarConFS() {
 	llenarSocketAdrrConIp(&direccionFs, t_archivoConfig->IP_FS,
 			t_archivoConfig->PUERTO_FS);
 	clientefs = socket(AF_INET, SOCK_STREAM, 0);
@@ -61,14 +61,14 @@ int ConectarConFS() {
 	}
 	send(clientefs, "hola, soy Kernel", sizeof("hola, soy Kernel"), 0);
 	char* bufferFs = malloc(1000);
-	int bytesRecibidosFs = recv(clientefs, bufferFs, 1000, 0);
+	int32_t bytesRecibidosFs = recv(clientefs, bufferFs, 1000, 0);
 	while (bytesRecibidosFs <= 0) {
 		bytesRecibidosFs = recv(clientefs, bufferFs, 100, 0);
 	}
 	printf("me llego de fs: %s\n", bufferFs);
 	return 0;
 }
-int levantarServidor() {
+int32_t levantarServidor() {
 	FD_ZERO(&master);    // borra los conjuntos maestro y temporal
 	FD_ZERO(&read_fds);
 	llenarSocketAdrr(&direccionServidor, 5000);

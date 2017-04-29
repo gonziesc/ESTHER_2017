@@ -17,8 +17,8 @@
 
 
 void Configuracion(char *);
-int ConectarConKernel();
-
+int32_t ConectarConKernel();
+int32_t conectarConMemoria();
 
 
 
