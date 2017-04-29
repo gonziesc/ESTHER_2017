@@ -12,14 +12,15 @@
 #include <netinet/in.h>
 #include <conexiones.c>
 #include <configuracion.h>
-
+#include <pthread.h>
 
 
 
 void Configuracion(char *);
 int32_t ConectarseConKernel();
-
-
+void crearNuevoProceso();
+int abrirYLeerArchivo(char*, char*);
+void leerComando();
 
 
 
