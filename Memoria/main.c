@@ -58,4 +58,18 @@ int32_t levantarConexion(){
 
 		free(buffer);
 }
+typedef struct {
+	int32_t id;
+	int32_t tamanio;
+
+}frame;
+
+void crearFrame(){
+	int32_t tamanioFrame;
+	printf("Tamanio de frame");
+	scanf("%d", tamanioFrame);
+
+
+
+}
 
