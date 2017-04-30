@@ -27,37 +27,43 @@ int32_t ConectarseConKernel() {
 		perror("No se pudo conectar");
 		return 1;
 	}
-	send(cliente, "hola, soy consola", sizeof("hola, soy consola"), 0);
+	//Serializar(0, 4, 0);
 }
 
 void leerComando()
 {
 	while (1) {
-		char mensaje[100];
-		fgets(mensaje, sizeof(mensaje), stdin);
+		char *mensaje = malloc(100);
+		fgets(mensaje, 100, stdin);
 		pthread_t hiloUnico;
 		int32_t idHiloUnico;
-		idHiloUnico = pthread_create(&hiloUnico, NULL, crearNuevoProceso, (void*) mensaje);
+		idHiloUnico = pthread_create(&hiloUnico, NULL, crearNuevoProceso, (char*) mensaje);
 		pthread_join(hiloUnico, NULL);
 	}
 }
 
-void crearNuevoProceso(void* arg)
+void crearNuevoProceso(char* path)
 {
-	char *path = (char *) arg;
-	char contenidoDelArchivo[100];
-	int tamano = abrirYLeerArchivo(path, &contenidoDelArchivo);
-	printf("Archivo leido");
-	send(cliente, contenidoDelArchivo, tamano, 0);
-	printf("Mensaje recibido y enviado a kernel\n");
-	printf("Archivo: %s", contenidoDelArchivo);
+	char *contenidoDelArchivo = malloc(100);
+	int tamano = abrirYLeerArchivo(path, contenidoDelArchivo);
+	char *paqueteAEnviar = malloc(78);
+	Serializar(1, tamano, contenidoDelArchivo, paqueteAEnviar);
+	//printf("%.*s\n", 4, paqueteAEnviar);
+//	printf("%.*s\n", 8, paqueteAEnviar);
+	//printf("%s\n", paqueteAEnviar);
+	free(contenidoDelArchivo);
+	send(cliente, paqueteAEnviar, tamano +8, 0);
+	//free(paqueteAEnviar);
 }
 
+void hacerFree(char **package){
+	free(*package);
+}
 
 int abrirYLeerArchivo(char* path, char* string)
 {
 	//ojoooooooooo
-	FILE *f = fopen("/home/utnso/tp-2017-1c-el-grupo-numero/Consola/hola.ansisop", "rb");
+	FILE *f = fopen("/home/utnso/git/tp-2017-1c-el-grupo-numero/Consola/hola.ansisop", "rb");
 	fseek(f, 0, SEEK_END);
 	long fsize = ftell(f);
 	fseek(f, 0, SEEK_SET);  //same as rewind(f);

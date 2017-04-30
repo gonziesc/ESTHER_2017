@@ -1,5 +1,5 @@
-#ifndef MAIN_H_
-#define MAIN_H_
+#ifndef SERIALIZADOR_H_
+#define SERIALIZADOR_H_
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -11,8 +11,16 @@
 #include <arpa/inet.h>
 #include <commons/config.h>
 
-void Serializar(int32_t id, int32_t tamanioArchivo, void* buffer,int32_t  socket);
-void Deserializar(void* buffer,int32_t  socket, void* archivoDesempaquetado);
+
+typedef struct{
+	int32_t header;
+	int32_t size;
+	char* package;
+}__attribute__((packed))
+paquete;
+
+void Serializar(int32_t , int32_t , char*, char*);
+char* Deserializar(int32_t ,int32_t  );
 
 
 

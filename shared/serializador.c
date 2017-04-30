@@ -11,89 +11,108 @@ typedef enum {
 	codigo = 8
 } codigosSerializador;
 
-int32_t tamanioInt32 = sizeof(int32_t);
+void Serializar(int32_t id, int32_t tamanioArchivo, char* buffer,
+		char* archivoEmpaquetado) {
+	switch (id) {
+	case ok: {
+		memcpy(archivoEmpaquetado, id, 4);
+		memcpy(archivoEmpaquetado + 4, tamanioArchivo, 4);
+		break;
+	}
+	case archivo: {
+		memcpy(archivoEmpaquetado, &id, sizeof(id));
+		memcpy(archivoEmpaquetado + 4, &tamanioArchivo, sizeof(tamanioArchivo));
+		memcpy(archivoEmpaquetado + 8, buffer, tamanioArchivo);
+		break;
+	}
+	case pcb: {
 
+		break;
+	}
 
-void Serializar(int32_t id, int32_t tamanioArchivo, void* buffer,int32_t  socket){
-	void* archivoEmpaquetado = malloc(tamanioArchivo + (tamanioInt32*2));
+	case fs: {
+		break;
+	}
+	case kernel: {
+		break;
+	}
+	case cpu: {
+		break;
+	}
+	case consola: {
+		break;
+	}
+	case codigo: {
 
-	switch(id){
-		case ok:{
-			send(socket, 0, tamanioInt32, 0);
-			break;
-		}
-		case archivo:{
-			memcpy(archivoEmpaquetado, &id, tamanioInt32);
-			memcpy(archivoEmpaquetado + tamanioInt32, &tamanioArchivo, tamanioInt32);
-			memcpy(archivoEmpaquetado + (tamanioInt32*2), buffer, tamanioArchivo);
-			send(socket, archivoEmpaquetado, tamanioArchivo, 0);
-			break;
-		}
-		case pcb:{
-
-			break;
-		}
-
-		case fs:{
-			break;
-		}
-		case kernel:{
-			break;
-		}
-		case cpu:{
-			break;
-		}
-		case consola:{
-			break;
-		}
-		case codigo:{
-
-		}
-		free(archivoEmpaquetado);
+	}
 	}
 }
 
-void Deserializar(int32_t id, void* buffer,int32_t  socket){
-	void* archivoDesempaquetado;
-	switch(id){
-		case ok:{
-			printf("Ok");
-			archivoDesempaquetado = 0;
-			break;
-		}
-		case archivo:{
-			int32_t tamanio;
-			recv(socket, &tamanio, tamanioInt32, 0);
-			archivoDesempaquetado = malloc(tamanioInt32);
-			recv(socket,archivoDesempaquetado , tamanio, 0);
-			memcpy(buffer,archivoDesempaquetado,tamanio);
-			free(archivoDesempaquetado);
-
-			break;
-		}
-		case pcb:{
-
-			break;
-		}
-
-		case fs:{
-			break;
-		}
-		case kernel:{
-			break;
-		}
-		case cpu:{
-			break;
-		}
-		case consola:{
-			break;
-		}
-		case codigo:{
+char* Deserializar(int32_t id, int32_t socket) {
+	char* archivoDesempaquetado;
+	switch (id) {
+	case ok: {
+		printf("Ok");
+		archivoDesempaquetado = 0;
+		break;
+	}
+	case archivo: {
+		int32_t tamanio;
+		if (recv(socket, &tamanio, 4, 0)) {
+			//archivoDesempaquetado = malloc(tamanio + 1);
+			int comparacion = 0;
+			archivoDesempaquetado = string_new();
+			char *datos_tmp = malloc(tamanio + 1);
+			memset(datos_tmp, '\0', tamanio + 1);
+			while (comparacion != tamanio) {
+				comparacion += recv(socket, datos_tmp, tamanio - comparacion,
+						0);
+				string_append(&archivoDesempaquetado, datos_tmp);
+				memset(datos_tmp, '\0', tamanio + 1);
+			}
+			printf("%s\n", archivoDesempaquetado);
+			return archivoDesempaquetado;
+			//int comparacion = 0;
+			/*archivoDesempaquetado = string_new();
+			 char* datos_tmp = malloc(tamanio + 1);
+			 memset(datos_tmp, '\0', tamanio + 1);
+			 while (comparacion != tamanio) {
+			 comparacion += recv(socket, datos_tmp,
+			 tamanio - comparacion, 0);
+			 string_append(&archivoDesempaquetado, datos_tmp);
+			 memset(datos_tmp, '\0', tamanio + 1);*/
 
 		}
+
+		//memset(archivoDesempaquetado,'\0',tamanio+1);
+		//recv(socket,&archivoDesempaquetado , tamanio, 0);
+		//printf("%s", archivoDesempaquetado);
+		//free(archivoDesempaquetado);
+
+		break;
+	}
+	case pcb: {
+
+		break;
+	}
+
+	case fs: {
+		break;
+	}
+	case kernel: {
+		break;
+	}
+	case cpu: {
+		break;
+	}
+	case consola: {
+		break;
+	}
+	case codigo: {
+
+	}
+		return archivoDesempaquetado;
 
 	}
 }
-
-
 

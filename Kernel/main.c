@@ -4,7 +4,7 @@ struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 int32_t fdmax;
 int32_t newfd;        // descriptor de socket de nueva conexión aceptada
-char buf[256];    // buffer para datos del cliente
+int32_t header;    // buffer para datos del cliente
 int32_t nbytes;
 int32_t i, j;
 fd_set master;   // conjunto maestro de descriptores de fichero
@@ -14,10 +14,12 @@ t_config *config;
 struct sockaddr_in direccionMem;
 int32_t clienteMEM;
 char* buffer;
+char buf[3];    // buffer para datos del cliente
 int32_t servidor;
 int32_t activado;
 int32_t clientefs;
 int32_t bytesRecibidos;
+int32_t PID = 0;
 struct sockaddr_in direccionFs;
 struct sockaddr_in direccionServidor;
 
@@ -112,7 +114,7 @@ int32_t levantarServidor() {
 					}
 				} else {
 					// gestionar datos de un cliente
-					if ((nbytes = recv(i, buf, sizeof(buf), 0)) <= 0) {
+					if ((nbytes = recv(i, &header, sizeof(header), 0)) <= 0) {
 
 						// error o conexión cerrada por el cliente
 						if (nbytes == 0) {
@@ -124,28 +126,40 @@ int32_t levantarServidor() {
 						close(i); // bye!
 						FD_CLR(i, &master); // eliminar del conjunto maestro
 					} else {
-						nbytes[buf] = '\0';
-						printf("Me llegaron %d bytes con %s\n", nbytes, buf);
-						if (buf[0] != 'h') {
-							send(clientefs, buf, nbytes, 0);
-							send(clienteMEM, buf, nbytes, 0);
-							// tenemos datos de algún cliente
-							for (j = 0; j <= fdmax; j++) {
-								// ¡enviar a todo el mundo!
-								if (FD_ISSET(j, &master)) {
-									// excepto al listener y a nosotros mismos
-									if (j != servidor && j != i) {
-										if (send(j, buf, nbytes, 0) == -1) {
-											perror("send");
-										}
+						printf("Me llegaron %d bytes con %d\n", nbytes, header);
+						char* paquete = Deserializar(header, i);
+						printf("llego el paquete %s\n", paquete);
+						/*send(clientefs, buffer, sizeof(buffer), 0);
+						send(clienteMEM, buffer, sizeof(buffer), 0);
+						//tenemos datos de algún cliente
+						for (j = 0; j <= fdmax; j++) {
+							// ¡enviar a todo el mundo!
+							if (FD_ISSET(j, &master)) {
+								if (j != servidor && j != i) {
+									if (send(j, buffer, sizeof(buffer), 0) == -1) {
+										perror("send");
 									}
 								}
 							}
-						}
+						}*/
 
 					}
 				}
 			}
 		}
 	}
+}
+
+void procesar() {
+
+}
+
+void crearPCB(char buffer[]) {
+	PCB *unPcb = malloc(sizeof(PCB));
+	unPcb->programId = PID;
+	PID++;
+	unPcb->programCounter = 0;
+	int cantidadDePaginas = 5;
+
+
 }

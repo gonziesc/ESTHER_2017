@@ -12,7 +12,7 @@ int32_t bytesRecibidos;
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
 	ConectarConKernel();
-	conectarConMemoria();
+	//conectarConMemoria();
 	return EXIT_SUCCESS;
 }
 void Configuracion(char* dir){
@@ -23,7 +23,6 @@ void Configuracion(char* dir){
 int32_t conectarConMemoria(){
 	llenarSocketAdrrConIp(&direccionMem,t_archivoConfig->IP_MEMORIA,
 					t_archivoConfig->PUERTO_MEMORIA);
-
 		clienteMEM = socket(AF_INET, SOCK_STREAM, 0);
 		if (connect(clienteMEM, (void*) &direccionMem, sizeof(direccionMem))
 				!= 0) {
@@ -58,19 +57,18 @@ int32_t ConectarConKernel(){
 			perror("No se pudo conectar");
 			return 1;
 		}
-		send(cliente, "hola, soy cpu", sizeof("hola, soy cpu"), 0);
-
-		buffer = malloc(1000);
+		//Serializar(0, 4, 0, cliente);
+		//buffer = malloc(1000);
 
 		while (1) {
-			int32_t bytesRecibidos = recv(cliente, buffer, 1000, 0);
-			if (bytesRecibidos <= 0) {
-				perror("El chabón se desconectó o bla.");
-				return 1;
-			}
+		//	int32_t bytesRecibidos = recv(cliente, buffer, 1000, 0);
+		//	if (bytesRecibidos <= 0) {
+		//		perror("El chabón se desconectó o bla.");
+		//		return 1;
+		//	}
 
-			buffer[bytesRecibidos] = '\0';
-			printf("Me llegaron %d bytes con %s\n", bytesRecibidos, buffer);
+		//	buffer[bytesRecibidos] = '\0';
+		//	printf("Me llegaron %d bytes con %s\n", bytesRecibidos, buffer);
 		}
 
 		free(buffer);

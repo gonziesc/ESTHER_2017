@@ -13,6 +13,7 @@
 #include <conexiones.c>
 #include <configuracion.h>
 #include <pthread.h>
+#include <serializador.h>
 
 
 
