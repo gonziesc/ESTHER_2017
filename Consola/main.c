@@ -27,7 +27,7 @@ int32_t ConectarseConKernel() {
 		perror("No se pudo conectar");
 		return 1;
 	}
-	//Serializar(0, 4, 0);
+	//Serializar(4, 4, 0, cliente);
 }
 
 void leerComando()
@@ -46,18 +46,8 @@ void crearNuevoProceso(char* path)
 {
 	char *contenidoDelArchivo = malloc(100);
 	int tamano = abrirYLeerArchivo(path, contenidoDelArchivo);
-	char *paqueteAEnviar = malloc(78);
-	Serializar(1, tamano, contenidoDelArchivo, paqueteAEnviar);
-	//printf("%.*s\n", 4, paqueteAEnviar);
-//	printf("%.*s\n", 8, paqueteAEnviar);
-	//printf("%s\n", paqueteAEnviar);
+	Serializar(1, tamano, contenidoDelArchivo, cliente);
 	free(contenidoDelArchivo);
-	send(cliente, paqueteAEnviar, tamano +8, 0);
-	//free(paqueteAEnviar);
-}
-
-void hacerFree(char **package){
-	free(*package);
 }
 
 int abrirYLeerArchivo(char* path, char* string)

@@ -19,7 +19,7 @@ typedef struct{
 }__attribute__((packed))
 paquete;
 
-void Serializar(int32_t , int32_t , char*, char*);
+void Serializar(int32_t , int32_t , char*, int32_t);
 char* Deserializar(int32_t ,int32_t  );
 
 

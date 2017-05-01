@@ -43,14 +43,14 @@ int32_t conectarConMemoria() {
 		perror("No se pudo conectar con memoria");
 		return 1;
 	}
-	send(clienteMEM, "hola, soy Kernel", sizeof("hola, soy Kernel"), 0);
-	buffer = malloc(1000);
-	bytesRecibidos = recv(clienteMEM, buffer, 1000, 0);
+	Serializar(5, 4, 0, clienteMEM);
+	bytesRecibidos = recv(clienteMEM, &header, 4, 0);
 	while (bytesRecibidos <= 0) {
-		bytesRecibidos = recv(clienteMEM, buffer, 100, 0);
+		bytesRecibidos = recv(clienteMEM, &header, 4, 0);
+		printf("%d", header);
 	}
 
-	printf("me llego de memoria: %s\n", buffer);
+	Deserializar(header, clienteMEM);
 	return 0;
 }
 int32_t ConectarConFS() {
@@ -61,13 +61,14 @@ int32_t ConectarConFS() {
 		perror("No se pudo conectar con fs");
 		return 1;
 	}
-	send(clientefs, "hola, soy Kernel", sizeof("hola, soy Kernel"), 0);
-	char* bufferFs = malloc(1000);
-	int32_t bytesRecibidosFs = recv(clientefs, bufferFs, 1000, 0);
-	while (bytesRecibidosFs <= 0) {
-		bytesRecibidosFs = recv(clientefs, bufferFs, 100, 0);
+	Serializar(5, 4, 0, clientefs);
+	bytesRecibidos = recv(clientefs, &header, 4, 0);
+	while (bytesRecibidos <= 0) {
+		bytesRecibidos = recv(clientefs, &header, 4, 0);
+		printf("%d", header);
 	}
-	printf("me llego de fs: %s\n", bufferFs);
+
+	Deserializar(header, clientefs);
 	return 0;
 }
 int32_t levantarServidor() {
@@ -130,18 +131,18 @@ int32_t levantarServidor() {
 						char* paquete = Deserializar(header, i);
 						printf("llego el paquete %s\n", paquete);
 						/*send(clientefs, buffer, sizeof(buffer), 0);
-						send(clienteMEM, buffer, sizeof(buffer), 0);
-						//tenemos datos de algún cliente
-						for (j = 0; j <= fdmax; j++) {
-							// ¡enviar a todo el mundo!
-							if (FD_ISSET(j, &master)) {
-								if (j != servidor && j != i) {
-									if (send(j, buffer, sizeof(buffer), 0) == -1) {
-										perror("send");
-									}
-								}
-							}
-						}*/
+						 send(clienteMEM, buffer, sizeof(buffer), 0);
+						 //tenemos datos de algún cliente
+						 for (j = 0; j <= fdmax; j++) {
+						 // ¡enviar a todo el mundo!
+						 if (FD_ISSET(j, &master)) {
+						 if (j != servidor && j != i) {
+						 if (send(j, buffer, sizeof(buffer), 0) == -1) {
+						 perror("send");
+						 }
+						 }
+						 }
+						 }*/
 
 					}
 				}
@@ -160,6 +161,5 @@ void crearPCB(char buffer[]) {
 	PID++;
 	unPcb->programCounter = 0;
 	int cantidadDePaginas = 5;
-
 
 }
