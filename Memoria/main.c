@@ -9,6 +9,7 @@ int32_t header;
 struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 char* buffer;
+int32_t tamanoPaquete;
 
 int32_t main(int argc, char**argv) {
 
@@ -41,7 +42,7 @@ int32_t levantarConexion() {
 
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
 	printf("Recibí una conexión en %d!!\n", cliente);
-	Serializar(3, 4, 0, cliente);
+	Serializar(MEMORIA, 4, 0, cliente);
 
 	while (1) {
 		int32_t bytesRecibidos = recv(cliente, &header, 4, 0);
@@ -49,7 +50,40 @@ int32_t levantarConexion() {
 			perror("El chabón se desconectó");
 			return 1;
 		}
-		Deserializar(header, 0);
+		char* paquete = Deserializar(header, cliente, tamanoPaquete);
+		procesar(header, paquete, tamanoPaquete);
+	}
+}
+
+void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
+	switch (id) {
+	case ARCHIVO: {
+		printf("%s", paquete);
+		break;
+	}
+	case FILESYSTEM: {
+		printf("Se conecto FS");
+		break;
+	}
+	case KERNEL: {
+		printf("Se conecto Kernel");
+		break;
+	}
+	case CPU: {
+		printf("Se conecto CPU");
+		break;
+	}
+	case CONSOLA: {
+		printf("Se conecto Consola");
+		break;
+	}
+	case MEMORIA: {
+		printf("Se conecto memoria");
+		break;
+	}
+	case CODIGO: {
+
+	}
 	}
 }
 typedef struct {

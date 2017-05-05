@@ -10,7 +10,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <commons/config.h>
-
+#include "configuracion.h"
 
 typedef struct{
 	int32_t header;
@@ -20,7 +20,7 @@ typedef struct{
 paquete;
 
 void Serializar(int32_t , int32_t , char*, int32_t);
-char* Deserializar(int32_t ,int32_t  );
+char* Deserializar(int32_t ,int32_t,int32_t);
 
 
 

@@ -9,6 +9,7 @@ struct sockaddr_in direccionMem;
 int32_t clienteMEM;
 int32_t bytesRecibidos;
 int32_t header;
+int32_t tamanoPaquete;
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
@@ -51,8 +52,7 @@ int32_t ConectarConKernel() {
 		perror("No se pudo conectar");
 		return 1;
 	}
-	//Serializar(6, 4, 0, cliente);
-	//buffer = malloc(1000);
+	Serializar(CPU, 4, 0, cliente);
 
 	while (1) {
 		int32_t bytesRecibidos = recv(cliente, &header, 4, 0);
@@ -60,9 +60,40 @@ int32_t ConectarConKernel() {
 			perror("Kernel se desconectó");
 			return 1;
 		}
-		//Deserializar(header, 0);
+		char * paquete = Deserializar(header, 0, cliente, &tamanoPaquete);
+		procesar(paquete,header, tamanoPaquete);
 	}
 
 	free(buffer);
 }
+void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
+	switch (id) {
+	case ARCHIVO: {
+		printf("%s", paquete);
+		break;
+	}
+	case FILESYSTEM: {
+		printf("Se conecto FS");
+		break;
+	}
+	case KERNEL: {
+		printf("Se conecto Kernel");
+		break;
+	}
+	case CPU: {
+		printf("Se conecto CPU");
+		break;
+	}
+	case CONSOLA: {
+		printf("Se conecto Consola");
+		break;
+	}
+	case MEMORIA: {
+		printf("Se conecto memoria");
+		break;
+	}
+	case CODIGO: {
 
+	}
+	}
+}

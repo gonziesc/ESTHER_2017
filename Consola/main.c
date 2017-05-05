@@ -27,7 +27,8 @@ int32_t ConectarseConKernel() {
 		perror("No se pudo conectar");
 		return 1;
 	}
-	//Serializar(4, 4, 0, cliente);
+	Serializar(CONSOLA, 4, 0, cliente);
+	//DESERIALIZAR Y PROCESAR
 }
 
 void leerComando()

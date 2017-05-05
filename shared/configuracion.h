@@ -6,6 +6,18 @@
 #include<stdlib.h>
 #include <string.h>
 
+typedef enum {
+	OK = 0,
+	ARCHIVO = 1,
+	PCB = 2,
+	MEMORIA = 3,
+	FILESYSTEM = 4,
+	KERNEL = 5,
+	CPU = 6,
+	CONSOLA = 7,
+	CODIGO = 8
+} codigosSerializador;
+
 typedef struct{
 	int32_t PUERTO;
 	int32_t MARCOS;

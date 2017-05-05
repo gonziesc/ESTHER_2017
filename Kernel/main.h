@@ -68,7 +68,7 @@ typedef struct{
 	indiceDeCodigo* indiceCodigo;
 	indiceDeEtiquetas* 	indiceEtiquetas;
 	indiceDeStack* indiceStack;
-}PCB;
+}programControlBlock;
 
 
 

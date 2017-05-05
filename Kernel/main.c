@@ -19,6 +19,7 @@ int32_t servidor;
 int32_t activado;
 int32_t clientefs;
 int32_t bytesRecibidos;
+int32_t tamanoPaquete;
 int32_t PID = 0;
 struct sockaddr_in direccionFs;
 struct sockaddr_in direccionServidor;
@@ -50,7 +51,8 @@ int32_t conectarConMemoria() {
 		printf("%d", header);
 	}
 
-	Deserializar(header, clienteMEM);
+	char* paquete = Deserializar(header, clienteMEM, &tamanoPaquete);
+	procesar(paquete, header, tamanoPaquete);
 	return 0;
 }
 int32_t ConectarConFS() {
@@ -69,6 +71,8 @@ int32_t ConectarConFS() {
 	}
 
 	Deserializar(header, clientefs);
+	char* paquete = Deserializar(header, clientefs, &tamanoPaquete);
+	procesar(paquete, header, tamanoPaquete);
 	return 0;
 }
 int32_t levantarServidor() {
@@ -127,22 +131,8 @@ int32_t levantarServidor() {
 						close(i); // bye!
 						FD_CLR(i, &master); // eliminar del conjunto maestro
 					} else {
-						printf("Me llegaron %d bytes con %d\n", nbytes, header);
-						char* paquete = Deserializar(header, i);
-						printf("llego el paquete %s\n", paquete);
-						/*send(clientefs, buffer, sizeof(buffer), 0);
-						 send(clienteMEM, buffer, sizeof(buffer), 0);
-						 //tenemos datos de algún cliente
-						 for (j = 0; j <= fdmax; j++) {
-						 // ¡enviar a todo el mundo!
-						 if (FD_ISSET(j, &master)) {
-						 if (j != servidor && j != i) {
-						 if (send(j, buffer, sizeof(buffer), 0) == -1) {
-						 perror("send");
-						 }
-						 }
-						 }
-						 }*/
+						char* paquete = Deserializar(header, i, &tamanoPaquete);
+						procesar(paquete, header, tamanoPaquete);
 
 					}
 				}
@@ -151,15 +141,42 @@ int32_t levantarServidor() {
 	}
 }
 
-void procesar() {
+void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
+	switch (id) {
+	case ARCHIVO: {
+		programControlBlock *unPcb = malloc(sizeof(programControlBlock));
+		crearPCB(paquete, unPcb);
+		Serializar(ARCHIVO, tamanoPaquete, paquete, clienteMEM);
+		break;
+	}
+	case FILESYSTEM: {
+		printf("Se conecto FS");
+		break;
+	}
+	case KERNEL: {
+		printf("Se conecto Kernel");
+		break;
+	}
+	case CPU: {
+		printf("Se conecto CPU");
+		break;
+	}
+	case CONSOLA: {
+		printf("Se conecto Consola");
+		break;
+	}
+	case MEMORIA: {
+		printf("Se conecto memoria");
+		break;
+	}
+	case CODIGO: {
 
+	}
+	}
 }
 
-void crearPCB(char buffer[]) {
-	PCB *unPcb = malloc(sizeof(PCB));
+void crearPCB(char* codigo, programControlBlock *unPcb) {
 	unPcb->programId = PID;
 	PID++;
 	unPcb->programCounter = 0;
-	int cantidadDePaginas = 5;
-
 }
