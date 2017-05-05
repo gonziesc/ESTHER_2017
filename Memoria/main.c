@@ -10,6 +10,23 @@ struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 char* buffer;
 int32_t tamanoPaquete;
+typedef struct {
+	int32_t id;
+	int32_t tamanio;
+	int32_t tamanioDisponible;
+	int32_t tamanioOcupado;
+	char* puntero;
+} frame;
+frame frameGeneral;
+
+typedef struct{
+	int32_t pid;
+	int32_t puntero;
+}infoTablaMemoria;
+
+infoTablaMemoria nodoTablaMemoria;
+infoTablaMemoria* tablaMemoria;
+
 
 int32_t main(int argc, char**argv) {
 
@@ -21,8 +38,9 @@ int32_t main(int argc, char**argv) {
 void configuracion(char *dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigMemoria));
 	configuracionMemoria(t_archivoConfig, config, dir);
+	crearFrame();
 }
-
+// hacer un hilo en levantar conexion
 int32_t levantarConexion() {
 	llenarSocketAdrr(&direccionServidor, t_archivoConfig->PUERTO);
 
@@ -59,7 +77,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	switch (id) {
 	case ARCHIVO: {
 		printf("%s", paquete);
-		Serializar(OK, 4, 0, cliente);
 		break;
 	}
 	case FILESYSTEM: {
@@ -71,6 +88,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case CPU: {
+		// levantar hilo por cada cpu que le llega con el socket para enviar y recibir de ese cpu
+		//tamanio, paquete, header, socket
 		printf("Se conecto CPU");
 		break;
 	}
@@ -87,16 +106,39 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	}
 }
-typedef struct {
-	int32_t id;
-	int32_t tamanio;
-
-} frame;
 
 void crearFrame() {
-	int32_t tamanioFrame;
-	printf("Tamanio de frame");
-	scanf("%d", tamanioFrame);
+
+	int32_t tamanioMarcos, cantidadMarcos;
+	cantidadMarcos = t_archivoConfig->MARCOS;
+	tamanioMarcos = t_archivoConfig->MARCOS_SIZE;
+
+	frameGeneral.id = 1;
+	frameGeneral.tamanio = cantidadMarcos * tamanioMarcos;
+	frameGeneral.tamanioDisponible = frameGeneral.tamanio;
+	frameGeneral.tamanioOcupado = 0;
+	frameGeneral.puntero = malloc(frameGeneral.tamanio);
+}
+
+void almacernarArchivo(char* archivo, int32_t tamanioArchivo, int32_t pid){
+	if(frameGeneral.tamanioDisponible - tamanioArchivo >= 0){
+		//frameGeneral.tamanioDisponible -= tamanioArchivo;
+		//frameGeneral.puntero[frameGeneral.tamanioOcupado]= strcpy(frameGeneral.puntero,archivo);
+		// o memcpy? memcpy(frameGeneral.puntero,archivo, tamanioArchivo);
+
+		memcpy(frameGeneral.puntero,archivo, tamanioArchivo);
+		frameGeneral.tamanioOcupado += tamanioArchivo;
+		nodoTablaMemoria.pid = pid;
+		nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
+		int32_t indiceTabla=1;
+		tablaMemoria[indiceTabla]= nodoTablaMemoria;
+		indiceTabla++;
+
+		//PROBAR
+
+	}
+	else
+		printf("ERROR: no alcanza el tamanio en memoria para guadrar el archivo");
 
 }
 

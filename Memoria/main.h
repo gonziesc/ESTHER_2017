@@ -19,7 +19,8 @@
 
 void configuracion(char*);
 int32_t levantarConexion();
-
+void crearFrame();
+void almacenarArchivo(char,int32_t,int32_t);
 
 
 
