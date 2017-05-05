@@ -37,10 +37,10 @@ void Serializar(int32_t id, int32_t tamanioArchivo, char* buffer,
 }
 
 char* Deserializar(int32_t id, int32_t socket,int32_t tamanio) {
-	char* archivoDesempaquetado = malloc(1);
+	char* archivoDesempaquetado;
 	switch (id) {
 	case OK: {
-		printf("Ok");
+		archivoDesempaquetado = malloc(4);
 		break;
 	}
 	case ARCHIVO: {

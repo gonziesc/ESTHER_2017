@@ -132,7 +132,7 @@ int32_t levantarServidor() {
 						FD_CLR(i, &master); // eliminar del conjunto maestro
 					} else {
 						char* paquete = Deserializar(header, i, &tamanoPaquete);
-						procesar(paquete, header, tamanoPaquete);
+						procesar(paquete, header, tamanoPaquete, i);
 
 					}
 				}
@@ -141,12 +141,16 @@ int32_t levantarServidor() {
 	}
 }
 
-void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
+void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
 	switch (id) {
 	case ARCHIVO: {
-		programControlBlock *unPcb = malloc(sizeof(programControlBlock));
-		crearPCB(paquete, unPcb);
-		Serializar(ARCHIVO, tamanoPaquete, paquete, clienteMEM);
+		Serializar(ARCHIVO, tamanoPaquete, paquete, clienteMEM); //EL PROBLEMA ESTA ACA, TAMANO = 0
+		recv(clienteMEM, &header, 4, 0);
+		if (header == 0) {
+			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
+			crearPCB(paquete, unPcb);
+			Serializar(PID, 4, sizeof(int32_t), socket);
+		}
 		break;
 	}
 	case FILESYSTEM: {

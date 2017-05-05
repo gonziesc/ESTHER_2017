@@ -59,6 +59,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	switch (id) {
 	case ARCHIVO: {
 		printf("%s", paquete);
+		Serializar(OK, 4, 0, cliente);
 		break;
 	}
 	case FILESYSTEM: {

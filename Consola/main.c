@@ -9,7 +9,7 @@ pthread_t hiloLeerComando;
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
-	ConectarseConKernel();
+	ConectarseConKernel(); //hacer hilo para esto
 	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando, NULL);
 	pthread_join(hiloLeerComando, NULL);
 	return EXIT_SUCCESS;
