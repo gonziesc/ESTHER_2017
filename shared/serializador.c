@@ -36,7 +36,7 @@ void Serializar(int32_t id, int32_t tamanioArchivo, char* buffer,
 	}
 }
 
-char* Deserializar(int32_t id, int32_t socket,int32_t tamanio) {
+char* Deserializar(int32_t id, int32_t socket,int32_t *tamanio) {
 	char* archivoDesempaquetado;
 	switch (id) {
 	case OK: {
@@ -44,10 +44,10 @@ char* Deserializar(int32_t id, int32_t socket,int32_t tamanio) {
 		break;
 	}
 	case ARCHIVO: {
-		if (recv(socket, &tamanio, 4, 0)) {
-			archivoDesempaquetado = malloc(tamanio + 1);
-			memset(archivoDesempaquetado, '\0', tamanio + 1);
-			recv(socket, archivoDesempaquetado, tamanio, 0);
+		if (recv(socket, tamanio, 4, 0)) {
+			archivoDesempaquetado = malloc((*tamanio) + 1);
+			memset(archivoDesempaquetado, '\0', (*tamanio) + 1);
+			recv(socket, archivoDesempaquetado, (*tamanio), 0);
 			printf("%s\n", archivoDesempaquetado);
 			return archivoDesempaquetado;
 		}

@@ -144,7 +144,7 @@ int32_t levantarServidor() {
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
 	switch (id) {
 	case ARCHIVO: {
-		Serializar(ARCHIVO, tamanoPaquete, paquete, clienteMEM); //EL PROBLEMA ESTA ACA, TAMANO = 0
+		Serializar(ARCHIVO, tamanoPaquete, paquete, clienteMEM);
 		recv(clienteMEM, &header, 4, 0);
 		if (header == 0) {
 			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
