@@ -4,13 +4,15 @@
 archivoConfigConsola* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionKernel;direccionMem;
-int32_t cliente; clienteMEM; buffer; bytesRecibidos; idHiloLeerComando;
-pthread_t hiloLeerComando;
+int32_t cliente; clienteMEM; buffer; bytesRecibidos; idHiloLeerComando;idHiloConectarseConKernel;
+pthread_t hiloLeerComando; hiloConectarseConKernel;
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
-	ConectarseConKernel(); //hacer hilo para esto
+	idHiloConectarseConKernel = pthread_create(&hiloConectarseConKernel, NULL, ConectarseConKernel, NULL);
+
 	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando, NULL);
+	pthread_join(hiloConectarseConKernel, NULL);
 	pthread_join(hiloLeerComando, NULL);
 	return EXIT_SUCCESS;
 }
@@ -29,6 +31,7 @@ int32_t ConectarseConKernel() {
 	}
 	Serializar(CONSOLA, 4, 0, cliente);
 	//DESERIALIZAR Y PROCESAR
+	return 69; // para que retorne un int (cualquiera)
 }
 
 void leerComando()
