@@ -41,6 +41,8 @@ char* Deserializar(int32_t id, int32_t socket,int32_t tamanio) {
 	switch (id) {
 	case OK: {
 		archivoDesempaquetado = malloc(4);
+
+
 		break;
 	}
 	case ARCHIVO: {
@@ -56,30 +58,43 @@ char* Deserializar(int32_t id, int32_t socket,int32_t tamanio) {
 	}
 	case PCB: {
 
+
 		break;
 	}
 
 	case FILESYSTEM: {
+
+
 		break;
 	}
 	case KERNEL: {
+
+
 		break;
 	}
 	case CPU: {
+
+
 		break;
 	}
 	case CONSOLA: {
+
+
 		break;
 	}
 	case MEMORIA: {
+
 		break;
 	}
 	case CODIGO: {
 
+
 	}
-		return archivoDesempaquetado;
+
 
 	}
 	//DEBUGUEAR MEMORIA
+	return archivoDesempaquetado;
+
 }
 

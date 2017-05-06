@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <conexiones.c>
 #include <configuracion.h>
+#include <pthread.h>
 
 
 
@@ -21,6 +22,7 @@ void configuracion(char*);
 int32_t levantarConexion();
 void crearFrame();
 void almacenarArchivo(char,int32_t,int32_t);
+void procesar(char *, int32_t , int32_t,int32_t);
 
 
 

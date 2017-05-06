@@ -10,6 +10,9 @@ struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 char* buffer;
 int32_t tamanoPaquete;
+
+
+
 typedef struct {
 	int32_t id;
 	int32_t tamanio;
@@ -27,20 +30,30 @@ typedef struct{
 infoTablaMemoria nodoTablaMemoria;
 infoTablaMemoria* tablaMemoria;
 
+pthread_t hiloLevantarConexion;
+int32_t idHiloLevantarConexion;
+
+pthread_t hiloCpu;
+int32_t idHiloCpu;
 
 int32_t main(int argc, char**argv) {
 
 	printf("memoria \n");
 	configuracion(argv[1]);
-	levantarConexion();
+
+	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL, levantarConexion, NULL);
+	pthread_join(hiloLevantarConexion, NULL);
+	crearFrame();
 	return EXIT_SUCCESS;
 }
 void configuracion(char *dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigMemoria));
 	configuracionMemoria(t_archivoConfig, config, dir);
-	crearFrame();
+
 }
-// hacer un hilo en levantar conexion
+
+
+
 int32_t levantarConexion() {
 	llenarSocketAdrr(&direccionServidor, t_archivoConfig->PUERTO);
 
@@ -68,12 +81,12 @@ int32_t levantarConexion() {
 			perror("El chabón se desconectó");
 			return 1;
 		}
-		char* paquete = Deserializar(header, cliente, tamanoPaquete);
-		procesar(header, paquete, tamanoPaquete);
+		char* paquete = Deserializar(header, cliente, tamanoPaquete); //
+		procesar(paquete,header, tamanoPaquete, cliente);
 	}
 }
 
-void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
+void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
 	switch (id) {
 	case ARCHIVO: {
 		printf("%s", paquete);
@@ -90,6 +103,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	case CPU: {
 		// levantar hilo por cada cpu que le llega con el socket para enviar y recibir de ese cpu
 		//tamanio, paquete, header, socket
+		//idhiloCpu = pthread_create(&hiloCpu, NULL, , NULL);
+		//pthread_join(hiloCpu, NULL);
+
 		printf("Se conecto CPU");
 		break;
 	}
