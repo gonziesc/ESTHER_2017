@@ -1,6 +1,7 @@
 #include "main.h"
 
-
+int32_t opcion;
+char nombreArchivo[];
 archivoConfigConsola* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionKernel;direccionMem;
@@ -37,19 +38,29 @@ int32_t ConectarseConKernel() {
 void leerComando()
 {
 	while (1) {
-		char *mensaje = malloc(100);
-		fgets(mensaje, 100, stdin);
-		pthread_t hiloUnico;
-		int32_t idHiloUnico;
-		idHiloUnico = pthread_create(&hiloUnico, NULL, crearNuevoProceso, (char*) mensaje);
-		pthread_join(hiloUnico, NULL);
+		printf("Ingrese comando\n");
+		printf("1: iniciar programa\n");
+		scanf("%d", &opcion);
+		switch(opcion){
+		case 1: {
+			pthread_t hiloUnico;
+					int32_t idHiloUnico;
+					idHiloUnico = pthread_create(&hiloUnico, NULL, crearNuevoProceso, NULL);
+					pthread_join(hiloUnico, NULL);
+			break;
+		}
+		}
+		//char *mensaje = malloc(100);
+		//fgets(mensaje, 100, stdin);
 	}
 }
 
-void crearNuevoProceso(char* path)
+void crearNuevoProceso()
 {
+	scanf("%s", &nombreArchivo);
+	printf("%s", nombreArchivo);
 	char *contenidoDelArchivo = malloc(100);
-	int tamano = abrirYLeerArchivo(path, contenidoDelArchivo);
+	int tamano = abrirYLeerArchivo(nombreArchivo, contenidoDelArchivo);
 	Serializar(1, tamano, contenidoDelArchivo, cliente);
 	free(contenidoDelArchivo);
 }
