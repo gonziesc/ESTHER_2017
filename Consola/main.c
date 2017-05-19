@@ -1,7 +1,7 @@
 #include "main.h"
 
 int32_t opcion;
-char nombreArchivo[];
+char nombreArchivo[100];
 archivoConfigConsola* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionKernel;direccionMem;
@@ -56,18 +56,17 @@ void leerComando()
 
 void crearNuevoProceso()
 {
+	printf("Ingrese la ruta del archivo");
 	scanf("%s", &nombreArchivo);
-	printf("%s", nombreArchivo);
 	char *contenidoDelArchivo = malloc(100);
 	int tamano = abrirYLeerArchivo(nombreArchivo, contenidoDelArchivo);
 	Serializar(1, tamano, contenidoDelArchivo, cliente);
 	free(contenidoDelArchivo);
 }
 
-int abrirYLeerArchivo(char* path, char* string)
+int abrirYLeerArchivo(char path[], char* string)
 {
-	//ojoooooooooo
-	FILE *f = fopen("/home/utnso/git/tp-2017-1c-el-grupo-numero/Consola/hola.ansisop", "rb");
+	FILE *f = fopen(path, "rb");
 	fseek(f, 0, SEEK_END);
 	long fsize = ftell(f);
 	fseek(f, 0, SEEK_SET);  //same as rewind(f);
