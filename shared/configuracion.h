@@ -16,7 +16,8 @@ typedef enum {
 	CPU = 6,
 	CONSOLA = 7,
 	CODIGO = 8,
-	TAMANO = 9
+	TAMANO = 9,
+	PAGINA = 10
 } codigosSerializador;
 
 typedef struct{

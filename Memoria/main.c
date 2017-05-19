@@ -18,12 +18,21 @@ typedef struct {
 	int32_t tamanioOcupado;
 	char* puntero;
 } frame;
-frame frameGeneral;
+
 
 typedef struct {
 	int32_t pid;
 	int32_t puntero;
 } infoTablaMemoria;
+
+typedef struct{
+	int32_t tamanio;
+	int32_t tamanioDisponible;
+}cache;
+
+cache cache1;
+
+frame frameGeneral;
 
 infoTablaMemoria nodoTablaMemoria;
 infoTablaMemoria* tablaMemoria;
@@ -42,7 +51,7 @@ int32_t main(int argc, char**argv) {
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
 			levantarConexion, NULL);
 	pthread_join(hiloLevantarConexion, NULL);
-	crearFrame();
+	crearFrameGeneral();
 	return EXIT_SUCCESS;
 }
 void configuracion(char *dir) {
@@ -115,18 +124,34 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case CODIGO: {
-
+		break;
 	}
 	case TAMANO: {
-		int paginas = (int) (*paquete);
-		if (paginas > 0) { // validar que haya la cantidad de paginas disp
+		int32_t paginas = (int) (*paquete);
+
+		if (paginas > 0) {
+			if (frameGeneral.tamanioDisponible - tamanoPaquete >= 0){
 			Serializar(OK, 4, 0, socket);
+			}
 		}
+	}
+	case PAGINA: {
+		int pid;
+		printf("%s\n", paquete);
+		char *pagina = malloc(256);
+		//Te llego pagina y pid. con pagina, lo que haces es memcpy(framegigante, pagina, 256)
+		//asignar char* a framegigante + 0
+		memcpy(&pid, paquete, sizeof(pid));
+		printf("%d\n", pid);
+		memcpy(pagina, (paquete +4), 256);
+		printf("%s\n", pagina);
+		Serializar(OK, 4, 0, socket);
 	}
 	}
 }
 
-void crearFrame() {
+void crearFrameGeneral() {
+
 
 	int32_t tamanioMarcos, cantidadMarcos;
 	cantidadMarcos = t_archivoConfig->MARCOS;
@@ -138,26 +163,49 @@ void crearFrame() {
 	frameGeneral.tamanioOcupado = 0;
 	frameGeneral.puntero = malloc(frameGeneral.tamanio);
 }
+void dump(){
 
-void almacernarArchivo(char* archivo, int32_t tamanioArchivo, int32_t pid) {
-	if (frameGeneral.tamanioDisponible - tamanioArchivo >= 0) {
+	FILE* archivoDump = fopen("dump.txt","rb+");
+	//int a = fwrite(cache, 1,sizeof(cache), archivoDump );
+
+}
+
+/*void crearFrame() {
+
+	frame unFrame;
+	int32_t tamanioMarcos, cantidadMarcos;
+	cantidadMarcos = t_archivoConfig->MARCOS;
+	tamanioMarcos = t_archivoConfig->MARCOS_SIZE;
+
+	unFrame.id = 1;
+	unFrame.tamanio = cantidadMarcos * tamanioMarcos;
+	unFrame.tamanioDisponible = unFrame.tamanio;
+	unFrame.tamanioOcupado = 0;
+	unFrame.puntero = malloc(unFrame.tamanio);
+}
+*/
+
+
+void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
+
 		//frameGeneral.tamanioDisponible -= tamanioArchivo;
 		//frameGeneral.puntero[frameGeneral.tamanioOcupado]= strcpy(frameGeneral.puntero,archivo);
-		// o memcpy? memcpy(frameGeneral.puntero,archivo, tamanioArchivo);
+		 //o memcpyyyuy?
+		//memcpyfdf(frameGeneral.puntero,archivo, tamanioArchivo);
 
-		memcpy(frameGeneral.puntero, archivo, tamanioArchivo);
-		frameGeneral.tamanioOcupado += tamanioArchivo;
-		nodoTablaMemoria.pid = pid;
+		memcpy(frameGeneral.puntero, buffer, tamanioBuffer);
 		nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
+		frameGeneral.tamanioOcupado += tamanioBuffer;
+		nodoTablaMemoria.pid = pid;
+
 		int32_t indiceTabla = 1;
+
+		//memcpy(tablaMemoria[indiceTabla], nodoTablaMemoria, sizeof(nodoTablaMemoria));
 		tablaMemoria[indiceTabla] = nodoTablaMemoria;
 		indiceTabla++;
 
 		//PROBAR
 
-	} else
-		printf(
-				"ERROR: no alcanza el tamanio en memoria para guadrar el archivo");
 
 }
 

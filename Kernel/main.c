@@ -126,7 +126,7 @@ int32_t levantarServidor() {
 						char * codigoKernel = malloc(4);
 						int logitudIO = read(0, codigoKernel, 4);
 						if (logitudIO > 0) {
-							int codigoOperacion = (int) (*codigoKernel) -48;
+							int codigoOperacion = (int) (*codigoKernel) - 48;
 							printf("Got data on stdin: %d\n", codigoOperacion);
 							free(codigoKernel);
 						} else {
@@ -160,56 +160,69 @@ int32_t levantarServidor() {
 	}
 }
 
-	void procesar(char * paquete, int32_t id, int32_t tamanoPaquete,
-			int32_t socket) {
-		switch (id) {
-		case ARCHIVO: {
-			printf("%s\n", paquete);
-			/*
-			 Serializar(ARCHIVO, tamanoPaquete, paquete, clienteMEM);
-			 recv(clienteMEM, &header, 4, 0);
-			 if (header == 0) {
-			 programControlBlock *unPcb = malloc(sizeof(programControlBlock));
-			 crearPCB(paquete, unPcb);
-			 Serializar(PID, 4, sizeof(int32_t), socket);
-			 } */
-			int cantidadDePaginas = tamanoPaquete / 25;
-			char * send = &cantidadDePaginas;
-			// 25 representa marcos size, agregar al config de kernel
-			Serializar(TAMANO, 4, send, clienteMEM);
-			break;
+void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
+	switch (id) {
+	case ARCHIVO: {
+		printf("%s\n", paquete);
+		printf("%d\n", tamanoPaquete);
+		int cantidadDePaginas;
+		if(tamanoPaquete <= 256) {
+			cantidadDePaginas =1;
 		}
-		case FILESYSTEM: {
-			printf("Se conecto FS\n");
-			break;
+		else {
+			cantidadDePaginas = tamanoPaquete / 256;
 		}
-		case KERNEL: {
-			printf("Se conecto Kernel\n");
-			break;
-		}
-		case CPU: {
-			printf("Se conecto CPU\n");
-			break;
-		}
-		case CONSOLA: {
-			printf("Se conecto Consola\n");
-			break;
-		}
-		case MEMORIA: {
-			printf("Se conecto memoria\n");
-			break;
-		}
-		case CODIGO: {
-
-		}
-		case OK: {
-			printf("noo\n");
-		}
+		char * send = &cantidadDePaginas;
+		Serializar(TAMANO, 4, send, clienteMEM);
+		recv(clienteMEM, &header, sizeof(header), 0);
+		if (header == OK) {
+			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
+			crearPCB(paquete, unPcb);
+			int offset = 0;
+		for(i = 0; i<cantidadDePaginas; i++) {
+			char* envioPagina = malloc(260);
+			memcpy(envioPagina, &PID, sizeof(PID));
+			memcpy(envioPagina + 4, paquete, 256);
+			offset=+ 256;
+			printf("%s\n", envioPagina);
+			Serializar(PAGINA, 260, envioPagina, clienteMEM);
+			recv(clienteMEM, &header, sizeof(header), 0);
+			printf("Se enviaron las paginas a memoria\n");
 		}
 	}
+	break;
+}
+case FILESYSTEM: {
+	printf("Se conecto FS\n");
+	break;
+}
+case KERNEL: {
+	printf("Se conecto Kernel\n");
+	break;
+}
+case CPU: {
+	printf("Se conecto CPU\n");
+	break;
+}
+case CONSOLA: {
+	printf("Se conecto Consola\n");
+	break;
+}
+case MEMORIA: {
+	printf("Se conecto memoria\n");
+	break;
+}
+case CODIGO: {
 
-	void crearPCB(char* codigo, programControlBlock *unPcb) {
-		unPcb->programId = PID;
-		PID++;
-		unPcb->programCounter = 0;
+}
+case OK: {
+}
 	}
+}
+
+void crearPCB(char* codigo, programControlBlock *unPcb) {
+	unPcb->programId = PID;
+	PID++;
+	unPcb->programCounter = 0;
+}
+

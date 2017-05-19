@@ -20,10 +20,10 @@
 
 void configuracion(char*);
 int32_t levantarConexion();
-void crearFrame();
-void almacenarArchivo(char,int32_t,int32_t);
+void crearFrameGeneral();
+void almacernarPaginaEnFrame(int32_t, int32_t, char*);
 void procesar(char *, int32_t , int32_t,int32_t);
-
+void dump();
 
 
 
