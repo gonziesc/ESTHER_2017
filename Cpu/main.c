@@ -97,3 +97,15 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	}
 }
+
+char* depurarSentencia(char* sentencia){
+
+		int i = strlen(sentencia);
+		while (string_ends_with(sentencia, "\n")) {
+			i--;
+			sentencia = string_substring_until(sentencia, i);
+		}
+		return sentencia;
+
+}
+

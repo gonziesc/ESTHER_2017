@@ -67,7 +67,8 @@ void crearNuevoProceso()
 int abrirYLeerArchivo(char* path, char* string)
 {
 	//ojoooooooooo
-	FILE *f = fopen("/home/utnso/git/tp-2017-1c-el-grupo-numero/Consola/hola.ansisop", "rb");
+	// OJO EL PATH
+	FILE *f = fopen("/home/utnso/tp-2017-1c-el-grupo-numero/Consola/hola.ansisop", "rb");
 	fseek(f, 0, SEEK_END);
 	long fsize = ftell(f);
 	fseek(f, 0, SEEK_SET);  //same as rewind(f);
