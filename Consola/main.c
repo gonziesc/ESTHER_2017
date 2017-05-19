@@ -56,9 +56,9 @@ void leerComando()
 
 void crearNuevoProceso()
 {
-	printf("Ingrese la ruta del archivo");
+	printf("Ingrese la ruta del archivo\n");
 	scanf("%s", &nombreArchivo);
-	char *contenidoDelArchivo = malloc(100);
+	char *contenidoDelArchivo = malloc(1000);
 	int tamano = abrirYLeerArchivo(nombreArchivo, contenidoDelArchivo);
 	Serializar(1, tamano, contenidoDelArchivo, cliente);
 	free(contenidoDelArchivo);
