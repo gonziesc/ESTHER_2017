@@ -123,6 +123,16 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			Serializar(OK, 4, 0, socket);
 		}
 	}
+	case PAGINA: {
+		int pid;
+		printf("%s\n", paquete);
+		char *pagina = malloc(256);
+		memcpy(&pid, paquete, sizeof(pid));
+		printf("%d\n", pid);
+		memcpy(pagina, (paquete +4), 256);
+		printf("%s\n", pagina);
+		Serializar(OK, 4, 0, socket);
+	}
 	}
 }
 
