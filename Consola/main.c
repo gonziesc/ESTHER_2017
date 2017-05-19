@@ -66,6 +66,7 @@ void crearNuevoProceso()
 
 int abrirYLeerArchivo(char path[], char* string)
 {
+
 	FILE *f = fopen(path, "rb");
 	fseek(f, 0, SEEK_END);
 	long fsize = ftell(f);
