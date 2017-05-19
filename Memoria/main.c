@@ -134,6 +134,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			Serializar(OK, 4, 0, socket);
 			}
 		}
+		break;
 	}
 	case PAGINA: {
 		int pid;
