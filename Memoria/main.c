@@ -11,8 +11,6 @@ uint32_t tamanoDireccion;
 char* buffer;
 int32_t tamanoPaquete;
 
-
-
 typedef struct {
 	int32_t id;
 	int32_t tamanio;
@@ -22,10 +20,10 @@ typedef struct {
 } frame;
 frame frameGeneral;
 
-typedef struct{
+typedef struct {
 	int32_t pid;
 	int32_t puntero;
-}infoTablaMemoria;
+} infoTablaMemoria;
 
 infoTablaMemoria nodoTablaMemoria;
 infoTablaMemoria* tablaMemoria;
@@ -41,7 +39,8 @@ int32_t main(int argc, char**argv) {
 	printf("memoria \n");
 	configuracion(argv[1]);
 
-	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL, levantarConexion, NULL);
+	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
+			levantarConexion, NULL);
 	pthread_join(hiloLevantarConexion, NULL);
 	crearFrame();
 	return EXIT_SUCCESS;
@@ -51,8 +50,6 @@ void configuracion(char *dir) {
 	configuracionMemoria(t_archivoConfig, config, dir);
 
 }
-
-
 
 int32_t levantarConexion() {
 	llenarSocketAdrr(&direccionServidor, t_archivoConfig->PUERTO);
@@ -78,11 +75,11 @@ int32_t levantarConexion() {
 	while (1) {
 		int32_t bytesRecibidos = recv(cliente, &header, 4, 0);
 		if (bytesRecibidos <= 0) {
-			perror("El chabón se desconectó");
+			perror("El chabón se desconectó\n");
 			return 1;
 		}
-		char* paquete = Deserializar(header, cliente, tamanoPaquete); //
-		procesar(paquete,header, tamanoPaquete, cliente);
+		char* paquete = Deserializar(header, cliente, tamanoPaquete);
+		procesar(paquete, header, tamanoPaquete, cliente);
 	}
 }
 
@@ -93,11 +90,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case FILESYSTEM: {
-		printf("Se conecto FS");
+		printf("Se conecto FS\n");
 		break;
 	}
 	case KERNEL: {
-		printf("Se conecto Kernel");
+		printf("Se conecto Kernel\n");
 		break;
 	}
 	case CPU: {
@@ -106,19 +103,25 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		//idhiloCpu = pthread_create(&hiloCpu, NULL, , NULL);
 		//pthread_join(hiloCpu, NULL);
 
-		printf("Se conecto CPU");
+		printf("Se conecto CPU\n");
 		break;
 	}
 	case CONSOLA: {
-		printf("Se conecto Consola");
+		printf("Se conecto Consola\n");
 		break;
 	}
 	case MEMORIA: {
-		printf("Se conecto memoria");
+		printf("Se conecto memoria\n");
 		break;
 	}
 	case CODIGO: {
 
+	}
+	case TAMANO: {
+		int paginas = (int) (*paquete);
+		if (paginas > 0) { // validar que haya la cantidad de paginas disp
+			Serializar(OK, 4, 0, socket);
+		}
 	}
 	}
 }
@@ -136,25 +139,25 @@ void crearFrame() {
 	frameGeneral.puntero = malloc(frameGeneral.tamanio);
 }
 
-void almacernarArchivo(char* archivo, int32_t tamanioArchivo, int32_t pid){
-	if(frameGeneral.tamanioDisponible - tamanioArchivo >= 0){
+void almacernarArchivo(char* archivo, int32_t tamanioArchivo, int32_t pid) {
+	if (frameGeneral.tamanioDisponible - tamanioArchivo >= 0) {
 		//frameGeneral.tamanioDisponible -= tamanioArchivo;
 		//frameGeneral.puntero[frameGeneral.tamanioOcupado]= strcpy(frameGeneral.puntero,archivo);
 		// o memcpy? memcpy(frameGeneral.puntero,archivo, tamanioArchivo);
 
-		memcpy(frameGeneral.puntero,archivo, tamanioArchivo);
+		memcpy(frameGeneral.puntero, archivo, tamanioArchivo);
 		frameGeneral.tamanioOcupado += tamanioArchivo;
 		nodoTablaMemoria.pid = pid;
 		nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
-		int32_t indiceTabla=1;
-		tablaMemoria[indiceTabla]= nodoTablaMemoria;
+		int32_t indiceTabla = 1;
+		tablaMemoria[indiceTabla] = nodoTablaMemoria;
 		indiceTabla++;
 
 		//PROBAR
 
-	}
-	else
-		printf("ERROR: no alcanza el tamanio en memoria para guadrar el archivo");
+	} else
+		printf(
+				"ERROR: no alcanza el tamanio en memoria para guadrar el archivo");
 
 }
 

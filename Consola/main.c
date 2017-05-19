@@ -11,7 +11,6 @@ pthread_t hiloLeerComando; hiloConectarseConKernel;
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
 	idHiloConectarseConKernel = pthread_create(&hiloConectarseConKernel, NULL, ConectarseConKernel, NULL);
-
 	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando, NULL);
 	pthread_join(hiloConectarseConKernel, NULL);
 	pthread_join(hiloLeerComando, NULL);

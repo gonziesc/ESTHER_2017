@@ -41,7 +41,7 @@ int32_t conectarConMemoria() {
 			t_archivoConfig->PUERTO_MEMORIA);
 	clienteMEM = socket(AF_INET, SOCK_STREAM, 0);
 	if (connect(clienteMEM, (void*) &direccionMem, sizeof(direccionMem)) != 0) {
-		perror("No se pudo conectar con memoria");
+		perror("No se pudo conectar con memoria\n");
 		return 1;
 	}
 	Serializar(5, 4, 0, clienteMEM);
@@ -60,7 +60,7 @@ int32_t ConectarConFS() {
 			t_archivoConfig->PUERTO_FS);
 	clientefs = socket(AF_INET, SOCK_STREAM, 0);
 	if (connect(clientefs, (void*) &direccionFs, sizeof(direccionFs)) != 0) {
-		perror("No se pudo conectar con fs");
+		perror("No se pudo conectar con fs\n");
 		return 1;
 	}
 	Serializar(5, 4, 0, clientefs);
@@ -84,7 +84,7 @@ int32_t levantarServidor() {
 	setsockopt(servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
 	if (bind(servidor, (void*) &direccionServidor, sizeof(direccionServidor))
 			!= 0) {
-		perror("Falló el bind");
+		perror("Falló el bind\n");
 		return 1;
 	}
 	printf("Estoy escuchando\n");
@@ -107,7 +107,7 @@ int32_t levantarServidor() {
 					tamanoDireccion = sizeof(direccionCliente);
 					if ((newfd = accept(servidor, (void*) &direccionCliente,
 							&tamanoDireccion)) == -1) {
-						perror("accept");
+						perror("accept\n");
 					} else {
 						FD_SET(newfd, &master); // añadir al conjunto maestro
 						if (newfd > fdmax) {    // actualizar el máximo
@@ -144,38 +144,47 @@ int32_t levantarServidor() {
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
 	switch (id) {
 	case ARCHIVO: {
+		printf("%s\n", paquete);
+		/*
 		Serializar(ARCHIVO, tamanoPaquete, paquete, clienteMEM);
 		recv(clienteMEM, &header, 4, 0);
 		if (header == 0) {
 			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
 			crearPCB(paquete, unPcb);
 			Serializar(PID, 4, sizeof(int32_t), socket);
-		}
+		} */
+		int cantidadDePaginas = tamanoPaquete / 25;
+		char * send = &cantidadDePaginas;
+		// 25 representa marcos size, agregar al config de kernel
+		Serializar(TAMANO, 4, send, clienteMEM);
 		break;
 	}
 	case FILESYSTEM: {
-		printf("Se conecto FS");
+		printf("Se conecto FS\n");
 		break;
 	}
 	case KERNEL: {
-		printf("Se conecto Kernel");
+		printf("Se conecto Kernel\n");
 		break;
 	}
 	case CPU: {
-		printf("Se conecto CPU");
+		printf("Se conecto CPU\n");
 		break;
 	}
 	case CONSOLA: {
-		printf("Se conecto Consola");
+		printf("Se conecto Consola\n");
 		break;
 	}
 	case MEMORIA: {
-		printf("Se conecto memoria");
+		printf("Se conecto memoria\n");
 		break;
 	}
 	case CODIGO: {
 
 	}
+	case OK: {
+		printf("noo\n");
+		}
 	}
 }
 

@@ -1,6 +1,5 @@
 #include "serializador.h"
 
-
 void Serializar(int32_t id, int32_t tamanioArchivo, char* buffer,
 		int32_t socket) {
 	char* archivoEmpaquetado;
@@ -14,6 +13,14 @@ void Serializar(int32_t id, int32_t tamanioArchivo, char* buffer,
 		archivoEmpaquetado = malloc(4);
 		memcpy(archivoEmpaquetado, &id, sizeof(id));
 		send(socket, archivoEmpaquetado, sizeof(id), 0);
+		free(archivoEmpaquetado);
+		break;
+	}
+	case TAMANO: {
+		archivoEmpaquetado = malloc(8);
+		memcpy(archivoEmpaquetado, &id, sizeof(id));
+		memcpy(archivoEmpaquetado + 4, buffer, sizeof(id));
+		send(socket, archivoEmpaquetado, 8, 0);
 		free(archivoEmpaquetado);
 		break;
 	}
@@ -36,12 +43,10 @@ void Serializar(int32_t id, int32_t tamanioArchivo, char* buffer,
 	}
 }
 
-char* Deserializar(int32_t id, int32_t socket,int32_t *tamanio) {
+char* Deserializar(int32_t id, int32_t socket, int32_t *tamanio) {
 	char* archivoDesempaquetado;
 	switch (id) {
 	case OK: {
-		archivoDesempaquetado = malloc(4);
-
 
 		break;
 	}
@@ -55,29 +60,32 @@ char* Deserializar(int32_t id, int32_t socket,int32_t *tamanio) {
 
 		break;
 	}
-	case PCB: {
+	case TAMANO: {
+			archivoDesempaquetado = malloc(4);
+			recv(socket, archivoDesempaquetado, 4, 0);
+			return archivoDesempaquetado;
 
+
+			break;
+		}
+	case PCB: {
 
 		break;
 	}
 
 	case FILESYSTEM: {
 
-
 		break;
 	}
 	case KERNEL: {
-
 
 		break;
 	}
 	case CPU: {
 
-
 		break;
 	}
 	case CONSOLA: {
-
 
 		break;
 	}
@@ -87,9 +95,7 @@ char* Deserializar(int32_t id, int32_t socket,int32_t *tamanio) {
 	}
 	case CODIGO: {
 
-
 	}
-
 
 	}
 	//DEBUGUEAR MEMORIA
