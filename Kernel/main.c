@@ -89,7 +89,9 @@ int32_t levantarServidor() {
 	}
 	printf("Estoy escuchando\n");
 	listen(servidor, 100);
-
+	FD_SET(0, &master);
+	FD_SET(clienteMEM, &master);
+	FD_SET(clientefs, &master);
 	FD_SET(servidor, &master);
 	// seguir la pista del descriptor de fichero mayor
 	fdmax = servidor; // por ahora es éste
@@ -103,12 +105,14 @@ int32_t levantarServidor() {
 		for (i = 0; i <= fdmax; i++) {
 			if (FD_ISSET(i, &read_fds)) { // ¡¡tenemos datos!!
 				if (i == servidor) {
+
 					// gestionar nuevas conexiones
 					tamanoDireccion = sizeof(direccionCliente);
 					if ((newfd = accept(servidor, (void*) &direccionCliente,
 							&tamanoDireccion)) == -1) {
 						perror("accept\n");
 					} else {
+						printf("numer serv%d\n", newfd);
 						FD_SET(newfd, &master); // añadir al conjunto maestro
 						if (newfd > fdmax) {    // actualizar el máximo
 							fdmax = newfd;
@@ -118,22 +122,37 @@ int32_t levantarServidor() {
 								inet_ntoa(direccionCliente.sin_addr), newfd);
 					}
 				} else {
-					// gestionar datos de un cliente
-					if ((nbytes = recv(i, &header, sizeof(header), 0)) <= 0) {
-
-						// error o conexión cerrada por el cliente
-						if (nbytes == 0) {
-							// conexión cerrada
-							printf("selectserver: socket %d hung up\n", i);
+					if (i == 0) {
+						char * codigoKernel = malloc(4);
+						int logitudIO = read(0, codigoKernel, 4);
+						if (logitudIO > 0) {
+							int codigoOperacion = (int) (*codigoKernel) -48;
+							printf("Got data on stdin: %d\n", codigoOperacion);
+							free(codigoKernel);
 						} else {
-							perror("recv");
+							// fd closed
+							perror("read()");
 						}
-						close(i); // bye!
-						FD_CLR(i, &master); // eliminar del conjunto maestro
 					} else {
-						char* paquete = Deserializar(header, i, &tamanoPaquete);
-						procesar(paquete, header, tamanoPaquete, i);
+						// gestionar datos de un cliente
+						if ((nbytes = recv(i, &header, sizeof(header), 0))
+								<= 0) {
 
+							// error o conexión cerrada por el cliente
+							if (nbytes == 0) {
+								// conexión cerrada
+								printf("selectserver: socket %d hung up\n", i);
+							} else {
+								perror("recv");
+							}
+							close(i); // bye!
+							FD_CLR(i, &master); // eliminar del conjunto maestro
+						} else {
+							char* paquete = Deserializar(header, i,
+									&tamanoPaquete);
+							procesar(paquete, header, tamanoPaquete, i);
+
+						}
 					}
 				}
 			}
@@ -141,55 +160,56 @@ int32_t levantarServidor() {
 	}
 }
 
-void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
-	switch (id) {
-	case ARCHIVO: {
-		printf("%s\n", paquete);
-		/*
-		Serializar(ARCHIVO, tamanoPaquete, paquete, clienteMEM);
-		recv(clienteMEM, &header, 4, 0);
-		if (header == 0) {
-			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
-			crearPCB(paquete, unPcb);
-			Serializar(PID, 4, sizeof(int32_t), socket);
-		} */
-		int cantidadDePaginas = tamanoPaquete / 25;
-		char * send = &cantidadDePaginas;
-		// 25 representa marcos size, agregar al config de kernel
-		Serializar(TAMANO, 4, send, clienteMEM);
-		break;
-	}
-	case FILESYSTEM: {
-		printf("Se conecto FS\n");
-		break;
-	}
-	case KERNEL: {
-		printf("Se conecto Kernel\n");
-		break;
-	}
-	case CPU: {
-		printf("Se conecto CPU\n");
-		break;
-	}
-	case CONSOLA: {
-		printf("Se conecto Consola\n");
-		break;
-	}
-	case MEMORIA: {
-		printf("Se conecto memoria\n");
-		break;
-	}
-	case CODIGO: {
+	void procesar(char * paquete, int32_t id, int32_t tamanoPaquete,
+			int32_t socket) {
+		switch (id) {
+		case ARCHIVO: {
+			printf("%s\n", paquete);
+			/*
+			 Serializar(ARCHIVO, tamanoPaquete, paquete, clienteMEM);
+			 recv(clienteMEM, &header, 4, 0);
+			 if (header == 0) {
+			 programControlBlock *unPcb = malloc(sizeof(programControlBlock));
+			 crearPCB(paquete, unPcb);
+			 Serializar(PID, 4, sizeof(int32_t), socket);
+			 } */
+			int cantidadDePaginas = tamanoPaquete / 25;
+			char * send = &cantidadDePaginas;
+			// 25 representa marcos size, agregar al config de kernel
+			Serializar(TAMANO, 4, send, clienteMEM);
+			break;
+		}
+		case FILESYSTEM: {
+			printf("Se conecto FS\n");
+			break;
+		}
+		case KERNEL: {
+			printf("Se conecto Kernel\n");
+			break;
+		}
+		case CPU: {
+			printf("Se conecto CPU\n");
+			break;
+		}
+		case CONSOLA: {
+			printf("Se conecto Consola\n");
+			break;
+		}
+		case MEMORIA: {
+			printf("Se conecto memoria\n");
+			break;
+		}
+		case CODIGO: {
 
-	}
-	case OK: {
-		printf("noo\n");
+		}
+		case OK: {
+			printf("noo\n");
+		}
 		}
 	}
-}
 
-void crearPCB(char* codigo, programControlBlock *unPcb) {
-	unPcb->programId = PID;
-	PID++;
-	unPcb->programCounter = 0;
-}
+	void crearPCB(char* codigo, programControlBlock *unPcb) {
+		unPcb->programId = PID;
+		PID++;
+		unPcb->programCounter = 0;
+	}
