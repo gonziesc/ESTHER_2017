@@ -11,8 +11,19 @@ int32_t bytesRecibidos;
 int32_t header;
 int32_t tamanoPaquete;
 
+AnSISOP_funciones primitivas = {
+		.AnSISOP_definirVariable		= dummy_definirVariable,
+		.AnSISOP_obtenerPosicionVariable= dummy_obtenerPosicionVariable,
+		.AnSISOP_dereferenciar			= dummy_dereferenciar,
+		.AnSISOP_asignar				= dummy_asignar,
+		.AnSISOP_finalizar				= dummy_finalizar,
+
+};
+
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
+	char* sentencia = "a = b + 12";
+	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 	ConectarConKernel();
 	//conectarConMemoria();
 	return EXIT_SUCCESS;
@@ -107,5 +118,31 @@ char* depurarSentencia(char* sentencia){
 		}
 		return sentencia;
 
+}
+t_puntero dummy_definirVariable(t_nombre_variable variable) {
+	printf("definir la variable %c\n", variable);
+	return 0x10;
+}
+
+t_puntero dummy_obtenerPosicionVariable(t_nombre_variable variable) {
+	printf("Obtener posicion de %c\n", variable);
+	return 0x10;
+}
+
+void dummy_finalizar(void){
+	printf("Finalizar\n");
+}
+
+bool terminoElPrograma(void){
+	return false;
+}
+
+t_valor_variable dummy_dereferenciar(t_puntero puntero) {
+	printf("Dereferenciar %d y su valor es: %d\n", puntero, 20);
+	return 20;
+}
+
+void dummy_asignar(t_puntero puntero, t_valor_variable variable) {
+	printf("Asignando en %d el valor %d\n", puntero, variable);
 }
 

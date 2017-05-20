@@ -13,14 +13,21 @@
 #include <netinet/in.h>
 #include <conexiones.c>
 #include <configuracion.h>
-
+#include <parser/parser.h>
 
 
 void Configuracion(char *);
 int32_t ConectarConKernel();
 int32_t conectarConMemoria();
 
+t_puntero dummy_definirVariable(t_nombre_variable variable);
+	t_puntero dummy_obtenerPosicionVariable(t_nombre_variable variable);
+	t_valor_variable dummy_dereferenciar(t_puntero puntero);
+	void dummy_asignar(t_puntero puntero, t_valor_variable variable);
+	void dummy_finalizar(void);
+	char* depurarSentencia(char*);
 
+	bool terminoElPrograma(void);
 
 
 //Codigo PCB, implementar en Shared
