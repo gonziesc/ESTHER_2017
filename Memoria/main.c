@@ -34,8 +34,11 @@ cache cache1;
 
 frame frameGeneral;
 
+infoTablaMemoria tablaMemoria[10];
+int32_t indiceTabla = 1;
 infoTablaMemoria nodoTablaMemoria;
-infoTablaMemoria* tablaMemoria;
+
+
 
 pthread_t hiloLevantarConexion;
 int32_t idHiloLevantarConexion;
@@ -137,11 +140,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case PAGINA: {
-		int pid;
+		int32_t pid;
 		printf("%s\n", paquete);
 		char *pagina = malloc(256);
 		//Te llego pagina y pid. con pagina, lo que haces es memcpy(framegigante, pagina, 256)
 		//asignar char* a framegigante + 0
+		almacernarPaginaEnFrame(pid,  tamanoPaquete,  paquete);
 		memcpy(&pid, paquete, sizeof(pid));
 		printf("%d\n", pid);
 		memcpy(pagina, (paquete +4), 256);
@@ -163,6 +167,7 @@ void crearFrameGeneral() {
 	frameGeneral.tamanioDisponible = frameGeneral.tamanio;
 	frameGeneral.tamanioOcupado = 0;
 	frameGeneral.puntero = malloc(frameGeneral.tamanio);
+
 }
 void dump(){
 
@@ -195,16 +200,22 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 		//memcpyfdf(frameGeneral.puntero,archivo, tamanioArchivo);
 
 		memcpy(frameGeneral.puntero, buffer, tamanioBuffer);
+
+
 		nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
 		frameGeneral.tamanioOcupado += tamanioBuffer;
 		nodoTablaMemoria.pid = pid;
 
-		int32_t indiceTabla = 1;
 
 		//memcpy(tablaMemoria[indiceTabla], nodoTablaMemoria, sizeof(nodoTablaMemoria));
 		tablaMemoria[indiceTabla] = nodoTablaMemoria;
-		indiceTabla++;
+		printf("%s\n","soy un kp");
+		printf("%d\n",tablaMemoria[indiceTabla].puntero);
+		printf("%d\n",tablaMemoria[indiceTabla].pid);
+		printf("%s\n","soy un kpododod");
 
+
+		indiceTabla++;
 		//PROBAR
 
 
