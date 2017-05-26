@@ -55,6 +55,7 @@ int32_t main(int argc, char**argv) {
 			levantarConexion, NULL);
 	pthread_join(hiloLevantarConexion, NULL);
 	crearFrameGeneral();
+	//dump();
 	return EXIT_SUCCESS;
 }
 void configuracion(char *dir) {
@@ -92,6 +93,7 @@ int32_t levantarConexion() {
 		}
 		char* paquete = Deserializar(header, cliente, tamanoPaquete);
 		procesar(paquete, header, tamanoPaquete, cliente);
+
 	}
 }
 
@@ -153,6 +155,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		Serializar(OK, 4, 0, socket);
 	}
 	}
+
 }
 
 void crearFrameGeneral() {
@@ -172,7 +175,7 @@ void crearFrameGeneral() {
 void dump(){
 
 	FILE* archivoDump = fopen("dump.txt","rb+");
-	//int a = fwrite(cache, 1,sizeof(cache), archivoDump );
+	//int a = fwrite(&cache1, sizeof(cache), 1, archivoDump);
 
 }
 
@@ -194,10 +197,6 @@ void dump(){
 
 void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 
-		//frameGeneral.tamanioDisponible -= tamanioArchivo;
-		//frameGeneral.puntero[frameGeneral.tamanioOcupado]= strcpy(frameGeneral.puntero,archivo);
-		 //o memcpyyyuy?
-		//memcpyfdf(frameGeneral.puntero,archivo, tamanioArchivo);
 
 		memcpy(frameGeneral.puntero, buffer, tamanioBuffer);
 
@@ -208,13 +207,9 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 
 
 		//memcpy(tablaMemoria[indiceTabla], nodoTablaMemoria, sizeof(nodoTablaMemoria));
+		// esta opcion es para usar una tablaMemoria*, el problema es que no se podria
+		// accerder a la posicion []
 		tablaMemoria[indiceTabla] = nodoTablaMemoria;
-		printf("%s\n","soy un kp");
-		printf("%d\n",tablaMemoria[indiceTabla].puntero);
-		printf("%d\n",tablaMemoria[indiceTabla].pid);
-		printf("%s\n","soy un kpododod");
-
-
 		indiceTabla++;
 		//PROBAR
 
