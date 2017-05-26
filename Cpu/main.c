@@ -22,7 +22,17 @@ AnSISOP_funciones primitivas = {
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
-	char* sentencia = "a = b + 12";
+	//char* sentencia = "begin";
+	//analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
+	char* sentencia = "variables a, b";
+	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
+	sentencia = "a = 3";
+	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
+	sentencia = "b = 5";
+	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
+	sentencia = "a = b + 12";
+	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
+	sentencia = "end";
 	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 	ConectarConKernel();
 	//conectarConMemoria();

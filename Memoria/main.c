@@ -34,8 +34,11 @@ cache cache1;
 
 frame frameGeneral;
 
+infoTablaMemoria tablaMemoria[10];
+int32_t indiceTabla = 1;
 infoTablaMemoria nodoTablaMemoria;
-infoTablaMemoria* tablaMemoria;
+
+
 
 pthread_t hiloLevantarConexion;
 int32_t idHiloLevantarConexion;
@@ -52,6 +55,7 @@ int32_t main(int argc, char**argv) {
 			levantarConexion, NULL);
 	pthread_join(hiloLevantarConexion, NULL);
 	crearFrameGeneral();
+	//dump();
 	return EXIT_SUCCESS;
 }
 void configuracion(char *dir) {
@@ -89,6 +93,7 @@ int32_t levantarConexion() {
 		}
 		char* paquete = Deserializar(header, cliente, tamanoPaquete);
 		procesar(paquete, header, tamanoPaquete, cliente);
+
 	}
 }
 
@@ -137,7 +142,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case PAGINA: {
-		int pid;
+		int32_t pid;
 		printf("%s\n", paquete);
 		char *pagina = malloc(20);
 		//Te llego pagina y pid. con pagina, lo que haces es memcpy(framegigante, pagina, 256)
@@ -147,8 +152,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		printf("%pagina: s\n", pagina);
 		printf("%pid: d\n", pid);
 		Serializar(OK, 0, 0, socket);
+		almacernarPaginaEnFrame(pid,  tamanoPaquete,  paquete);
+
+
 	}
 	}
+
 }
 
 void crearFrameGeneral() {
@@ -163,11 +172,12 @@ void crearFrameGeneral() {
 	frameGeneral.tamanioDisponible = frameGeneral.tamanio;
 	frameGeneral.tamanioOcupado = 0;
 	frameGeneral.puntero = malloc(frameGeneral.tamanio);
+
 }
 void dump(){
 
 	FILE* archivoDump = fopen("dump.txt","rb+");
-	//int a = fwrite(cache, 1,sizeof(cache), archivoDump );
+	//int a = fwrite(&cache1, sizeof(cache), 1, archivoDump);
 
 }
 
@@ -189,22 +199,20 @@ void dump(){
 
 void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 
-		//frameGeneral.tamanioDisponible -= tamanioArchivo;
-		//frameGeneral.puntero[frameGeneral.tamanioOcupado]= strcpy(frameGeneral.puntero,archivo);
-		 //o memcpyyyuy?
-		//memcpyfdf(frameGeneral.puntero,archivo, tamanioArchivo);
 
 		memcpy(frameGeneral.puntero, buffer, tamanioBuffer);
+
+
 		nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
 		frameGeneral.tamanioOcupado += tamanioBuffer;
 		nodoTablaMemoria.pid = pid;
 
-		int32_t indiceTabla = 1;
 
 		//memcpy(tablaMemoria[indiceTabla], nodoTablaMemoria, sizeof(nodoTablaMemoria));
+		// esta opcion es para usar una tablaMemoria*, el problema es que no se podria
+		// accerder a la posicion []
 		tablaMemoria[indiceTabla] = nodoTablaMemoria;
 		indiceTabla++;
-
 		//PROBAR
 
 
