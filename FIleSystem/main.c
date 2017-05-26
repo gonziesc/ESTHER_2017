@@ -33,7 +33,7 @@ int32_t levantarConexion() {
 	printf("Estoy escuchando\n");
 	listen(servidor, 100);
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-	Serializar(FILESYSTEM, 4, 0, cliente);
+	Serializar(FILESYSTEM, 0, 0, cliente);
 	printf("Recibí una conexión en %d!!\n", cliente);
 	while (1) {
 		int32_t bytesRecibidos = recv(cliente, &header, 4, 0);
@@ -44,6 +44,7 @@ int32_t levantarConexion() {
 		char * paquete = Deserializar(header, 0, cliente, &tamanoPaquete);
 		procesar(paquete, header, tamanoPaquete);
 	}
+	return 69;
 }
 
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {

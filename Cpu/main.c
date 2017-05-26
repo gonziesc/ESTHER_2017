@@ -41,7 +41,7 @@ int32_t conectarConMemoria() {
 		perror("No se pudo conectar");
 		return 1;
 	}
-	Serializar(6, 4, 0, clienteMEM);
+	Serializar(6, 0, 0, clienteMEM);
 
 	while (1) {
 		int32_t bytesRecibidos = recv(clienteMEM, &header, 4, 0);
@@ -63,7 +63,7 @@ int32_t ConectarConKernel() {
 		perror("No se pudo conectar");
 		return 1;
 	}
-	Serializar(CPU, 4, 0, cliente);
+	Serializar(CPU, 0, 0, cliente);
 
 	while (1) {
 		int32_t bytesRecibidos = recv(cliente, &header, 4, 0);

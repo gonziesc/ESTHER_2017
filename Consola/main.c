@@ -29,7 +29,7 @@ int32_t ConectarseConKernel() {
 		perror("No se pudo conectar");
 		return 1;
 	}
-	Serializar(CONSOLA, 4, 0, cliente);
+	Serializar(CONSOLA, 0, 0, cliente);
 	//DESERIALIZAR Y PROCESAR
 	return 69; // para que retorne un int (cualquiera)
 }
@@ -60,7 +60,7 @@ void crearNuevoProceso()
 	scanf("%s", &nombreArchivo);
 	char *contenidoDelArchivo = malloc(1000);
 	int tamano = abrirYLeerArchivo(nombreArchivo, contenidoDelArchivo);
-	Serializar(1, tamano, contenidoDelArchivo, cliente);
+	Serializar(ARCHIVO, tamano, contenidoDelArchivo, cliente);
 	free(contenidoDelArchivo);
 }
 

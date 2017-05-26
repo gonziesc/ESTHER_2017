@@ -44,7 +44,7 @@ int32_t conectarConMemoria() {
 		perror("No se pudo conectar con memoria\n");
 		return 1;
 	}
-	Serializar(5, 4, 0, clienteMEM);
+	Serializar(KERNEL, 0, 0, clienteMEM);
 	bytesRecibidos = recv(clienteMEM, &header, 4, 0);
 	while (bytesRecibidos <= 0) {
 		bytesRecibidos = recv(clienteMEM, &header, 4, 0);
@@ -63,7 +63,7 @@ int32_t ConectarConFS() {
 		perror("No se pudo conectar con fs\n");
 		return 1;
 	}
-	Serializar(5, 4, 0, clientefs);
+	Serializar(KERNEL, 0, 0, clientefs);
 	bytesRecibidos = recv(clientefs, &header, 4, 0);
 	while (bytesRecibidos <= 0) {
 		bytesRecibidos = recv(clientefs, &header, 4, 0);
@@ -166,11 +166,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		printf("%s\n", paquete);
 		printf("%d\n", tamanoPaquete);
 		int cantidadDePaginas;
-		if(tamanoPaquete <= 256) {
+		if(tamanoPaquete <= 20) {
 			cantidadDePaginas =1;
 		}
 		else {
-			cantidadDePaginas = tamanoPaquete / 256;
+			cantidadDePaginas = tamanoPaquete / 20;
 		}
 		char * send = &cantidadDePaginas;
 		Serializar(TAMANO, 4, send, clienteMEM);
@@ -180,14 +180,15 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			crearPCB(paquete, unPcb);
 			int offset = 0;
 		for(i = 0; i<cantidadDePaginas; i++) {
-			char* envioPagina = malloc(260);
-			memcpy(envioPagina, &PID, sizeof(PID));
-			memcpy(envioPagina + 4, paquete, 256);
-			offset=+ 256;
+			void* envioPagina = malloc(24);
+			memcpy(envioPagina, paquete + offset, 20);
+			memcpy(envioPagina + 20,  &PID, sizeof(PID));
+			offset = offset + 20;
 			printf("%s\n", envioPagina);
-			Serializar(PAGINA, 260, envioPagina, clienteMEM);
+			Serializar(PAGINA, 24, envioPagina, clienteMEM);
 			recv(clienteMEM, &header, sizeof(header), 0);
 			printf("Se enviaron las paginas a memoria\n");
+			free(envioPagina);
 		}
 	}
 	break;

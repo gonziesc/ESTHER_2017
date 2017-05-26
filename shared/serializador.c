@@ -1,54 +1,15 @@
 #include "serializador.h"
 
-void Serializar(int32_t id, int32_t tamanioArchivo, char* buffer,
-		int32_t socket) {
-	char* archivoEmpaquetado;
-	switch (id) {
-	case OK:
-	case CONSOLA:
-	case CPU:
-	case KERNEL:
-	case FILESYSTEM:
-	case MEMORIA: {
-		archivoEmpaquetado = malloc(4);
-		memcpy(archivoEmpaquetado, &id, sizeof(id));
-		send(socket, archivoEmpaquetado, sizeof(id), 0);
-		free(archivoEmpaquetado);
-		break;
+void Serializar(int32_t id, int32_t tamanio, void* datos, int32_t socket) {
+	int tamanio_paquete = 2 * sizeof(int32_t) + tamanio;
+	void * buffer = malloc(tamanio_paquete);
+	memcpy(buffer, &id, sizeof(id));
+	if(tamanio >0){
+		memcpy(buffer + sizeof(id), &tamanio, sizeof(id));
+		memcpy(buffer + 2 * sizeof(id), datos, tamanio);
 	}
-	case TAMANO: {
-		archivoEmpaquetado = malloc(8);
-		memcpy(archivoEmpaquetado, &id, sizeof(id));
-		memcpy(archivoEmpaquetado + 4, buffer, sizeof(id));
-		send(socket, archivoEmpaquetado, 8, 0);
-		free(archivoEmpaquetado);
-		break;
-	}
-	case ARCHIVO: {
-		archivoEmpaquetado = malloc(8 + tamanioArchivo);
-		memcpy(archivoEmpaquetado, &id, sizeof(id));
-		memcpy(archivoEmpaquetado + 4, &tamanioArchivo, sizeof(tamanioArchivo));
-		memcpy(archivoEmpaquetado + 8, buffer, tamanioArchivo);
-		send(socket, archivoEmpaquetado, tamanioArchivo + 8, 0);
-		free(archivoEmpaquetado);
-		break;
-	}
-	case PAGINA: {
-			archivoEmpaquetado = malloc(4 + tamanioArchivo);
-			memcpy(archivoEmpaquetado, &id, sizeof(id));
-			memcpy(archivoEmpaquetado + 4, &tamanioArchivo, sizeof(tamanioArchivo));
-			send(socket, archivoEmpaquetado, tamanioArchivo + 4, 0);
-			free(archivoEmpaquetado);
-			break;
-		}
-	case PCB: {
-
-		break;
-	}
-	case CODIGO: {
-
-	}
-	}
+	send(socket, buffer, tamanio_paquete, NULL);
+	free(buffer);
 }
 
 char* Deserializar(int32_t id, int32_t socket, int32_t *tamanio) {
@@ -59,7 +20,7 @@ char* Deserializar(int32_t id, int32_t socket, int32_t *tamanio) {
 		break;
 	}
 	case ARCHIVO: {
-		if (recv(socket, tamanio, 4, 0)) {
+		if (recv(socket, tamanio, sizeof(id), 0)) {
 			archivoDesempaquetado = malloc((*tamanio));
 			recv(socket, archivoDesempaquetado, (*tamanio), 0);
 			return archivoDesempaquetado;
@@ -74,8 +35,8 @@ char* Deserializar(int32_t id, int32_t socket, int32_t *tamanio) {
 		break;
 	}
 	case TAMANO: {
-		archivoDesempaquetado = malloc(4);
-		recv(socket, archivoDesempaquetado, 4, 0);
+		archivoDesempaquetado = malloc(sizeof(int32_t));
+		recv(socket, archivoDesempaquetado, sizeof(int32_t), 0);
 		return archivoDesempaquetado;
 		break;
 	}

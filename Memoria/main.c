@@ -79,7 +79,7 @@ int32_t levantarConexion() {
 
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
 	printf("Recibí una conexión en %d!!\n", cliente);
-	Serializar(MEMORIA, 4, 0, cliente);
+	Serializar(MEMORIA, 0, 0, cliente);
 
 	while (1) {
 		int32_t bytesRecibidos = recv(cliente, &header, 4, 0);
@@ -131,7 +131,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		if (paginas > 0) {
 			if (frameGeneral.tamanioDisponible - tamanoPaquete >= 0){
-			Serializar(OK, 4, 0, socket);
+			Serializar(OK, 0, 0, socket);
 			}
 		}
 		break;
@@ -139,14 +139,14 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	case PAGINA: {
 		int pid;
 		printf("%s\n", paquete);
-		char *pagina = malloc(256);
+		char *pagina = malloc(20);
 		//Te llego pagina y pid. con pagina, lo que haces es memcpy(framegigante, pagina, 256)
 		//asignar char* a framegigante + 0
-		memcpy(&pid, paquete, sizeof(pid));
-		printf("%d\n", pid);
-		memcpy(pagina, (paquete +4), 256);
-		printf("%s\n", pagina);
-		Serializar(OK, 4, 0, socket);
+		memcpy(pagina, paquete, 20);
+		memcpy(&pid, pagina + 20, 4);
+		printf("%pagina: s\n", pagina);
+		printf("%pid: d\n", pid);
+		Serializar(OK, 0, 0, socket);
 	}
 	}
 }
