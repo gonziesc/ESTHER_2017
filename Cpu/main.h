@@ -14,6 +14,7 @@
 #include <conexiones.c>
 #include <configuracion.h>
 #include <parser/parser.h>
+#include <serializador.h>
 
 
 void Configuracion(char *);

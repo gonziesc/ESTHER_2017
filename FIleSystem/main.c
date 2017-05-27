@@ -33,16 +33,18 @@ int32_t levantarConexion() {
 	printf("Estoy escuchando\n");
 	listen(servidor, 100);
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-	Serializar(FILESYSTEM, 0, 0, cliente);
+	int noInteresa;
+	Serializar(FILESYSTEM, 4, noInteresa, cliente);
 	printf("Recibí una conexión en %d!!\n", cliente);
 	while (1) {
-		int32_t bytesRecibidos = recv(cliente, &header, 4, 0);
-		if (bytesRecibidos <= 0) {
-			perror("El chabón se desconectó");
+		paquete* paqueteRecibido = Deserializar(cliente);
+		if (paqueteRecibido->header < 0) {
+			perror("Kernel se desconectó");
 			return 1;
 		}
-		char * paquete = Deserializar(header, 0, cliente, &tamanoPaquete);
-		procesar(paquete, header, tamanoPaquete);
+
+		procesar(paqueteRecibido->package, paqueteRecibido->header,
+				tamanoPaquete);
 	}
 	return 69;
 }

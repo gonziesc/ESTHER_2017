@@ -4,74 +4,44 @@ void Serializar(int32_t id, int32_t tamanio, void* datos, int32_t socket) {
 	int tamanio_paquete = 2 * sizeof(int32_t) + tamanio;
 	void * buffer = malloc(tamanio_paquete);
 	memcpy(buffer, &id, sizeof(id));
-	if(tamanio >0){
-		memcpy(buffer + sizeof(id), &tamanio, sizeof(id));
-		memcpy(buffer + 2 * sizeof(id), datos, tamanio);
-	}
+	memcpy(buffer + sizeof(id), &tamanio, sizeof(id));
+	memcpy(buffer + 2 * sizeof(id), datos, tamanio);
 	send(socket, buffer, tamanio_paquete, NULL);
 	free(buffer);
 }
 
-char* Deserializar(int32_t id, int32_t socket, int32_t *tamanio) {
-	char* archivoDesempaquetado;
-	switch (id) {
-	case OK: {
+paquete* Deserializar(int32_t socket) {
+	paquete * paqueteRecibido = malloc(sizeof(paquete));
+	int retorno = 0;
+	retorno = recv(socket, &paqueteRecibido->header,
+			sizeof(int),
+			NULL);
 
-		break;
+	if (retorno == 0) {
+		paqueteRecibido->header = -1;
+		void * informacion_recibida = malloc(sizeof(int));
+		paqueteRecibido->package = informacion_recibida;
+		return paqueteRecibido;
+
 	}
-	case ARCHIVO: {
-		if (recv(socket, tamanio, sizeof(id), 0)) {
-			archivoDesempaquetado = malloc((*tamanio));
-			recv(socket, archivoDesempaquetado, (*tamanio), 0);
-			return archivoDesempaquetado;
+	if (retorno < 0) {
+			paqueteRecibido->header = -2;
+			void * informacion_recibida = malloc(sizeof(int));
+			paqueteRecibido->package = informacion_recibida;
+			return paqueteRecibido;
+
 		}
+	recv(socket, &paqueteRecibido->size, sizeof(int),
+			NULL);
 
-		break;
-	}
-	case PAGINA: {
-		archivoDesempaquetado = malloc(260);
-		recv(socket, archivoDesempaquetado, 260, 0);
-		return archivoDesempaquetado;
-		break;
-	}
-	case TAMANO: {
-		archivoDesempaquetado = malloc(sizeof(int32_t));
-		recv(socket, archivoDesempaquetado, sizeof(int32_t), 0);
-		return archivoDesempaquetado;
-		break;
-	}
-	case PCB: {
+	void * informacion_recibida = malloc(paqueteRecibido->size);
 
-		break;
-	}
+	recv(socket, informacion_recibida, paqueteRecibido->size,
+			NULL);
 
-	case FILESYSTEM: {
+	paqueteRecibido->package = informacion_recibida;
 
-		break;
-	}
-	case KERNEL: {
-
-		break;
-	}
-	case CPU: {
-
-		break;
-	}
-	case CONSOLA: {
-
-		break;
-	}
-	case MEMORIA: {
-
-		break;
-	}
-	case CODIGO: {
-
-	}
-
-	}
-	//DEBUGUEAR MEMORIA
-	return archivoDesempaquetado;
+	return paqueteRecibido;
 
 }
 

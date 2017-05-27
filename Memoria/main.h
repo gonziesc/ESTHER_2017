@@ -13,8 +13,27 @@
 #include <conexiones.c>
 #include <configuracion.h>
 #include <pthread.h>
+#include <serializador.h>
 
 
+typedef struct {
+	int32_t id;
+	int32_t tamanio;
+	int32_t tamanioDisponible;
+	int32_t tamanioOcupado;
+	char* puntero;
+} frame;
+
+
+typedef struct {
+	int32_t pid;
+	int32_t puntero;
+} infoTablaMemoria;
+
+typedef struct{
+	int32_t tamanio;
+	int32_t tamanioDisponible;
+}cache;
 
 
 

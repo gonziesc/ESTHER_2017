@@ -15,12 +15,12 @@
 typedef struct{
 	int32_t header;
 	int32_t size;
-	char* package;
-}__attribute__((packed))
-paquete;
+	void* package;
+}paquete;
+
 
 void Serializar(int32_t , int32_t , void*, int32_t);
-char* Deserializar(int32_t ,int32_t,int32_t*);
+paquete* Deserializar(int32_t);
 
 
 

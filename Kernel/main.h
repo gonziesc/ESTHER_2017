@@ -15,7 +15,7 @@
 #include <arpa/inet.h>
 #include <conexiones.c>
 #include <configuracion.h>
-
+#include <serializador.h>
 
 
 void configuracion(char*);

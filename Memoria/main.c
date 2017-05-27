@@ -11,25 +11,6 @@ uint32_t tamanoDireccion;
 char* buffer;
 int32_t tamanoPaquete;
 
-typedef struct {
-	int32_t id;
-	int32_t tamanio;
-	int32_t tamanioDisponible;
-	int32_t tamanioOcupado;
-	char* puntero;
-} frame;
-
-
-typedef struct {
-	int32_t pid;
-	int32_t puntero;
-} infoTablaMemoria;
-
-typedef struct{
-	int32_t tamanio;
-	int32_t tamanioDisponible;
-}cache;
-
 cache cache1;
 
 frame frameGeneral;
@@ -83,16 +64,16 @@ int32_t levantarConexion() {
 
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
 	printf("Recibí una conexión en %d!!\n", cliente);
-	Serializar(MEMORIA, 0, 0, cliente);
+	int noInteresa;
+	Serializar(MEMORIA, 4, noInteresa, cliente);
 
 	while (1) {
-		int32_t bytesRecibidos = recv(cliente, &header, 4, 0);
-		if (bytesRecibidos <= 0) {
+		paquete* paqueteRecibido = Deserializar(cliente);
+		if (paqueteRecibido->header == -1  ||paqueteRecibido->header == -2) {
 			perror("El chabón se desconectó\n");
 			return 1;
 		}
-		char* paquete = Deserializar(header, cliente, tamanoPaquete);
-		procesar(paquete, header, tamanoPaquete, cliente);
+		procesar(paqueteRecibido->package, paqueteRecibido->header, paqueteRecibido->size, cliente);
 
 	}
 }
@@ -135,9 +116,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		int32_t paginas = (int) (*paquete);
 
 		if (paginas > 0) {
-			if (frameGeneral.tamanioDisponible - tamanoPaquete >= 0){
-			Serializar(OK, 0, 0, socket);
-			}
+			//if (frameGeneral.tamanioDisponible - (paginas*20) >= 0){
+			int noIMporta;
+			Serializar(OK, 4, noIMporta, socket);
+			//}
 		}
 		break;
 	}
@@ -148,11 +130,13 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		//Te llego pagina y pid. con pagina, lo que haces es memcpy(framegigante, pagina, 256)
 		//asignar char* a framegigante + 0
 		memcpy(pagina, paquete, 20);
+		//revisar por que aca tira 12 bytes de mas
 		memcpy(&pid, pagina + 20, 4);
-		printf("%pagina: s\n", pagina);
-		printf("%pid: d\n", pid);
-		Serializar(OK, 0, 0, socket);
-		almacernarPaginaEnFrame(pid,  tamanoPaquete,  paquete);
+		printf("pagina: %s\n", pagina);
+		printf("pid: %d\n", pid);
+		int noIMporta;
+		Serializar(OK, 4, noIMporta, socket);
+		//almacernarPaginaEnFrame(pid,  tamanoPaquete,  paquete);
 
 
 	}
