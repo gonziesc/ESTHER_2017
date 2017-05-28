@@ -77,7 +77,8 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 	Serializar(ARCHIVO, tamano, contenidoDelArchivo, cliente);
 	paquete* paqueteRecibido = Deserializar(cliente);
 	if (paqueteRecibido->header == PID) {
-		int processID = atoi(paqueteRecibido->package);
+		int processID;
+		memcpy(&processID, paqueteRecibido->package, 4);
 		procesosActuales[procesosActualesPosicion].PID = processID;
 		printf("process id: %d", processID);
 	}

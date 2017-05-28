@@ -130,8 +130,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		//Te llego pagina y pid. con pagina, lo que haces es memcpy(framegigante, pagina, 256)
 		//asignar char* a framegigante + 0
 		memcpy(pagina, paquete, 20);
-		//revisar por que aca tira 12 bytes de mas
-		memcpy(&pid, pagina + 20, 4);
+		pagina[20] = '\0';
+		memcpy(&pid, paquete + 20, 4);
 		printf("pagina: %s\n", pagina);
 		printf("pid: %d\n", pid);
 		int noIMporta;
