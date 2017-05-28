@@ -64,8 +64,8 @@ int32_t levantarConexion() {
 
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
 	printf("Recibí una conexión en %d!!\n", cliente);
-	int noInteresa;
-	Serializar(MEMORIA, 4, noInteresa, cliente);
+	int envio = t_archivoConfig->MARCOS_SIZE;
+	Serializar(MEMORIA, 4, &envio , cliente);
 
 	while (1) {
 		paquete* paqueteRecibido = Deserializar(cliente);
@@ -126,12 +126,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	case PAGINA: {
 		int32_t pid;
 		printf("%s\n", paquete);
-		char *pagina = malloc(20);
+		char *pagina = malloc( t_archivoConfig->MARCOS_SIZE);
 		//Te llego pagina y pid. con pagina, lo que haces es memcpy(framegigante, pagina, 256)
 		//asignar char* a framegigante + 0
-		memcpy(pagina, paquete, 20);
-		pagina[20] = '\0';
-		memcpy(&pid, paquete + 20, 4);
+		memcpy(pagina, paquete, t_archivoConfig->MARCOS_SIZE);
+		pagina[t_archivoConfig->MARCOS_SIZE] = '\0';
+		memcpy(&pid, paquete +  t_archivoConfig->MARCOS_SIZE, sizeof(int));
 		printf("pagina: %s\n", pagina);
 		printf("pid: %d\n", pid);
 		int noIMporta;

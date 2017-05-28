@@ -16,6 +16,7 @@ int32_t clienteMEM;
 char* buffer;
 char buf[3];    // buffer para datos del cliente
 int32_t servidor;
+int32_t MARCOS_SIZE;
 int32_t activado;
 int32_t clientefs;
 int32_t bytesRecibidos;
@@ -48,7 +49,7 @@ int32_t conectarConMemoria() {
 	Serializar(KERNEL, 4, noInteresa, clienteMEM);
 	paquete* paqueteRecibido = Deserializar(clienteMEM);
 	if (paqueteRecibido->header < 0) {
-		perror("Kernel se desconectó");
+		perror("Memoria se desconectó");
 		return 1;
 	}
 
@@ -166,8 +167,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		printf("%s\n", paquete);
 		printf("%d\n", tamanoPaquete);
 		paquete[tamanoPaquete] = '\0';
-		int cantidadDePaginas = ceil(tamanoPaquete / 20);
-		Serializar(TAMANO, 4, &cantidadDePaginas, clienteMEM);
+		int cantidadDePaginas = ceil(tamanoPaquete / MARCOS_SIZE);
+		int cantidadDePaginasToales = cantidadDePaginas + t_archivoConfig->STACK_SIZE;
+		Serializar(TAMANO, sizeof(int), &cantidadDePaginasToales, clienteMEM);
 		recv(clienteMEM, &header, sizeof(header), 0);
 		if (header == OK) {
 			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
@@ -176,12 +178,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			Serializar(PID, 4, &processID, socket);
 			int offset = 0;
 			for (i = 0; i < cantidadDePaginas; i++) {
-				void* envioPagina = malloc(24);
-				memcpy(envioPagina, paquete + offset, 20);
-				memcpy(envioPagina + 20, &processID, sizeof(processID));
-				offset = offset + 20;
+				void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));
+				memcpy(envioPagina, paquete + offset, MARCOS_SIZE);
+				memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
+				offset = offset + MARCOS_SIZE;
 				printf("%s\n", envioPagina);
-				Serializar(PAGINA, 24, envioPagina, clienteMEM);
+				Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina, clienteMEM);
 				recv(clienteMEM, &header, sizeof(header), 0);
 				printf("Se enviaron las paginas a memoria\n");
 				free(envioPagina);
@@ -206,6 +208,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case MEMORIA: {
+		memcpy(&MARCOS_SIZE, (paquete), sizeof(int));
 		printf("Se conecto memoria\n");
 		break;
 	}
