@@ -24,28 +24,6 @@ int32_t ConectarConFS();
 int32_t levantarServidor();
 char* empaquetarPagina(int, char *, int);
 
-typedef struct {
-	int pag;
-	int pos;
-	int off;
-} posicionMemoria;
 
-typedef struct {
-	int pos;
-	t_list *args;
-	t_list *vars;
-	int retPos;
-	posicionMemoria retVar;
-} indiceDeStack;
-
-typedef struct {
-	int32_t programId;
-	int32_t programCounter;
-	int32_t cantidadDePaginas;
-	int32_t exitCode;
-	int* indiceCodigo;
-	char* indiceEtiquetas;
-	t_list* indiceStack;
-}__attribute__((packed)) programControlBlock;
 
 #endif

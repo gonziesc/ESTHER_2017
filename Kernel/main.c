@@ -168,7 +168,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		printf("%d\n", tamanoPaquete);
 		paquete[tamanoPaquete] = '\0';
 		int cantidadDePaginas = ceil(tamanoPaquete / MARCOS_SIZE);
-		int cantidadDePaginasToales = cantidadDePaginas + t_archivoConfig->STACK_SIZE;
+		int cantidadDePaginasToales = cantidadDePaginas
+				+ t_archivoConfig->STACK_SIZE;
 		Serializar(TAMANO, sizeof(int), &cantidadDePaginasToales, clienteMEM);
 		recv(clienteMEM, &header, sizeof(header), 0);
 		if (header == OK) {
@@ -176,18 +177,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			unPcb->cantidadDePaginas = cantidadDePaginas;
 			crearPCB(paquete, unPcb);
 			Serializar(PID, 4, &processID, socket);
-			int offset = 0;
-			for (i = 0; i < cantidadDePaginas; i++) {
-				void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));
-				memcpy(envioPagina, paquete + offset, MARCOS_SIZE);
-				memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
-				offset = offset + MARCOS_SIZE;
-				printf("%s\n", envioPagina);
-				Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina, clienteMEM);
-				recv(clienteMEM, &header, sizeof(header), 0);
-				printf("Se enviaron las paginas a memoria\n");
-				free(envioPagina);
-			}
 		}
 		break;
 	}
@@ -252,7 +241,18 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 	indiceInicial->vars = list_create();
 	indiceInicial->pos = 0;
 	list_add(unPcb->indiceStack, (void*) indiceInicial);
-
+	int offset = 0;
+	for (i = 0; i < unPcb->cantidadDePaginas; i++) {
+		void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));
+		memcpy(envioPagina, codigo + offset, MARCOS_SIZE);
+		memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
+		offset = offset + MARCOS_SIZE;
+		printf("%s\n", envioPagina);
+		Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina, clienteMEM);
+		recv(clienteMEM, &header, sizeof(header), 0);
+		printf("Se enviaron las paginas a memoria\n");
+		free(envioPagina);
+	}
 	metadata_destruir(metadata_program);
 }
 

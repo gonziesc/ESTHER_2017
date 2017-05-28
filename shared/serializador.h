@@ -10,6 +10,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <commons/config.h>
+#include <commons/collections/list.h>
 #include "configuracion.h"
 
 typedef struct{
@@ -18,6 +19,29 @@ typedef struct{
 	void* package;
 }paquete;
 
+typedef struct {
+	int pag;
+	int pos;
+	int off;
+} posicionMemoria;
+
+typedef struct {
+	int pos;
+	t_list *args;
+	t_list *vars;
+	int retPos;
+	posicionMemoria retVar;
+} indiceDeStack;
+
+typedef struct {
+	int32_t programId;
+	int32_t programCounter;
+	int32_t cantidadDePaginas;
+	int32_t exitCode;
+	int* indiceCodigo;
+	char* indiceEtiquetas;
+	t_list* indiceStack;
+}__attribute__((packed)) programControlBlock;
 
 void Serializar(int32_t , int32_t , void*, int32_t);
 paquete* Deserializar(int32_t);
