@@ -3,6 +3,7 @@
 struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 int32_t fdmax;
+int32_t cpuDisponible;
 int32_t newfd;        // descriptor de socket de nueva conexión aceptada
 int32_t header;    // buffer para datos del cliente
 int32_t nbytes;
@@ -177,7 +178,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			unPcb->cantidadDePaginas = cantidadDePaginas;
 			crearPCB(paquete, unPcb);
 			Serializar(PID, 4, &processID, socket);
+			char* pcbSerializado = serializarPCB(unPcb);
+			Serializar(PCB, unPcb->tamanoTotal, pcbSerializado, cpuDisponible);
 		}
+
 		break;
 	}
 	case FILESYSTEM: {
@@ -189,6 +193,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case CPU: {
+		cpuDisponible = socket;
 		printf("Se conecto CPU\n");
 		break;
 	}
@@ -212,11 +217,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 void crearPCB(char* codigo, programControlBlock *unPcb) {
 	t_metadata_program* metadata_program;
 	metadata_program = metadata_desde_literal(codigo);
-	unPcb->programId = processID;
 	processID++;
+	unPcb->programId = processID;
 	unPcb->programCounter = 0;
-	int tamanoIndiceCodigo = (metadata_program->instrucciones_size);
-	unPcb->indiceCodigo = malloc(tamanoIndiceCodigo * 2 * sizeof(int));
+	unPcb->tamanoIndiceCodigo = (metadata_program->instrucciones_size);
+	unPcb->indiceCodigo = malloc(unPcb->tamanoIndiceCodigo * 2 * sizeof(int));
 
 	for (i = 0; i < metadata_program->instrucciones_size; i++) {
 		printf("Instruccion inicio:%d offset:%d %.*s",
@@ -229,18 +234,21 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 		unPcb->indiceCodigo[i * 2 + 1] =
 				metadata_program->instrucciones_serializado[i].offset;
 	}
-	int tamanoEtiquetas = metadata_program->etiquetas_size;
-	unPcb->indiceEtiquetas = malloc(tamanoEtiquetas * sizeof(char));
+	unPcb->tamanoindiceEtiquetas = metadata_program->etiquetas_size;
+	unPcb->indiceEtiquetas = malloc(unPcb->tamanoindiceEtiquetas * sizeof(char));
 	memcpy(unPcb->indiceEtiquetas, metadata_program->etiquetas,
-			tamanoEtiquetas * sizeof(char));
+			unPcb->tamanoindiceEtiquetas * sizeof(char));
 	unPcb->indiceStack = list_create();
 
 	indiceDeStack *indiceInicial;
 	indiceInicial = malloc(sizeof(indiceDeStack));
 	indiceInicial->args = list_create();
 	indiceInicial->vars = list_create();
+	indiceInicial->tamanoArgs = 0;
+	indiceInicial->tamanoVars = 0;
 	indiceInicial->pos = 0;
 	list_add(unPcb->indiceStack, (void*) indiceInicial);
+	unPcb->tamanoIndiceStack = 1;
 	int offset = 0;
 	for (i = 0; i < unPcb->cantidadDePaginas; i++) {
 		void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));

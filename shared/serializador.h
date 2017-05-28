@@ -17,13 +17,13 @@ typedef struct{
 	int32_t header;
 	int32_t size;
 	void* package;
-}paquete;
+}__attribute__((packed))paquete;
 
 typedef struct {
 	int pag;
-	int pos;
+	int size;
 	int off;
-} posicionMemoria;
+}__attribute__((packed)) posicionMemoria;
 
 typedef struct {
 	int pos;
@@ -31,13 +31,26 @@ typedef struct {
 	t_list *vars;
 	int retPos;
 	posicionMemoria retVar;
-} indiceDeStack;
+	int tamanoArgs;
+	int tamanoVars;
+}__attribute__((packed)) indiceDeStack;
+
+typedef struct variable
+{
+	char etiqueta;
+	posicionMemoria *direccion;
+}__attribute__((packed)) variable;
+
 
 typedef struct {
+	int32_t tamanoTotal;
 	int32_t programId;
 	int32_t programCounter;
 	int32_t cantidadDePaginas;
 	int32_t exitCode;
+	int32_t tamanoIndiceCodigo;
+	int32_t tamanoindiceEtiquetas;
+	int32_t tamanoIndiceStack;
 	int* indiceCodigo;
 	char* indiceEtiquetas;
 	t_list* indiceStack;

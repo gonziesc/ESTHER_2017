@@ -56,95 +56,99 @@ int32_t conectarConMemoria() {
 }
 
 int32_t ConectarConKernel() {
-llenarSocketAdrrConIp(&direccionKernel, t_archivoConfig->IP_KERNEL,
-		t_archivoConfig->PUERTO_KERNEL);
+	llenarSocketAdrrConIp(&direccionKernel, t_archivoConfig->IP_KERNEL,
+			t_archivoConfig->PUERTO_KERNEL);
 
-cliente = socket(AF_INET, SOCK_STREAM, 0);
-if (connect(cliente, (void*) &direccionKernel, sizeof(direccionKernel)) != 0) {
-	perror("No se pudo conectar");
-	return 1;
-}
-int noInteresa;
-Serializar(CPU, 4, noInteresa, cliente);
-
-while (1) {
-	paquete* paqueteRecibido = Deserializar(cliente);
-	if (paqueteRecibido->header < 0) {
-		perror("Kernel se desconectó");
+	cliente = socket(AF_INET, SOCK_STREAM, 0);
+	if (connect(cliente, (void*) &direccionKernel, sizeof(direccionKernel))
+			!= 0) {
+		perror("No se pudo conectar");
 		return 1;
 	}
+	int noInteresa;
+	Serializar(CPU, 4, noInteresa, cliente);
 
-	procesar(paqueteRecibido->package, paqueteRecibido->header, tamanoPaquete);
-}
+	while (1) {
+		paquete* paqueteRecibido = Deserializar(cliente);
+		if (paqueteRecibido->header < 0) {
+			perror("Kernel se desconectó");
+			return 1;
+		}
 
-free(buffer);
+		procesar(paqueteRecibido->package, paqueteRecibido->header,
+				tamanoPaquete);
+	}
+
+	free(buffer);
 }
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
-switch (id) {
-case ARCHIVO: {
-	printf("%s", paquete);
-	break;
-}
-case FILESYSTEM: {
-	printf("Se conecto FS");
-	break;
-}
-case KERNEL: {
-	printf("Se conecto Kernel");
-	break;
-}
-case CPU: {
-	printf("Se conecto CPU");
-	break;
-}
-case CONSOLA: {
-	printf("Se conecto Consola");
-	break;
-}
-case MEMORIA: {
-	printf("Se conecto memoria");
-	break;
-}
-case CODIGO: {
-
-}
-}
+	switch (id) {
+	case ARCHIVO: {
+		printf("%s", paquete);
+		break;
+	}
+	case FILESYSTEM: {
+		printf("Se conecto FS");
+		break;
+	}
+	case KERNEL: {
+		printf("Se conecto Kernel");
+		break;
+	}
+	case CPU: {
+		printf("Se conecto CPU");
+		break;
+	}
+	case CONSOLA: {
+		printf("Se conecto Consola");
+		break;
+	}
+	case MEMORIA: {
+		printf("Se conecto memoria");
+		break;
+	}
+	case PCB: {
+		programControlBlock *unPcb = deserializarPCB(paquete);
+		printf("pcb id: %d", unPcb->programId);
+		break;
+	}
+  }
 }
 
 char* depurarSentencia(char* sentencia) {
 
-int i = strlen(sentencia);
-while (string_ends_with(sentencia, "\n")) {
-	i--;
-	sentencia = string_substring_until(sentencia, i);
-}
-return sentencia;
+	int i = strlen(sentencia);
+	while (string_ends_with(sentencia, "\n")) {
+		i--;
+		sentencia = string_substring_until(sentencia, i);
+	}
+	return sentencia;
 
 }
 t_puntero dummy_definirVariable(t_nombre_variable variable) {
-printf("definir la variable %c\n", variable);
-return 0x10;
+	printf("definir la variable %c\n", variable);
+	return 0x10;
 }
 
 t_puntero dummy_obtenerPosicionVariable(t_nombre_variable variable) {
-printf("Obtener posicion de %c\n", variable);
-return 0x10;
+	printf("Obtener posicion de %c\n", variable);
+	return 0x10;
 }
 
 void dummy_finalizar(void) {
-printf("Finalizar\n");
+	printf("Finalizar\n");
 }
 
 bool terminoElPrograma(void) {
-return false;
+	return false;
 }
 
 t_valor_variable dummy_dereferenciar(t_puntero puntero) {
-printf("Dereferenciar %d y su valor es: %d\n", puntero, 20);
-return 20;
+	printf("Dereferenciar %d y su valor es: %d\n", puntero, 20);
+	return 20;
 }
 
 void dummy_asignar(t_puntero puntero, t_valor_variable variable) {
-printf("Asignando en %d el valor %d\n", puntero, variable);
+	printf("Asignando en %d el valor %d\n", puntero, variable);
 }
 
