@@ -148,7 +148,9 @@ int32_t levantarServidor() {
 							FD_CLR(i, &master); // eliminar del conjunto maestro
 							perror("recv");
 						} else {
-							procesar(paqueteRecibido->package, paqueteRecibido->header, paqueteRecibido->size, i);
+							procesar(paqueteRecibido->package,
+									paqueteRecibido->header,
+									paqueteRecibido->size, i);
 
 						}
 					}
@@ -163,6 +165,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	case ARCHIVO: {
 		printf("%s\n", paquete);
 		printf("%d\n", tamanoPaquete);
+		paquete[tamanoPaquete] = '\0';
 		int cantidadDePaginas;
 		if (tamanoPaquete <= 20) {
 			cantidadDePaginas = 1;
@@ -220,8 +223,26 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 }
 
 void crearPCB(char* codigo, programControlBlock *unPcb) {
+	t_metadata_program* metadata_program;
+	metadata_program = metadata_desde_literal(codigo);
 	unPcb->programId = processID;
 	processID++;
 	unPcb->programCounter = 0;
+	int tamanoIndiceCodigo = (metadata_program->instrucciones_size);
+	unPcb->indiceCodigo = malloc(
+			tamanoIndiceCodigo * 2 * sizeof(int));
+
+	//Creamos el indice de codigo
+	for (i = 0; i < metadata_program->instrucciones_size; i++) {
+		printf("Instruccion inicio:%d offset:%d %.*s",
+				metadata_program->instrucciones_serializado[i].start,
+				metadata_program->instrucciones_serializado[i].offset,
+				metadata_program->instrucciones_serializado[i].offset,
+				codigo + metadata_program->instrucciones_serializado[i].start);
+		unPcb->indiceCodigo[i * 2] =
+				metadata_program->instrucciones_serializado[i].start;
+		unPcb->indiceCodigo[i*2 +1] =
+				metadata_program->instrucciones_serializado[i].offset;
+	}
 }
 

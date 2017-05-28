@@ -16,6 +16,8 @@
 #include <conexiones.c>
 #include <configuracion.h>
 #include <serializador.h>
+#include <parser/metadata_program.h>
+#include <parser/parser.h>
 
 
 void configuracion(char*);
@@ -23,10 +25,6 @@ int32_t conectarConMemoria();
 int32_t ConectarConFS();
 int32_t levantarServidor();
 char* empaquetarPagina(int , char * , int );
-typedef struct{
-	int indice;
-	int desplazamiento;
-}indiceDeCodigo[];
 
 typedef struct{
 	char* nombreEtiqueda;
@@ -65,7 +63,7 @@ typedef struct{
 	int32_t programCounter;
 	int32_t cantidadDePaginas;
 	int32_t exitCode;
-	indiceDeCodigo* indiceCodigo;
+	int* indiceCodigo;
 	indiceDeEtiquetas* 	indiceEtiquetas;
 	indiceDeStack* indiceStack;
 }programControlBlock;
