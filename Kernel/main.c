@@ -166,19 +166,14 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		printf("%s\n", paquete);
 		printf("%d\n", tamanoPaquete);
 		paquete[tamanoPaquete] = '\0';
-		int cantidadDePaginas;
-		if (tamanoPaquete <= 20) {
-			cantidadDePaginas = 1;
-		} else {
-			cantidadDePaginas = tamanoPaquete / 20;
-		}
+		int cantidadDePaginas = ceil(tamanoPaquete / 20);
 		Serializar(TAMANO, 4, &cantidadDePaginas, clienteMEM);
 		recv(clienteMEM, &header, sizeof(header), 0);
 		if (header == OK) {
 			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
+			unPcb->cantidadDePaginas = cantidadDePaginas;
 			crearPCB(paquete, unPcb);
-			char * sendPID = &processID;
-			Serializar(PID, 4, sendPID, socket);
+			Serializar(PID, 4, &processID, socket);
 			int offset = 0;
 			for (i = 0; i < cantidadDePaginas; i++) {
 				void* envioPagina = malloc(24);
@@ -229,10 +224,8 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 	processID++;
 	unPcb->programCounter = 0;
 	int tamanoIndiceCodigo = (metadata_program->instrucciones_size);
-	unPcb->indiceCodigo = malloc(
-			tamanoIndiceCodigo * 2 * sizeof(int));
+	unPcb->indiceCodigo = malloc(tamanoIndiceCodigo * 2 * sizeof(int));
 
-	//Creamos el indice de codigo
 	for (i = 0; i < metadata_program->instrucciones_size; i++) {
 		printf("Instruccion inicio:%d offset:%d %.*s",
 				metadata_program->instrucciones_serializado[i].start,
@@ -241,8 +234,22 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 				codigo + metadata_program->instrucciones_serializado[i].start);
 		unPcb->indiceCodigo[i * 2] =
 				metadata_program->instrucciones_serializado[i].start;
-		unPcb->indiceCodigo[i*2 +1] =
+		unPcb->indiceCodigo[i * 2 + 1] =
 				metadata_program->instrucciones_serializado[i].offset;
 	}
+	int tamanoEtiquetas = metadata_program->etiquetas_size;
+	unPcb->indiceEtiquetas = malloc(tamanoEtiquetas * sizeof(char));
+	memcpy(unPcb->indiceEtiquetas, metadata_program->etiquetas,
+			tamanoEtiquetas * sizeof(char));
+	unPcb->indiceStack = list_create();
+
+	indiceDeStack *indiceInicial;
+	indiceInicial = malloc(sizeof(indiceDeStack));
+	indiceInicial->args = list_create();
+	indiceInicial->vars = list_create();
+	indiceInicial->pos = 0;
+	list_add(unPcb->indiceStack, (void*) indiceInicial);
+
+	metadata_destruir(metadata_program);
 }
 
