@@ -14,7 +14,7 @@
 #include <configuracion.h>
 #include <pthread.h>
 #include <serializador.h>
-
+#include <commons/log.h>
 
 typedef struct {
 	int32_t id;
@@ -27,7 +27,8 @@ typedef struct {
 
 typedef struct {
 	int32_t pid;
-	int32_t puntero;
+	//int32_t puntero;
+	int32_t numeroPagina;
 } infoTablaMemoria;
 
 typedef struct{
@@ -43,7 +44,7 @@ void crearFrameGeneral();
 void almacernarPaginaEnFrame(int32_t, int32_t, char*);
 void procesar(char *, int32_t , int32_t,int32_t);
 void dump();
-
+void leerComando();
 
 
 

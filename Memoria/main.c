@@ -10,16 +10,16 @@ struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 char* buffer;
 int32_t tamanoPaquete;
-
+int32_t opcion;
 cache cache1;
 
 frame frameGeneral;
 
-infoTablaMemoria tablaMemoria[10];
-int32_t indiceTabla = 1;
+infoTablaMemoria tablaMemoria[500];
+int32_t indiceTabla = 0;
 infoTablaMemoria nodoTablaMemoria;
-
-
+int32_t numeroPagina= 0;
+int32_t pidAnt = -1;
 
 pthread_t hiloLevantarConexion;
 int32_t idHiloLevantarConexion;
@@ -27,16 +27,24 @@ int32_t idHiloLevantarConexion;
 pthread_t hiloCpu;
 int32_t idHiloCpu;
 
+pthread_t hiloLeerComando;
+int32_t idHiloLeerComando;
+
 int32_t main(int argc, char**argv) {
 
 	printf("memoria \n");
 	configuracion(argv[1]);
-
+	crearFrameGeneral();
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
 			levantarConexion, NULL);
+	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando,
+			NULL);
+
 	pthread_join(hiloLevantarConexion, NULL);
-	crearFrameGeneral();
-	//dump();
+
+
+
+	pthread_join(hiloLeerComando, NULL);
 	return EXIT_SUCCESS;
 }
 void configuracion(char *dir) {
@@ -77,6 +85,24 @@ int32_t levantarConexion() {
 
 	}
 }
+
+
+void leerComando() {
+	while (1) {
+		printf("Ingrese comando\n"
+				"1: dump\n");
+		scanf("%d", &opcion);
+		switch (opcion) {
+		case 1: {
+				dump();
+			break;
+		}
+		}
+	}
+}
+
+
+
 
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
 	switch (id) {
@@ -127,8 +153,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		int32_t pid;
 		printf("%s\n", paquete);
 		char *pagina = malloc( t_archivoConfig->MARCOS_SIZE);
-		//Te llego pagina y pid. con pagina, lo que haces es memcpy(framegigante, pagina, 256)
-		//asignar char* a framegigante + 0
+
 		memcpy(pagina, paquete, t_archivoConfig->MARCOS_SIZE);
 		pagina[t_archivoConfig->MARCOS_SIZE] = '\0';
 		memcpy(&pid, paquete +  t_archivoConfig->MARCOS_SIZE, sizeof(int));
@@ -136,7 +161,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		printf("pid: %d\n", pid);
 		int noIMporta;
 		Serializar(OK, 4, noIMporta, socket);
-		//almacernarPaginaEnFrame(pid,  tamanoPaquete,  paquete);
+		almacernarPaginaEnFrame(pid,  tamanoPaquete,  paquete);
 
 
 	}
@@ -159,10 +184,10 @@ void crearFrameGeneral() {
 
 }
 void dump(){
-
-	FILE* archivoDump = fopen("dump.txt","rb+");
-	//int a = fwrite(&cache1, sizeof(cache), 1, archivoDump);
-
+	t_log * log;
+	log = log_create("dump.log", "Memoria", 0, LOG_LEVEL_INFO);
+	log_info(log, "Tamanio de cache", cache1.tamanio);
+	log_info(log, "Tamanio disponible de cache", cache1.tamanioDisponible);
 }
 
 /*void crearFrame() {
@@ -184,10 +209,15 @@ void dump(){
 void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 
 
+
 		memcpy(frameGeneral.puntero, buffer, tamanioBuffer);
 
-
-		nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
+		if(pid!=pidAnt){
+			numeroPagina=0;
+			pidAnt = pid;
+		}
+		//nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
+		nodoTablaMemoria.numeroPagina = numeroPagina;
 		frameGeneral.tamanioOcupado += tamanioBuffer;
 		nodoTablaMemoria.pid = pid;
 
@@ -197,6 +227,7 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 		// accerder a la posicion []
 		tablaMemoria[indiceTabla] = nodoTablaMemoria;
 		indiceTabla++;
+		numeroPagina++;
 		//PROBAR
 
 
