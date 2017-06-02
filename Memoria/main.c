@@ -55,7 +55,7 @@ int32_t main(int argc, char**argv) {
 			levantarConexion, NULL);
 	pthread_join(hiloLevantarConexion, NULL);
 	crearFrameGeneral();
-	//dump();
+	dump();
 	return EXIT_SUCCESS;
 }
 void configuracion(char *dir) {
@@ -174,9 +174,10 @@ void crearFrameGeneral() {
 }
 void dump(){
 
-	FILE* archivoDump = fopen("dump.txt","rb+");
-	//int a = fwrite(&cache1, sizeof(cache), 1, archivoDump);
-
+	FILE* archivoDump = fopen("/home/utnso/git/tp-2017-1c-el-grupo-numero/Memoria/archivos/dump.txt","w+");
+	int hola = 33;
+	fwrite(hola,sizeof(int),sizeof(hola), archivoDump);
+	fclose(archivoDump);
 }
 
 /*void crearFrame() {
