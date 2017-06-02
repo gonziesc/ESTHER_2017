@@ -25,18 +25,42 @@ int32_t tamanoPaquete;
 int32_t processID = 0;
 struct sockaddr_in direccionFs;
 struct sockaddr_in direccionServidor;
+t_queue* colaNew;
+t_queue* colaCodigosAMemoria;
+t_queue* colaReady;
+t_queue* colaExec;
+t_queue* colaBlock;
+t_queue* colaExit;
+sem_t gradoMultiprogramacion;
+sem_t semNew;
+sem_t semReady;
+pthread_mutex_t mutexColaNew;
+pthread_mutex_t mutexColaReady;
+pthread_t hiloPlanificadorLargoPlazo;
+int noInteresa;
 
 int32_t main(int argc, char**argv) {
 	configuracion(argv[1]);
 	conectarConMemoria();
 	ConectarConFS();
+	pthread_create(&hiloPlanificadorLargoPlazo, NULL,planificadorLargoPlazo, NULL);
 	levantarServidor();
+	pthread_join(hiloPlanificadorLargoPlazo, NULL);
 	return EXIT_SUCCESS;
 }
 
 void configuracion(char*dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigKernel));
 	configuracionKernel(t_archivoConfig, config, dir);
+	sem_init(&semNew, 0, 0);
+	sem_init(&semReady, 0, 0);
+	sem_init(&gradoMultiprogramacion, 0, t_archivoConfig->GRADO_MULTIPROG);
+	colaNew = queue_create();
+	colaExec = queue_create();
+	colaReady = queue_create();
+	colaBlock = queue_create();
+	colaExit = queue_create();
+	colaCodigosAMemoria = queue_create();
 }
 int32_t conectarConMemoria() {
 	llenarSocketAdrrConIp(&direccionMem, t_archivoConfig->IP_MEMORIA,
@@ -46,8 +70,7 @@ int32_t conectarConMemoria() {
 		perror("No se pudo conectar con memoria\n");
 		return 1;
 	}
-	int noInteresa;
-	Serializar(KERNEL, 4, noInteresa, clienteMEM);
+	Serializar(KERNEL, 4, &noInteresa, clienteMEM);
 	paquete* paqueteRecibido = Deserializar(clienteMEM);
 	if (paqueteRecibido->header < 0) {
 		perror("Memoria se desconectó");
@@ -67,7 +90,7 @@ int32_t ConectarConFS() {
 		return 1;
 	}
 	int noInteresa;
-	Serializar(KERNEL, 4, noInteresa, clientefs);
+	Serializar(KERNEL, 4, &noInteresa, clientefs);
 	paquete* paqueteRecibido = Deserializar(clientefs);
 	if (paqueteRecibido->header < 0) {
 		perror("Kernel se desconectó");
@@ -178,8 +201,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			unPcb->cantidadDePaginas = cantidadDePaginas;
 			crearPCB(paquete, unPcb);
 			Serializar(PID, 4, &processID, socket);
-			char* pcbSerializado = serializarPCB(unPcb);
-			Serializar(PCB, unPcb->tamanoTotal, pcbSerializado, cpuDisponible);
+			pthread_mutex_lock(&mutexColaNew);
+			queue_push(colaCodigosAMemoria, paquete);
+			queue_push(colaNew, unPcb);
+			pthread_mutex_unlock(&mutexColaNew);
+			sem_post(&semNew);
 		}
 
 		break;
@@ -207,9 +233,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case CODIGO: {
-
+		break;
 	}
 	case OK: {
+		break;
 	}
 	}
 }
@@ -249,18 +276,42 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 	indiceInicial->pos = 0;
 	list_add(unPcb->indiceStack, (void*) indiceInicial);
 	unPcb->tamanoIndiceStack = 1;
-	int offset = 0;
-	for (i = 0; i < unPcb->cantidadDePaginas; i++) {
-		void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));
-		memcpy(envioPagina, codigo + offset, MARCOS_SIZE);
-		memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
-		offset = offset + MARCOS_SIZE;
-		printf("%s\n", envioPagina);
-		Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina, clienteMEM);
-		recv(clienteMEM, &header, sizeof(header), 0);
-		printf("Se enviaron las paginas a memoria\n");
-		free(envioPagina);
-	}
 	metadata_destruir(metadata_program);
 }
 
+void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo){
+	int offset = 0;
+	for (i = 0; i < cantidadDePaginas; i++) {
+			void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));
+			memcpy(envioPagina, codigo + offset, MARCOS_SIZE);
+			memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
+			offset = offset + MARCOS_SIZE;
+			printf("%s\n", envioPagina);
+			Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina, clienteMEM);
+			recv(clienteMEM, &header, sizeof(header), 0);
+			printf("Se enviaron las paginas a memoria\n");
+			free(envioPagina);
+		}
+}
+
+void planificadorLargoPlazo(){
+	programControlBlock* pcbPlP;
+	char *codigo;
+	while (1) {
+			sem_wait(&semNew);
+			pthread_mutex_lock(&mutexColaNew);
+			codigo = queue_pop(colaCodigosAMemoria);
+			pcbPlP = queue_pop(colaNew);
+			pthread_mutex_unlock(&mutexColaNew);
+			enviarProcesoAMemoria(pcbPlP->cantidadDePaginas, codigo);
+			pthread_mutex_lock(&mutexColaReady);
+			queue_push(colaReady, pcbPlP);
+			pthread_mutex_unlock(&mutexColaReady);
+
+			char* pcbSerializado = serializarPCB(pcbPlP);
+			Serializar(PCB, pcbPlP->tamanoTotal, pcbSerializado, cpuDisponible);
+
+			sem_post(&semReady);
+		}
+
+}
