@@ -27,7 +27,8 @@ typedef struct {
 
 typedef struct {
 	int32_t pid;
-	int32_t puntero;
+	//int32_t puntero;
+	int32_t numeroPagina;
 } infoTablaMemoria;
 
 typedef struct{

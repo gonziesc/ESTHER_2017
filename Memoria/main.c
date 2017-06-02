@@ -18,8 +18,8 @@ frame frameGeneral;
 infoTablaMemoria tablaMemoria[500];
 int32_t indiceTabla = 0;
 infoTablaMemoria nodoTablaMemoria;
-
-
+int32_t numeroPagina= 0;
+int32_t pidAnt = -1;
 
 pthread_t hiloLevantarConexion;
 int32_t idHiloLevantarConexion;
@@ -209,10 +209,15 @@ void dump(){
 void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 
 
+
 		memcpy(frameGeneral.puntero, buffer, tamanioBuffer);
 
-
-		nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
+		if(pid!=pidAnt){
+			numeroPagina=0;
+			pidAnt = pid;
+		}
+		//nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
+		nodoTablaMemoria.numeroPagina = numeroPagina;
 		frameGeneral.tamanioOcupado += tamanioBuffer;
 		nodoTablaMemoria.pid = pid;
 
@@ -222,6 +227,7 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 		// accerder a la posicion []
 		tablaMemoria[indiceTabla] = nodoTablaMemoria;
 		indiceTabla++;
+		numeroPagina++;
 		//PROBAR
 
 
