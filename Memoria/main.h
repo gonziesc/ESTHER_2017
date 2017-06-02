@@ -14,7 +14,7 @@
 #include <configuracion.h>
 #include <pthread.h>
 #include <serializador.h>
-
+#include <commons/log.h>
 
 typedef struct {
 	int32_t id;
@@ -43,7 +43,7 @@ void crearFrameGeneral();
 void almacernarPaginaEnFrame(int32_t, int32_t, char*);
 void procesar(char *, int32_t , int32_t,int32_t);
 void dump();
-
+void leerComando();
 
 
 

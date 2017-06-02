@@ -10,7 +10,7 @@ struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 char* buffer;
 int32_t tamanoPaquete;
-
+int32_t opcion;
 cache cache1;
 
 frame frameGeneral;
@@ -27,6 +27,9 @@ int32_t idHiloLevantarConexion;
 pthread_t hiloCpu;
 int32_t idHiloCpu;
 
+pthread_t hiloLeerComando;
+int32_t idHiloLeerComando;
+
 int32_t main(int argc, char**argv) {
 
 	printf("memoria \n");
@@ -34,9 +37,14 @@ int32_t main(int argc, char**argv) {
 	crearFrameGeneral();
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
 			levantarConexion, NULL);
+	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando,
+			NULL);
+
 	pthread_join(hiloLevantarConexion, NULL);
 
-	//dump();
+
+
+	pthread_join(hiloLeerComando, NULL);
 	return EXIT_SUCCESS;
 }
 void configuracion(char *dir) {
@@ -77,6 +85,24 @@ int32_t levantarConexion() {
 
 	}
 }
+
+
+void leerComando() {
+	while (1) {
+		printf("Ingrese comando\n"
+				"1: dump\n");
+		scanf("%d", &opcion);
+		switch (opcion) {
+		case 1: {
+				dump();
+			break;
+		}
+		}
+	}
+}
+
+
+
 
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
 	switch (id) {
@@ -158,11 +184,10 @@ void crearFrameGeneral() {
 
 }
 void dump(){
-
-	FILE* archivoDump = fopen("/home/utnso/git/tp-2017-1c-el-grupo-numero/Memoria/archivos/dump.txt","w+");
-	int hola = 33;
-	fwrite(hola,sizeof(int),sizeof(hola), archivoDump);
-	fclose(archivoDump);
+	t_log * log;
+	log = log_create("dump.log", "Memoria", 0, LOG_LEVEL_INFO);
+	log_info(log, "Tamanio de cache", cache1.tamanio);
+	log_info(log, "Tamanio disponible de cache", cache1.tamanioDisponible);
 }
 
 /*void crearFrame() {
