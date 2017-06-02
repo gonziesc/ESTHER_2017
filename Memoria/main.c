@@ -15,8 +15,8 @@ cache cache1;
 
 frame frameGeneral;
 
-infoTablaMemoria tablaMemoria[10];
-int32_t indiceTabla = 1;
+infoTablaMemoria tablaMemoria[500];
+int32_t indiceTabla = 0;
 infoTablaMemoria nodoTablaMemoria;
 
 
@@ -31,12 +31,12 @@ int32_t main(int argc, char**argv) {
 
 	printf("memoria \n");
 	configuracion(argv[1]);
-
+	crearFrameGeneral();
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
 			levantarConexion, NULL);
 	pthread_join(hiloLevantarConexion, NULL);
-	crearFrameGeneral();
-	dump();
+
+	//dump();
 	return EXIT_SUCCESS;
 }
 void configuracion(char *dir) {
@@ -127,8 +127,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		int32_t pid;
 		printf("%s\n", paquete);
 		char *pagina = malloc( t_archivoConfig->MARCOS_SIZE);
-		//Te llego pagina y pid. con pagina, lo que haces es memcpy(framegigante, pagina, 256)
-		//asignar char* a framegigante + 0
+
 		memcpy(pagina, paquete, t_archivoConfig->MARCOS_SIZE);
 		pagina[t_archivoConfig->MARCOS_SIZE] = '\0';
 		memcpy(&pid, paquete +  t_archivoConfig->MARCOS_SIZE, sizeof(int));
@@ -136,7 +135,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		printf("pid: %d\n", pid);
 		int noIMporta;
 		Serializar(OK, 4, noIMporta, socket);
-		//almacernarPaginaEnFrame(pid,  tamanoPaquete,  paquete);
+		almacernarPaginaEnFrame(pid,  tamanoPaquete,  paquete);
 
 
 	}
