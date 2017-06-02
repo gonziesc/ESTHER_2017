@@ -1,11 +1,12 @@
 #ifndef MAIN_H_
 #define MAIN_H_
 
-#include<stdio.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <commons/config.h>
 #include <commons/collections/list.h>
+#include <commons/collections/queue.h>
 #include <unistd.h>
 #include <math.h>
 #include <sys/types.h>
@@ -17,8 +18,12 @@
 #include <serializador.h>
 #include <parser/metadata_program.h>
 #include <parser/parser.h>
+#include <pthread.h>
+#include <semaphore.h>
+
 
 void configuracion(char*);
+void planificadorLargoPlazo();
 int32_t conectarConMemoria();
 int32_t ConectarConFS();
 int32_t levantarServidor();
