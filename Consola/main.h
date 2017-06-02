@@ -16,6 +16,10 @@
 #include <serializador.h>
 #include <parser/metadata_program.h>
 
+typedef struct{
+	int PID;
+	int identificadorHilo;
+}ProcesosActuales;
 
 void Configuracion(char *);
 int32_t ConectarseConKernel();

@@ -3,6 +3,7 @@
 struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 int32_t fdmax;
+int32_t cpuDisponible;
 int32_t newfd;        // descriptor de socket de nueva conexión aceptada
 int32_t header;    // buffer para datos del cliente
 int32_t nbytes;
@@ -16,11 +17,12 @@ int32_t clienteMEM;
 char* buffer;
 char buf[3];    // buffer para datos del cliente
 int32_t servidor;
+int32_t MARCOS_SIZE;
 int32_t activado;
 int32_t clientefs;
 int32_t bytesRecibidos;
 int32_t tamanoPaquete;
-int32_t PID = 0;
+int32_t processID = 0;
 struct sockaddr_in direccionFs;
 struct sockaddr_in direccionServidor;
 
@@ -44,15 +46,16 @@ int32_t conectarConMemoria() {
 		perror("No se pudo conectar con memoria\n");
 		return 1;
 	}
-	Serializar(5, 4, 0, clienteMEM);
-	bytesRecibidos = recv(clienteMEM, &header, 4, 0);
-	while (bytesRecibidos <= 0) {
-		bytesRecibidos = recv(clienteMEM, &header, 4, 0);
-		printf("%d", header);
+	int noInteresa;
+	Serializar(KERNEL, 4, noInteresa, clienteMEM);
+	paquete* paqueteRecibido = Deserializar(clienteMEM);
+	if (paqueteRecibido->header < 0) {
+		perror("Memoria se desconectó");
+		return 1;
 	}
 
-	char* paquete = Deserializar(header, clienteMEM, &tamanoPaquete);
-	procesar(paquete, header, tamanoPaquete);
+	procesar(paqueteRecibido->package, paqueteRecibido->header, tamanoPaquete);
+
 	return 0;
 }
 int32_t ConectarConFS() {
@@ -63,16 +66,15 @@ int32_t ConectarConFS() {
 		perror("No se pudo conectar con fs\n");
 		return 1;
 	}
-	Serializar(5, 4, 0, clientefs);
-	bytesRecibidos = recv(clientefs, &header, 4, 0);
-	while (bytesRecibidos <= 0) {
-		bytesRecibidos = recv(clientefs, &header, 4, 0);
-		printf("%d", header);
+	int noInteresa;
+	Serializar(KERNEL, 4, noInteresa, clientefs);
+	paquete* paqueteRecibido = Deserializar(clientefs);
+	if (paqueteRecibido->header < 0) {
+		perror("Kernel se desconectó");
+		return 1;
 	}
 
-	Deserializar(header, clientefs);
-	char* paquete = Deserializar(header, clientefs, &tamanoPaquete);
-	procesar(paquete, header, tamanoPaquete);
+	procesar(paqueteRecibido->package, paqueteRecibido->header, tamanoPaquete);
 	return 0;
 }
 int32_t levantarServidor() {
@@ -135,22 +137,22 @@ int32_t levantarServidor() {
 						}
 					} else {
 						// gestionar datos de un cliente
-						if ((nbytes = recv(i, &header, sizeof(header), 0))
-								<= 0) {
+						paquete* paqueteRecibido = Deserializar(i);
 
-							// error o conexión cerrada por el cliente
-							if (nbytes == 0) {
-								// conexión cerrada
-								printf("selectserver: socket %d hung up\n", i);
-							} else {
-								perror("recv");
-							}
+						// error o conexión cerrada por el cliente
+						if (paqueteRecibido->header == -1) {
+							// conexión cerrada
 							close(i); // bye!
 							FD_CLR(i, &master); // eliminar del conjunto maestro
+							printf("selectserver: socket %d hung up\n", i);
+						} else if (paqueteRecibido->header == -2) {
+							close(i); // bye!
+							FD_CLR(i, &master); // eliminar del conjunto maestro
+							perror("recv");
 						} else {
-							char* paquete = Deserializar(header, i,
-									&tamanoPaquete);
-							procesar(paquete, header, tamanoPaquete, i);
+							procesar(paqueteRecibido->package,
+									paqueteRecibido->header,
+									paqueteRecibido->size, i);
 
 						}
 					}
@@ -165,64 +167,100 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	case ARCHIVO: {
 		printf("%s\n", paquete);
 		printf("%d\n", tamanoPaquete);
-		int cantidadDePaginas;
-		if(tamanoPaquete <= 256) {
-			cantidadDePaginas =1;
-		}
-		else {
-			cantidadDePaginas = tamanoPaquete / 256;
-		}
-		char * send = &cantidadDePaginas;
-		Serializar(TAMANO, 4, send, clienteMEM);
+		paquete[tamanoPaquete] = '\0';
+		int cantidadDePaginas = ceil(tamanoPaquete / MARCOS_SIZE);
+		int cantidadDePaginasToales = cantidadDePaginas
+				+ t_archivoConfig->STACK_SIZE;
+		Serializar(TAMANO, sizeof(int), &cantidadDePaginasToales, clienteMEM);
 		recv(clienteMEM, &header, sizeof(header), 0);
 		if (header == OK) {
 			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
+			unPcb->cantidadDePaginas = cantidadDePaginas;
 			crearPCB(paquete, unPcb);
-			int offset = 0;
-		for(i = 0; i<cantidadDePaginas; i++) {
-			char* envioPagina = malloc(260);
-			memcpy(envioPagina, &PID, sizeof(PID));
-			memcpy(envioPagina + 4, paquete, 256);
-			offset=+ 256;
-			printf("%s\n", envioPagina);
-			Serializar(PAGINA, 260, envioPagina, clienteMEM);
-			recv(clienteMEM, &header, sizeof(header), 0);
-			printf("Se enviaron las paginas a memoria\n");
+			Serializar(PID, 4, &processID, socket);
+			char* pcbSerializado = serializarPCB(unPcb);
+			Serializar(PCB, unPcb->tamanoTotal, pcbSerializado, cpuDisponible);
 		}
-	}
-	break;
-}
-case FILESYSTEM: {
-	printf("Se conecto FS\n");
-	break;
-}
-case KERNEL: {
-	printf("Se conecto Kernel\n");
-	break;
-}
-case CPU: {
-	printf("Se conecto CPU\n");
-	break;
-}
-case CONSOLA: {
-	printf("Se conecto Consola\n");
-	break;
-}
-case MEMORIA: {
-	printf("Se conecto memoria\n");
-	break;
-}
-case CODIGO: {
 
-}
-case OK: {
-}
+		break;
+	}
+	case FILESYSTEM: {
+		printf("Se conecto FS\n");
+		break;
+	}
+	case KERNEL: {
+		printf("Se conecto Kernel\n");
+		break;
+	}
+	case CPU: {
+		cpuDisponible = socket;
+		printf("Se conecto CPU\n");
+		break;
+	}
+	case CONSOLA: {
+		printf("Se conecto Consola\n");
+		break;
+	}
+	case MEMORIA: {
+		memcpy(&MARCOS_SIZE, (paquete), sizeof(int));
+		printf("Se conecto memoria\n");
+		break;
+	}
+	case CODIGO: {
+
+	}
+	case OK: {
+	}
 	}
 }
 
 void crearPCB(char* codigo, programControlBlock *unPcb) {
-	unPcb->programId = PID;
-	PID++;
+	t_metadata_program* metadata_program;
+	metadata_program = metadata_desde_literal(codigo);
+	processID++;
+	unPcb->programId = processID;
 	unPcb->programCounter = 0;
+	unPcb->tamanoIndiceCodigo = (metadata_program->instrucciones_size);
+	unPcb->indiceCodigo = malloc(unPcb->tamanoIndiceCodigo * 2 * sizeof(int));
+
+	for (i = 0; i < metadata_program->instrucciones_size; i++) {
+		printf("Instruccion inicio:%d offset:%d %.*s",
+				metadata_program->instrucciones_serializado[i].start,
+				metadata_program->instrucciones_serializado[i].offset,
+				metadata_program->instrucciones_serializado[i].offset,
+				codigo + metadata_program->instrucciones_serializado[i].start);
+		unPcb->indiceCodigo[i * 2] =
+				metadata_program->instrucciones_serializado[i].start;
+		unPcb->indiceCodigo[i * 2 + 1] =
+				metadata_program->instrucciones_serializado[i].offset;
+	}
+	unPcb->tamanoindiceEtiquetas = metadata_program->etiquetas_size;
+	unPcb->indiceEtiquetas = malloc(unPcb->tamanoindiceEtiquetas * sizeof(char));
+	memcpy(unPcb->indiceEtiquetas, metadata_program->etiquetas,
+			unPcb->tamanoindiceEtiquetas * sizeof(char));
+	unPcb->indiceStack = list_create();
+
+	indiceDeStack *indiceInicial;
+	indiceInicial = malloc(sizeof(indiceDeStack));
+	indiceInicial->args = list_create();
+	indiceInicial->vars = list_create();
+	indiceInicial->tamanoArgs = 0;
+	indiceInicial->tamanoVars = 0;
+	indiceInicial->pos = 0;
+	list_add(unPcb->indiceStack, (void*) indiceInicial);
+	unPcb->tamanoIndiceStack = 1;
+	int offset = 0;
+	for (i = 0; i < unPcb->cantidadDePaginas; i++) {
+		void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));
+		memcpy(envioPagina, codigo + offset, MARCOS_SIZE);
+		memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
+		offset = offset + MARCOS_SIZE;
+		printf("%s\n", envioPagina);
+		Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina, clienteMEM);
+		recv(clienteMEM, &header, sizeof(header), 0);
+		printf("Se enviaron las paginas a memoria\n");
+		free(envioPagina);
+	}
+	metadata_destruir(metadata_program);
 }
 
