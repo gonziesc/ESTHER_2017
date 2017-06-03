@@ -241,8 +241,17 @@ void crearFrameGeneral() {
 void dump(){
 	t_log * log;
 	log = log_create("dump.log", "Memoria", 0, LOG_LEVEL_INFO);
-	log_info(log, "Tamanio de cache", cache1.tamanio);
-	log_info(log, "Tamanio disponible de cache", cache1.tamanioDisponible);
+	log_info(log, "Tamanio de cache %d", cache1.tamanio);
+	log_info(log, "Tamanio disponible de cache %d", cache1.tamanioDisponible);
+	int32_t i;
+	for(i=0;i<=500;i++){
+		if(tablaMemoria[i].pid>0){
+		log_info(log, "numero de frame %d", i);
+		log_info(log,"pid %d",tablaMemoria[i].pid);
+		log_info(log, "numero de pagina %d",tablaMemoria[i].numeroPagina);
+		}
+	}
+
 }
 
 /*void crearFrame() {
