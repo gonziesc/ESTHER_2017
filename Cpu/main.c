@@ -29,8 +29,8 @@ int32_t main(int argc, char**argv) {
 	//pthread_create(&hiloMemoria, NULL, conectarConMemoria,NULL);
 
 
-	//char* sentencia = "begin";
-	//analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
+	/*char* sentencia = "begin";
+	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 	char* sentencia = "variables a, b";
 	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 	sentencia = "a = 3";
@@ -41,7 +41,7 @@ int32_t main(int argc, char**argv) {
 	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 	sentencia = "end";
 	analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
-
+	 */
 	pthread_join(hiloKernel, NULL);
 	//pthread_join(hiloMemoria, NULL);
 	return EXIT_SUCCESS;

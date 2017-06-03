@@ -34,6 +34,7 @@ t_queue* colaExit;
 sem_t gradoMultiprogramacion;
 sem_t semNew;
 sem_t semReady;
+sem_t semEnvioPaginas;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaReady;
 pthread_t hiloPlanificadorLargoPlazo;
@@ -54,6 +55,7 @@ void configuracion(char*dir) {
 	configuracionKernel(t_archivoConfig, config, dir);
 	sem_init(&semNew, 0, 0);
 	sem_init(&semReady, 0, 0);
+	sem_init(&semEnvioPaginas, 0, 0);
 	sem_init(&gradoMultiprogramacion, 0, t_archivoConfig->GRADO_MULTIPROG);
 	colaNew = queue_create();
 	colaExec = queue_create();
@@ -197,6 +199,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		Serializar(TAMANO, sizeof(int), &cantidadDePaginasToales, clienteMEM);
 		recv(clienteMEM, &header, sizeof(header), 0);
 		if (header == OK) {
+			sem_wait(&semEnvioPaginas);
 			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
 			unPcb->cantidadDePaginas = cantidadDePaginas;
 			crearPCB(paquete, unPcb);
@@ -292,6 +295,7 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo){
 			printf("Se enviaron las paginas a memoria\n");
 			free(envioPagina);
 		}
+	sem_post(&semEnvioPaginas);
 }
 
 void planificadorLargoPlazo(){
@@ -303,14 +307,12 @@ void planificadorLargoPlazo(){
 			codigo = queue_pop(colaCodigosAMemoria);
 			pcbPlP = queue_pop(colaNew);
 			pthread_mutex_unlock(&mutexColaNew);
-			enviarProcesoAMemoria(pcbPlP->cantidadDePaginas, codigo);
 			pthread_mutex_lock(&mutexColaReady);
 			queue_push(colaReady, pcbPlP);
 			pthread_mutex_unlock(&mutexColaReady);
-
+			enviarProcesoAMemoria(pcbPlP->cantidadDePaginas, codigo);
 			char* pcbSerializado = serializarPCB(pcbPlP);
 			Serializar(PCB, pcbPlP->tamanoTotal, pcbSerializado, cpuDisponible);
-
 			sem_post(&semReady);
 		}
 
