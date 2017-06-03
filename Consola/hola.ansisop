@@ -3,22 +3,5 @@ begin
 	variables a, b
 	a = 3
 	b = 5
-	c
-end
-#!/usr/bin/ansisop
-begin
-	variables a, b
-	a = 3
-	b = 5
 	a = b + 12
 end
-#!/usr/bin/ansisop
-begin
-	variables a, b
-	a = 3
-	b = 5
-	a = b + 12
-end
-#!/usr/bin/ansisop
-begin
-	variablesrrrrrrrr
