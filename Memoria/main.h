@@ -50,6 +50,7 @@ char* leerDePagina(int32_t , int32_t , int32_t , int32_t );
 void atenderCpu();
 void atenderKernel();
 void escribirEnPagina(int32_t , int32_t , int32_t , int32_t ,char* );
+void size();
 
 
 
