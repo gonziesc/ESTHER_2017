@@ -346,7 +346,7 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 
 	memcpy(frameGeneral.puntero, buffer, tamanioBuffer);
 
-	memcpy(frameGeneral.puntero, buffer, tamanioBuffer);
+
 
 	if (pid != pidAnt) {
 		numeroPagina = 0;
@@ -365,21 +365,7 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 	indiceTabla++;
 	numeroPagina++;
 	//PROBAR
-	if (pid != pidAnt) {
-		numeroPagina = 0;
-		pidAnt = pid;
-	}
-	//nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
-	nodoTablaMemoria.numeroPagina = numeroPagina;
-	frameGeneral.tamanioOcupado += tamanioBuffer;
-	nodoTablaMemoria.pid = pid;
 
-	//memcpy(tablaMemoria[indiceTabla], nodoTablaMemoria, sizeof(nodoTablaMemoria));
-	// esta opcion es para usar una tablaMemoria*, el problema es que no se podria
-	// accerder a la posicion []
-	tablaMemoria[indiceTabla] = nodoTablaMemoria;
-	indiceTabla++;
-	numeroPagina++;
 
 }
 
