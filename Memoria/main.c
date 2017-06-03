@@ -90,13 +90,26 @@ int32_t levantarConexion() {
 void leerComando() {
 	while (1) {
 		printf("Ingrese comando\n"
-				"1: dump\n");
+				"1: dump\n"
+				"2: buscar frame\n");
 		scanf("%d", &opcion);
 		switch (opcion) {
 		case 1: {
 				dump();
 			break;
 		}
+		case 2: {
+			int32_t pid;
+			int32_t pagina;
+			printf("ingresar pid\n");
+			scanf("%d", &pid);
+			printf("ingresar pagina\n");
+			scanf("%d", &pagina);
+			int32_t unFrame = buscarFrame(pid,pagina);
+			printf("el frame correspondiente: ");
+			printf("%d\n",unFrame);
+		}
+
 		}
 	}
 }
@@ -233,3 +246,20 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 
 }
 
+int32_t buscarFrame(int32_t pid, int32_t numeroPagina){
+	int32_t i;
+	for(i=0;i<=500;i++){
+		if(tablaMemoria[i].pid == pid && tablaMemoria[i].numeroPagina == numeroPagina){
+			return i;
+		}
+	}
+
+	return -1;
+
+
+}
+
+
+//puntero general + numero frame * tamanioFRame = contenidoPagina
+//offset cuanto me muevo a partir del principio del contenido
+//y tamanio es cuanta cantidad de contenido quiero desde ese offset
