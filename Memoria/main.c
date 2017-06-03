@@ -50,6 +50,7 @@ int32_t main(int argc, char**argv) {
 	pthread_join(hiloLeerComando, NULL);
 	return EXIT_SUCCESS;
 }
+
 void configuracion(char *dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigMemoria));
 	configuracionMemoria(t_archivoConfig, config, dir);
@@ -96,7 +97,8 @@ void leerComando() {
 				"1: dump\n"
 				"2: buscar frame\n"
 				"3: leer de pagina\n"
-				"4: escribir en pagina\n");
+				"4: escribir en pagina\n"
+				"5: size\n");
 		scanf("%d", &opcion);
 		switch (opcion) {
 		case 1: {
@@ -151,6 +153,10 @@ void leerComando() {
 							escribirEnPagina(pid,pagina,offset,tamano,contenido);
 							break;
 						}
+			case 5:{
+				size();
+				break;
+			}
 
 		}
 	}
@@ -238,6 +244,7 @@ void crearFrameGeneral() {
 	frameGeneral.puntero = malloc(frameGeneral.tamanio);
 
 }
+
 void dump(){
 	t_log * log;
 	log = log_create("dump.log", "Memoria", 0, LOG_LEVEL_INFO);
@@ -252,6 +259,24 @@ void dump(){
 		}
 	}
 
+}
+
+void size(){
+	int32_t size;
+	printf("size: 0 memoria 1 proceso\n ");
+	scanf("%d",&size);
+	switch (size) {
+			case 0: {
+				printf("tamanio total memoria %d\n", frameGeneral.tamanio);
+				printf("tamanio disponible memoria %d\n", frameGeneral.tamanioDisponible);
+				printf("tamanio ocupado memoria %d\n", frameGeneral.tamanioOcupado);
+				break;
+			}
+			case 1:{
+				break;
+			}
+
+	}
 }
 
 /*void crearFrame() {
@@ -283,6 +308,7 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 		//nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
 		nodoTablaMemoria.numeroPagina = numeroPagina;
 		frameGeneral.tamanioOcupado += tamanioBuffer;
+		frameGeneral.tamanioDisponible -= tamanioBuffer;
 		nodoTablaMemoria.pid = pid;
 
 
@@ -319,15 +345,16 @@ char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano){
 	return contenido;
 }
 
+
 void escribirEnPagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano,char* contenido){
 
 	int32_t unFrame = buscarFrame(pid,pagina);
 	int32_t desplazamiento = unFrame *  + offset;
 	memcpy(frameGeneral.puntero + desplazamiento,contenido, tamano);
-
-
 }
 
-//puntero general + numero frame * tamanioFRame = contenidoPagina
-//offset cuanto me muevo a partir del principio del contenido
-//y tamanio es cuanta cantidad de contenido quiero desde ese offset
+
+
+
+
+
