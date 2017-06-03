@@ -80,7 +80,7 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 		int processID;
 		memcpy(&processID, paqueteRecibido->package, 4);
 		procesosActuales[procesosActualesPosicion].PID = processID;
-		printf("process id: %d", processID);
+		printf("process id: %d\n", processID);
 	}
 
 }
