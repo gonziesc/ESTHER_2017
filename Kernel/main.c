@@ -212,8 +212,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			pthread_mutex_unlock(&mutexColaNew);
 			sem_post(&semNew);
 			enviarProcesoAMemoria(unPcb->cantidadDePaginas, paquete);
-			char* pcbSerializado = serializarPCB(unPcb);
-			Serializar(PCB, unPcb->tamanoTotal, pcbSerializado, cpuDisponible);
+			//char* pcbSerializado = serializarPCB(unPcb);
+			//Serializar(PCB, unPcb->tamanoTotal, pcbSerializado, cpuDisponible);
 		}
 
 		break;

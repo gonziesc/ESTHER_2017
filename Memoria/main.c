@@ -5,6 +5,7 @@ struct sockaddr_in direccionServidor;
 int32_t servidor;
 int32_t activado;
 int32_t cliente;
+int noIMporta;
 int32_t header;
 struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
@@ -84,6 +85,10 @@ int32_t levantarConexion() {
 	Serializar(MEMORIA, 4, &envio, clienteCpu);
 
 	pthread_create(&hiloAtender, NULL, (void *) atenderCpu, NULL);
+
+	pthread_join(hiloAtender, NULL);
+
+	pthread_join(hiloKernel, NULL);
 }
 void atenderCpu() {
 	while (1) {
@@ -218,8 +223,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		if (paginas > 0) {
 			//if (frameGeneral.tamanioDisponible - (paginas*20) >= 0){
-			int noIMporta;
-			Serializar(OK, 4, noIMporta, socket);
+			Serializar(OK, 4, &noIMporta, socket);
 			//}
 		}
 		break;
@@ -234,10 +238,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(&pid, paquete + t_archivoConfig->MARCOS_SIZE, sizeof(int));
 		printf("pagina: %s\n", pagina);
 		printf("pid: %d\n", pid);
-		int noIMporta;
-		Serializar(OK, 4, noIMporta, socket);
+		Serializar(OK, 4, &noIMporta, socket);
 		almacernarPaginaEnFrame(pid, tamanoPaquete, paquete);
-
+		break;
 	}
 	case VARIABLELEER: {
 		memcpy(&numero_pagina, paquete, sizeof(int));
