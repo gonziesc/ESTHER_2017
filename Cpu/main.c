@@ -119,15 +119,15 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		while (unPcb->exitCode != 0) {
 			posicionMemoria* datos_para_memoria = malloc(
 					sizeof(posicionMemoria));
-			crearEstructuraParaMemoria(pcb, 20, datos_para_memoria);
+			crearEstructuraParaMemoria(unPcb, 20, datos_para_memoria);
 			char* sentencia = leerSentencia(datos_para_memoria->pag,
 					datos_para_memoria->off, datos_para_memoria->size);
 			char* barra_cero="\0";
 			memcpy(sentencia+( datos_para_memoria->size-1), barra_cero, 1);
 			analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
-			pcb->programCounter++;
-			if(pcb->programCounter == 4)
-				pcb->exitCode = 0;
+			unPcb->programCounter++;
+			if(unPcb->programCounter == 4)
+				unPcb->exitCode = 0;
 
 		}
 
