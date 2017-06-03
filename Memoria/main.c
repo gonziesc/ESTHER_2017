@@ -95,7 +95,8 @@ void leerComando() {
 		printf("\nIngrese comando\n"
 				"1: dump\n"
 				"2: buscar frame\n"
-				"3: leer de pagina\n");
+				"3: leer de pagina\n"
+				"4: escribir en pagina\n");
 		scanf("%d", &opcion);
 		switch (opcion) {
 		case 1: {
@@ -131,6 +132,25 @@ void leerComando() {
 					printf("%s/n",conten);
 					break;
 				}
+		case 4: {
+							int32_t pid;
+							int32_t pagina;
+							int32_t offset;
+							int32_t tamano;
+							char* contenido = malloc(32);
+							printf("ingresar pid\n");
+							scanf("%d", &pid);
+							printf("ingresar pagina\n");
+							scanf("%d", &pagina);
+							printf("ingresar offset\n");
+							scanf("%d", &offset);
+							printf("ingresar tamano\n");
+							scanf("%d", &tamano);
+							printf("ingresar contenido\n");
+							scanf("%s", contenido);
+							escribirEnPagina(pid,pagina,offset,tamano,contenido);
+							break;
+						}
 
 		}
 	}
@@ -288,6 +308,15 @@ char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano){
 	int32_t desplazamiento = unFrame *  + offset;
 	memcpy(contenido, frameGeneral.puntero + desplazamiento, tamano);
 	return contenido;
+}
+
+void escribirEnPagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano,char* contenido){
+
+	int32_t unFrame = buscarFrame(pid,pagina);
+	int32_t desplazamiento = unFrame *  + offset;
+	memcpy(frameGeneral.puntero + desplazamiento,contenido, tamano);
+
+
 }
 
 //puntero general + numero frame * tamanioFRame = contenidoPagina
