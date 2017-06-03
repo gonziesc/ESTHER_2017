@@ -14,6 +14,7 @@ int32_t opcion;
 cache cache1;
 
 frame frameGeneral;
+int32_t tamanoFrame;
 
 infoTablaMemoria tablaMemoria[500];
 int32_t indiceTabla = 0;
@@ -29,6 +30,8 @@ int32_t idHiloCpu;
 
 pthread_t hiloLeerComando;
 int32_t idHiloLeerComando;
+
+
 
 int32_t main(int argc, char**argv) {
 
@@ -89,9 +92,10 @@ int32_t levantarConexion() {
 
 void leerComando() {
 	while (1) {
-		printf("Ingrese comando\n"
+		printf("\nIngrese comando\n"
 				"1: dump\n"
-				"2: buscar frame\n");
+				"2: buscar frame\n"
+				"3: leer de pagina\n");
 		scanf("%d", &opcion);
 		switch (opcion) {
 		case 1: {
@@ -108,7 +112,25 @@ void leerComando() {
 			int32_t unFrame = buscarFrame(pid,pagina);
 			printf("el frame correspondiente: ");
 			printf("%d\n",unFrame);
+			break;
 		}
+		case 3: {
+					int32_t pid;
+					int32_t pagina;
+					int32_t offset;
+					int32_t tamano;
+					printf("ingresar pid\n");
+					scanf("%d", &pid);
+					printf("ingresar pagina\n");
+					scanf("%d", &pagina);
+					printf("ingresar offset\n");
+					scanf("%d", &offset);
+					printf("ingresar tamano\n");
+					scanf("%d", &tamano);
+					char* conten = leerDePagina(pid,pagina,offset,tamano);
+					printf("%s/n",conten);
+					break;
+				}
 
 		}
 	}
@@ -186,9 +208,9 @@ void crearFrameGeneral() {
 
 
 	int32_t tamanioMarcos, cantidadMarcos;
-	cantidadMarcos = t_archivoConfig->MARCOS;
-	tamanioMarcos = t_archivoConfig->MARCOS_SIZE;
-
+		cantidadMarcos = t_archivoConfig->MARCOS;
+		tamanioMarcos = t_archivoConfig->MARCOS_SIZE;
+		tamanoFrame = tamanioMarcos;
 	frameGeneral.id = 1;
 	frameGeneral.tamanio = cantidadMarcos * tamanioMarcos;
 	frameGeneral.tamanioDisponible = frameGeneral.tamanio;
@@ -259,6 +281,14 @@ int32_t buscarFrame(int32_t pid, int32_t numeroPagina){
 
 }
 
+char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano){
+
+	int32_t unFrame = buscarFrame(pid,pagina);
+	char* contenido = malloc(tamano);
+	int32_t desplazamiento = unFrame *  + offset;
+	memcpy(contenido, frameGeneral.puntero + desplazamiento, tamano);
+	return contenido;
+}
 
 //puntero general + numero frame * tamanioFRame = contenidoPagina
 //offset cuanto me muevo a partir del principio del contenido

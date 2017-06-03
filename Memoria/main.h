@@ -46,7 +46,7 @@ void procesar(char *, int32_t , int32_t,int32_t);
 void dump();
 void leerComando();
 int32_t buscarFrame(int32_t, int32_t);
-
+char* leerDePagina(int32_t , int32_t , int32_t , int32_t );
 
 
 
