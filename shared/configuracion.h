@@ -19,7 +19,8 @@ typedef enum {
 	TAMANO = 9,
 	PAGINA = 10,
 	PID = 11,
-	VARIABLE = 12
+	VARIABLELEER = 12,
+	VARIABLEESCRIBIR = 13
 } codigosSerializador;
 
 typedef struct{

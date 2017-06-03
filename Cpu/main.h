@@ -20,16 +20,18 @@ void Configuracion(char *);
 int32_t ConectarConKernel();
 int32_t conectarConMemoria();
 
-t_puntero dummy_definirVariable(t_nombre_variable variable);
-t_puntero dummy_obtenerPosicionVariable(t_nombre_variable variable);
-t_valor_variable dummy_dereferenciar(t_puntero puntero);
-void enviarDirecParaEscribirUMC(char* variableAEnviar, posicionMemoria* direccion, int valor);
-void proximaDireccion(int posStack, int posUltVar, posicionMemoria* direccionReal);
-void armarProximaDireccion(posicionMemoria* direccionReal);
-void armarDireccionPrimeraPagina(posicionMemoria *direccionReal);
-void dummy_asignar(t_puntero puntero, t_valor_variable variable);
+t_puntero dummy_definirVariable(t_nombre_variable );
+t_puntero dummy_obtenerPosicionVariable(t_nombre_variable );
+t_valor_variable dummy_dereferenciar(t_puntero );
+void enviarDirecParaEscribirMemoria(char*, posicionMemoria* , int );
+void proximaDireccion(int , int , posicionMemoria* );
+void armarProximaDireccion(posicionMemoria* );
+void armarDireccionPrimeraPagina(posicionMemoria *);
+void crearEstructuraParaMemoria(programControlBlock*, int, posicionMemoria *);
+void dummy_asignar(t_puntero , t_valor_variable );
 void dummy_finalizar(void);
 char* depurarSentencia(char*);
+char* leerSentencia(int , int , int );
 
 bool terminoElPrograma(void);
 

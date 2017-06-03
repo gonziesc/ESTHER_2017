@@ -254,6 +254,7 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 	metadata_program = metadata_desde_literal(codigo);
 	processID++;
 	unPcb->programId = processID;
+	unPcb->exitCode = -1;
 	unPcb->programCounter = 0;
 	unPcb->tamanoIndiceCodigo = (metadata_program->instrucciones_size);
 	unPcb->indiceCodigo = malloc(unPcb->tamanoIndiceCodigo * 2 * sizeof(int));
