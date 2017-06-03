@@ -116,7 +116,8 @@ void leerComando() {
 		printf("\nIngrese comando\n"
 				"1: dump\n"
 				"2: buscar frame\n"
-				"3: leer de pagina\n");
+				"3: leer de pagina\n"
+				"4: escribir en pagina\n");
 		scanf("%d", &opcion);
 		switch (opcion) {
 		case 1: {
@@ -150,6 +151,26 @@ void leerComando() {
 			scanf("%d", &tamano);
 			char* conten = leerDePagina(pid, pagina, offset, tamano);
 			printf("%s/n", conten);
+			break;
+		}
+
+		case 4: {
+			int32_t pid;
+			int32_t pagina;
+			int32_t offset;
+			int32_t tamano;
+			char* contenido = malloc(32);
+			printf("ingresar pid\n");
+			scanf("%d", &pid);
+			printf("ingresar pagina\n");
+			scanf("%d", &pagina);
+			printf("ingresar offset\n");
+			scanf("%d", &offset);
+			printf("ingresar tamano\n");
+			scanf("%d", &tamano);
+			printf("ingresar contenido\n");
+			scanf("%s", contenido);
+			escribirEnPagina(pid, pagina, offset, tamano, contenido);
 			break;
 		}
 
@@ -236,7 +257,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		memcpy(buffer, paquete + sizeof(int) * 3, tamanio);
 
-		escribir_una_pagina(1, numero_pagina, offset, tamanio, buffer);
+		escribirEnPagina(1, numero_pagina, offset, tamanio, buffer);
 
 		int a;
 		Serializar(VARIABLELEER, sizeof(int), &a, socket);
@@ -264,8 +285,17 @@ void crearFrameGeneral() {
 void dump() {
 	t_log * log;
 	log = log_create("dump.log", "Memoria", 0, LOG_LEVEL_INFO);
-	log_info(log, "Tamanio de cache", cache1.tamanio);
-	log_info(log, "Tamanio disponible de cache", cache1.tamanioDisponible);
+	log_info(log, "Tamanio de cache %d", cache1.tamanio);
+	log_info(log, "Tamanio disponible de cache %d", cache1.tamanioDisponible);
+	int32_t i;
+	for (i = 0; i <= 500; i++) {
+		if (tablaMemoria[i].pid > 0) {
+			log_info(log, "numero de frame %d", i);
+			log_info(log, "pid %d", tablaMemoria[i].pid);
+			log_info(log, "numero de pagina %d", tablaMemoria[i].numeroPagina);
+		}
+	}
+
 }
 
 /*void crearFrame() {
@@ -326,6 +356,15 @@ char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano) 
 	int32_t desplazamiento = unFrame * +offset;
 	memcpy(contenido, frameGeneral.puntero + desplazamiento, tamano);
 	return contenido;
+}
+
+void escribirEnPagina(int32_t pid, int32_t pagina, int32_t offset,
+		int32_t tamano, char* contenido) {
+
+	int32_t unFrame = buscarFrame(pid, pagina);
+	int32_t desplazamiento = unFrame * +offset;
+	memcpy(frameGeneral.puntero + desplazamiento, contenido, tamano);
+
 }
 
 //puntero general + numero frame * tamanioFRame = contenidoPagina
