@@ -14,6 +14,7 @@ programControlBlock *pcb;
 int32_t tamanoPag;
 pthread_t hiloKernel;
 pthread_t hiloMemoria;
+pthread_mutex_t mutexProcesar;
 sem_t semProcesar;
 int noInteresa;
 AnSISOP_funciones primitivas = { .AnSISOP_definirVariable =
@@ -68,11 +69,10 @@ int32_t conectarConMemoria() {
 			perror("Memoria se desconectó");
 			return 1;
 		}
-
-
+		pthread_mutex_lock(&mutexProcesar);
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
 				tamanoPaquete);
-
+		pthread_mutex_unlock(&mutexProcesar);
 	}
 }
 
@@ -94,9 +94,10 @@ int32_t ConectarConKernel() {
 			perror("Kernel se desconectó");
 			return 1;
 		}
-
+		pthread_mutex_lock(&mutexProcesar);
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
 				tamanoPaquete);
+		pthread_mutex_unlock(&mutexProcesar);
 	}
 
 	free(buffer);
@@ -126,6 +127,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	case MEMORIA: {
 		memcpy(&tamanoPag, (paquete), sizeof(int));
 		printf("Se conecto Memoria\n");
+		sem_post(&semProcesar);
+		break;
+	}
+	case VARIABLELEER: {
+		printf("nO SERVIS PARA NADA\n");
+		sem_post(&semProcesar);
 		break;
 	}
 	case PCB: {
@@ -148,7 +155,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	}
-	sem_post(&semProcesar);
+
 }
 
 char* depurarSentencia(char* sentencia) {
@@ -338,6 +345,7 @@ char* leerSentencia(int pagina, int offset, int tamanio) {
 		paquete* instruccion2;
 
 		instruccion2 = Deserializar(clienteMEM);
+		sem_post(&semProcesar);
 
 		printf("Codigo de operacion recibido: %d\n", instruccion2->header);
 
