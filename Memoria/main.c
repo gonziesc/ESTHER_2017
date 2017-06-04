@@ -74,48 +74,62 @@ int32_t levantarConexion() {
 	printf("Estoy escuchando\n");
 	listen(servidor, 100);
 
+	conectarseConKernel();
+	atenderConexionesCPu();
+}
+
+void conectarseConKernel() {
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
 	printf("Recibí una conexión en %d!!\n", cliente);
 	int envio = t_archivoConfig->MARCOS_SIZE;
 	Serializar(MEMORIA, 4, &envio, cliente);
 
 	pthread_create(&hiloKernel, NULL, (void *) atenderKernel, NULL);
-
-	 clienteCpu = accept(servidor, (void*) &direccionCliente,
-			&tamanoDireccion);
-	printf("Recibí una conexión en %d!!\n", clienteCpu);
-	Serializar(MEMORIA, 4, &envio, clienteCpu);
-
-	pthread_create(&hiloAtender, NULL, (void *) atenderCpu, NULL);
-
-	pthread_join(hiloAtender, NULL);
-
-	pthread_join(hiloKernel, NULL);
+	//pthread_join(hiloKernel, NULL);
+	return ;
 }
-void atenderCpu() {
+
+void atenderConexionesCPu() {
 	while (1) {
-		paquete* paqueteRecibido = Deserializar(clienteCpu);
+		clienteCpu = accept(servidor, (void*) &direccionCliente,
+				&tamanoDireccion);
+		printf("Recibí una conexión en %d!!\n", clienteCpu);
+		int envio = t_archivoConfig->MARCOS_SIZE;
+		Serializar(MEMORIA, 4, &envio, clienteCpu);
+
+		pthread_create(&hiloAtender, NULL, (void *) atenderCpu, clienteCpu);
+
+		pthread_join(hiloAtender, NULL);
+	}
+
+}
+
+int atenderCpu(int socket) {
+	while (1) {
+		paquete* paqueteRecibido = Deserializar(socket);
 		if (paqueteRecibido->header == -1 || paqueteRecibido->header == -2) {
 			perror("El chabón se desconectó\n");
-			//return 1;
+			return 1;
 		}
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
-				paqueteRecibido->size, clienteCpu);
+				paqueteRecibido->size, socket);
 
 	}
+	return 0;
 }
 
-void atenderKernel() {
+int atenderKernel() {
 	while (1) {
 		paquete* paqueteRecibido = Deserializar(cliente);
 		if (paqueteRecibido->header == -1 || paqueteRecibido->header == -2) {
 			perror("El chabón se desconectó\n");
-			//return 1;
+			return 1;
 		}
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
 				paqueteRecibido->size, cliente);
 
 	}
+	return 0;
 }
 
 void leerComando() {
@@ -206,11 +220,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case CPU: {
-		// levantar hilo por cada cpu que le llega con el socket para enviar y recibir de ese cpu
-		//tamanio, paquete, header, socket
-		//idhiloCpu = pthread_create(&hiloCpu, NULL, , NULL);
-		//pthread_join(hiloCpu, NULL);
-
 		printf("Se conecto CPU\n");
 		break;
 	}
@@ -290,6 +299,7 @@ void crearFrameGeneral() {
 	frameGeneral.tamanioDisponible = frameGeneral.tamanio;
 	frameGeneral.tamanioOcupado = 0;
 	frameGeneral.puntero = malloc(frameGeneral.tamanio);
+	frameGeneral.punteroDisponible = frameGeneral.puntero;
 
 }
 
@@ -344,18 +354,17 @@ void size() {
  */
 
 void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
-
-	memcpy(frameGeneral.puntero, buffer, tamanioBuffer);
-
-
+	//SIEMPRE LE TIENE QUE LLEGAR TAMANIO<MARCOS_SIZE OJO
+	memcpy(frameGeneral.punteroDisponible, buffer, tamanioBuffer);
 
 	if (pid != pidAnt) {
-		numeroPagina = 0;
+		numeroPagina = 1;
 		pidAnt = pid;
 	}
 	//nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
 	nodoTablaMemoria.numeroPagina = numeroPagina;
-	frameGeneral.tamanioOcupado += tamanioBuffer;
+	frameGeneral.punteroDisponible += t_archivoConfig->MARCOS_SIZE;
+	frameGeneral.tamanioOcupado += t_archivoConfig->MARCOS_SIZE;
 	frameGeneral.tamanioDisponible -= tamanioBuffer;
 	nodoTablaMemoria.pid = pid;
 
@@ -366,7 +375,6 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 	indiceTabla++;
 	numeroPagina++;
 	//PROBAR
-
 
 }
 
@@ -387,10 +395,9 @@ char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano) 
 
 	int32_t unFrame = buscarFrame(pid, pagina);
 	char* contenido = malloc(tamano);
-	int32_t desplazamiento = unFrame*t_archivoConfig->MARCOS_SIZE +offset;
+	int32_t desplazamiento = unFrame * t_archivoConfig->MARCOS_SIZE + offset;
 	memcpy(contenido, frameGeneral.puntero + desplazamiento, tamano);
 	contenido[tamano] = '\0';
-	printf("cadena leida: %s\n", contenido);
 	return contenido;
 }
 

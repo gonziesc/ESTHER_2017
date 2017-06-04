@@ -22,6 +22,7 @@ typedef struct {
 	int32_t tamanioDisponible;
 	int32_t tamanioOcupado;
 	char* puntero;
+	char * punteroDisponible;
 } frame;
 
 
@@ -47,8 +48,10 @@ void dump();
 void leerComando();
 int32_t buscarFrame(int32_t, int32_t);
 char* leerDePagina(int32_t , int32_t , int32_t , int32_t );
-void atenderCpu();
-void atenderKernel();
+int atenderCpu(int);
+int atenderKernel();
+void conectarseConKernel();
+void atenderConexionesCPu();
 void escribirEnPagina(int32_t , int32_t , int32_t , int32_t ,char* );
 void size();
 

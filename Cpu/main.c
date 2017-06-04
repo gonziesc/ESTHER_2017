@@ -11,7 +11,7 @@ int32_t bytesRecibidos;
 int32_t header;
 int32_t tamanoPaquete;
 programControlBlock *pcb;
-int32_t tamanoPag = 200;
+int32_t tamanoPag;
 pthread_t hiloKernel;
 pthread_t hiloMemoria;
 int noInteresa;
@@ -59,7 +59,16 @@ int32_t conectarConMemoria() {
 		return 1;
 	}
 	Serializar(CPU, 4, &noInteresa, clienteMEM);
-	//paquete* paqueteRecibido = Deserializar(clienteMEM);
+	while (1) {
+		paquete* paqueteRecibido = Deserializar(clienteMEM);
+		if (paqueteRecibido->header < 0) {
+			perror("Memoria se desconectó");
+			return 1;
+		}
+
+		procesar(paqueteRecibido->package, paqueteRecibido->header,
+				tamanoPaquete);
+	}
 }
 
 int32_t ConectarConKernel() {
@@ -110,7 +119,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case MEMORIA: {
-		printf("Se conecto memoria");
+		memcpy(&tamanoPag, (paquete), sizeof(int));
+		printf("Se conecto Memoria");
 		break;
 	}
 	case PCB: {
@@ -119,19 +129,17 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		while (unPcb->exitCode != 0) {
 			posicionMemoria* datos_para_memoria = malloc(
 					sizeof(posicionMemoria));
-			crearEstructuraParaMemoria(unPcb, 20, datos_para_memoria);
+			crearEstructuraParaMemoria(unPcb, tamanoPag, datos_para_memoria);
 			char* sentencia = leerSentencia(datos_para_memoria->pag,
 					datos_para_memoria->off, datos_para_memoria->size);
-			char* barra_cero="\0";
-			memcpy(sentencia+( datos_para_memoria->size-1), barra_cero, 1);
+			char* barra_cero = "\0";
+			memcpy(sentencia + (datos_para_memoria->size - 1), barra_cero, 1);
 			analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 			unPcb->programCounter++;
-			if(unPcb->programCounter == 4)
+			if (unPcb->programCounter == 4)
 				unPcb->exitCode = 0;
 
 		}
-
-		//ojo, 20 harcodeacdo, eso es tamano pagina de memoria
 		break;
 	}
 	}
@@ -148,7 +156,7 @@ char* depurarSentencia(char* sentencia) {
 
 }
 t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
-
+	//REVISAAAAAAR
 	printf("Entre a definir variable %c\n", nombreVariable);
 	posicionMemoria *direccionVariable = malloc(sizeof(posicionMemoria));
 	variable *variable = malloc(sizeof(variable));
@@ -274,13 +282,15 @@ void enviarDirecParaEscribirMemoria(char* variableAEnviar,
 
 }
 
-void enviarDirecParaLeerMemoria(char* variableALeer, posicionMemoria* direccion){
+void enviarDirecParaLeerMemoria(char* variableALeer, posicionMemoria* direccion) {
 
-		memcpy(variableALeer, &direccion->pag , 4);
-		memcpy(variableALeer+4, &direccion->off , 4);
-		memcpy(variableALeer+8, &direccion->size , 4);
-		printf("Quiero leer en la direccion: %d %d %d\n",((int*)(variableALeer))[0],((int*)(variableALeer))[1],((int*)(variableALeer))[2]);
-		Serializar(VARIABLELEER, 12,variableALeer,clienteMEM );
+	memcpy(variableALeer, &direccion->pag, 4);
+	memcpy(variableALeer + 4, &direccion->off, 4);
+	memcpy(variableALeer + 8, &direccion->size, 4);
+	printf("Quiero leer en la direccion: %d %d %d\n",
+			((int*) (variableALeer))[0], ((int*) (variableALeer))[1],
+			((int*) (variableALeer))[2]);
+	Serializar(VARIABLELEER, 12, variableALeer, clienteMEM);
 
 }
 
@@ -297,7 +307,9 @@ void crearEstructuraParaMemoria(programControlBlock* pcb, int tamPag,
 		posicionMemoria* informacion) {
 
 	posicionMemoria* info = malloc(sizeof(posicionMemoria));
-	info->pag = ceil((double)pcb->indiceCodigo[(pcb->programCounter) * 2] / (double)tamPag);
+	info->pag = ceil(
+			(double) pcb->indiceCodigo[(pcb->programCounter) * 2]
+					/ (double) tamPag);
 	printf("Voy a leer la pagina: %d\n", info->pag);
 	info->off = (pcb->indiceCodigo[((pcb->programCounter) * 2)] % tamPag);
 	printf("Voy a leer con offswet: %d\n", info->off);
@@ -343,5 +355,5 @@ char* leerSentencia(int pagina, int offset, int tamanio) {
 		return nuevo;
 	}
 	char * lecturaMemoria = malloc(12);
-	return  lecturaMemoria;
+	return lecturaMemoria;
 }
