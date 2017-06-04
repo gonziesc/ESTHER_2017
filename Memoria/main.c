@@ -7,6 +7,7 @@ int32_t activado;
 int32_t cliente;
 int noIMporta;
 int32_t header;
+int clienteCpu;
 struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 char* buffer;
@@ -80,7 +81,7 @@ int32_t levantarConexion() {
 
 	pthread_create(&hiloKernel, NULL, (void *) atenderKernel, NULL);
 
-	int clienteCpu = accept(servidor, (void*) &direccionCliente,
+	 clienteCpu = accept(servidor, (void*) &direccionCliente,
 			&tamanoDireccion);
 	printf("Recibí una conexión en %d!!\n", clienteCpu);
 	Serializar(MEMORIA, 4, &envio, clienteCpu);
@@ -93,13 +94,13 @@ int32_t levantarConexion() {
 }
 void atenderCpu() {
 	while (1) {
-		paquete* paqueteRecibido = Deserializar(cliente);
+		paquete* paqueteRecibido = Deserializar(clienteCpu);
 		if (paqueteRecibido->header == -1 || paqueteRecibido->header == -2) {
 			perror("El chabón se desconectó\n");
 			//return 1;
 		}
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
-				paqueteRecibido->size, cliente);
+				paqueteRecibido->size, clienteCpu);
 
 	}
 }
@@ -386,8 +387,10 @@ char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano) 
 
 	int32_t unFrame = buscarFrame(pid, pagina);
 	char* contenido = malloc(tamano);
-	int32_t desplazamiento = unFrame * +offset;
+	int32_t desplazamiento = unFrame*t_archivoConfig->MARCOS_SIZE +offset;
 	memcpy(contenido, frameGeneral.puntero + desplazamiento, tamano);
+	contenido[tamano] = '\0';
+	printf("cadena leida: %s\n", contenido);
 	return contenido;
 }
 

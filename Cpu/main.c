@@ -115,7 +115,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	case PCB: {
 		programControlBlock *unPcb = deserializarPCB(paquete);
-		printf("pcb id: %d", unPcb->programId);
+		printf("pcb id: %d\n", unPcb->programId);
 		while (unPcb->exitCode != 0) {
 			posicionMemoria* datos_para_memoria = malloc(
 					sizeof(posicionMemoria));
@@ -280,7 +280,7 @@ void enviarDirecParaLeerMemoria(char* variableALeer, posicionMemoria* direccion)
 		memcpy(variableALeer+4, &direccion->off , 4);
 		memcpy(variableALeer+8, &direccion->size , 4);
 		printf("Quiero leer en la direccion: %d %d %d\n",((int*)(variableALeer))[0],((int*)(variableALeer))[1],((int*)(variableALeer))[2]);
-		Serializar(VARIABLEESCRIBIR, 12,variableALeer,clienteMEM );
+		Serializar(VARIABLELEER, 12,variableALeer,clienteMEM );
 
 }
 
@@ -297,9 +297,12 @@ void crearEstructuraParaMemoria(programControlBlock* pcb, int tamPag,
 		posicionMemoria* informacion) {
 
 	posicionMemoria* info = malloc(sizeof(posicionMemoria));
-	info->pag = pcb->indiceCodigo[(pcb->programCounter) * 2] / tamPag;
-	info->off = pcb->indiceCodigo[((pcb->programCounter) * 2)] % tamPag;
+	info->pag = ceil((double)pcb->indiceCodigo[(pcb->programCounter) * 2] / (double)tamPag);
+	printf("Voy a leer la pagina: %d\n", info->pag);
+	info->off = (pcb->indiceCodigo[((pcb->programCounter) * 2)] % tamPag);
+	printf("Voy a leer con offswet: %d\n", info->off);
 	info->size = pcb->indiceCodigo[((pcb->programCounter) * 2) + 1];
+	printf("Voy a leer ltamano: %d\n", info->size);
 	memcpy(informacion, info, 12);
 	free(info);
 	return;
