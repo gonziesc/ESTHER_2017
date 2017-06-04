@@ -14,6 +14,7 @@
 #include <configuracion.h>
 #include <pthread.h>
 #include <serializador.h>
+#include <semaphore.h>
 #include <commons/log.h>
 
 typedef struct {

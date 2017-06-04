@@ -262,7 +262,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(&numero_pagina, paquete, sizeof(int));
 		memcpy(&offset, paquete + sizeof(int), sizeof(int));
 		memcpy(&tamanio, paquete + sizeof(int) * 2, sizeof(int));
-		void * contenido = leerDePagina(1, numero_pagina, offset, tamanio);
+		printf("Quiero leer en la direccion: %d %d %d y le voy a enviar a socket: %d\n",
+							numero_pagina, offset,
+							offset, socket);
+		char * contenido = leerDePagina(1, numero_pagina, offset, tamanio);
+		printf("lei: %s\n", contenido);
 		Serializar(VARIABLELEER, tamanio, contenido, socket);
 		//ojo pid actual
 		break;

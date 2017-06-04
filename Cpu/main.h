@@ -16,6 +16,7 @@
 #include <parser/parser.h>
 #include <serializador.h>
 #include <pthread.h>
+#include <semaphore.h>
 
 void Configuracion(char *);
 int32_t ConectarConKernel();

@@ -14,6 +14,7 @@ programControlBlock *pcb;
 int32_t tamanoPag;
 pthread_t hiloKernel;
 pthread_t hiloMemoria;
+sem_t semProcesar;
 int noInteresa;
 AnSISOP_funciones primitivas = { .AnSISOP_definirVariable =
 		dummy_definirVariable, .AnSISOP_obtenerPosicionVariable =
@@ -48,6 +49,7 @@ int32_t main(int argc, char**argv) {
 void Configuracion(char* dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigCPU));
 	configuracionCpu(t_archivoConfig, config, dir);
+	sem_init(&semProcesar, 0, 1);
 }
 
 int32_t conectarConMemoria() {
@@ -60,14 +62,17 @@ int32_t conectarConMemoria() {
 	}
 	Serializar(CPU, 4, &noInteresa, clienteMEM);
 	while (1) {
+		sem_wait(&semProcesar);
 		paquete* paqueteRecibido = Deserializar(clienteMEM);
 		if (paqueteRecibido->header < 0) {
 			perror("Memoria se desconectó");
 			return 1;
 		}
 
+
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
 				tamanoPaquete);
+
 	}
 }
 
@@ -107,7 +112,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case KERNEL: {
-		printf("Se conecto Kernel");
+		printf("Se conecto Kernel\n");
 		break;
 	}
 	case CPU: {
@@ -120,7 +125,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	case MEMORIA: {
 		memcpy(&tamanoPag, (paquete), sizeof(int));
-		printf("Se conecto Memoria");
+		printf("Se conecto Memoria\n");
 		break;
 	}
 	case PCB: {
@@ -143,6 +148,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	}
+	sem_post(&semProcesar);
 }
 
 char* depurarSentencia(char* sentencia) {
@@ -275,7 +281,7 @@ void enviarDirecParaEscribirMemoria(char* variableAEnviar,
 	printf("Quiero escribir en la direccion: %d %d %d %d\n",
 			((int*) (variableAEnviar))[0], ((int*) (variableAEnviar))[1],
 			((int*) (variableAEnviar))[2], ((int*) (variableAEnviar))[3]);
-	Serializar(VARIABLELEER, 16, variableAEnviar, clienteMEM);
+	Serializar(VARIABLEESCRIBIR, 16, variableAEnviar, clienteMEM);
 	//paquete * paquetin;
 	//paquetin = Deserializar(clienteMEM);
 	//liberar_paquete(paquetin);
@@ -332,6 +338,7 @@ char* leerSentencia(int pagina, int offset, int tamanio) {
 		paquete* instruccion2;
 
 		instruccion2 = Deserializar(clienteMEM);
+
 		printf("Codigo de operacion recibido: %d\n", instruccion2->header);
 
 		char* sentencia2 = malloc(datos_para_memoria->size);
@@ -340,10 +347,12 @@ char* leerSentencia(int pagina, int offset, int tamanio) {
 		free(datos_para_memoria);
 		return sentencia2;
 	} else {
-		char* lectura1 = leerSentencia(pagina, offset, (20 - offset));
+		int tamano1 = tamanoPag - offset;
+		int tamano2 = tamanio - tamano1;
+		char* lectura1 = leerSentencia(pagina, offset, tamano1);
 		if (lectura1 == NULL)
 			return NULL;
-		char* lectura2 = leerSentencia(pagina + 1, 0, tamanio - (20 - offset));
+		char* lectura2 = leerSentencia(pagina + 1, 0, tamano2);
 		if (lectura2 == NULL)
 			return NULL;
 
@@ -356,4 +365,8 @@ char* leerSentencia(int pagina, int offset, int tamanio) {
 	}
 	char * lecturaMemoria = malloc(12);
 	return lecturaMemoria;
+}
+
+char* procesarSentencia() {
+
 }

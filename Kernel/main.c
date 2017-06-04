@@ -212,6 +212,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			pthread_mutex_unlock(&mutexColaNew);
 			sem_post(&semNew);
 			enviarProcesoAMemoria(unPcb->cantidadDePaginas, paquete);
+			sem_wait(&semEnvioPaginas);
 			char* pcbSerializado = serializarPCB(unPcb);
 			Serializar(PCB, unPcb->tamanoTotal, pcbSerializado, cpuDisponible);
 		}
@@ -303,6 +304,7 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo){
 			free(envioPagina);
 		}
 	pthread_mutex_unlock(&mutexProcesar);
+	sem_post(&semEnvioPaginas);
 }
 
 void planificadorLargoPlazo(){
