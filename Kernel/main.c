@@ -197,7 +197,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		printf("%s\n", paquete);
 		printf("%d\n", tamanoPaquete);
 		paquete[tamanoPaquete] = '\0';
-		int cantidadDePaginas = ceil(tamanoPaquete / MARCOS_SIZE);
+		int cantidadDePaginas = ceil((double)tamanoPaquete / (double)MARCOS_SIZE);
 		int cantidadDePaginasToales = cantidadDePaginas
 				+ t_archivoConfig->STACK_SIZE;
 		Serializar(TAMANO, sizeof(int), &cantidadDePaginasToales, clienteMEM);
