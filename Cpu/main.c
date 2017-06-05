@@ -16,7 +16,9 @@ pthread_t hiloKernel;
 pthread_t hiloMemoria;
 pthread_mutex_t mutexProcesar;
 sem_t semProcesar;
+sem_t semInstruccion;
 int noInteresa;
+char * instruccionLeida;
 AnSISOP_funciones primitivas = { .AnSISOP_definirVariable =
 		dummy_definirVariable, .AnSISOP_obtenerPosicionVariable =
 		dummy_obtenerPosicionVariable, .AnSISOP_dereferenciar =
@@ -51,6 +53,7 @@ void Configuracion(char* dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigCPU));
 	configuracionCpu(t_archivoConfig, config, dir);
 	sem_init(&semProcesar, 0, 1);
+	sem_init(&semInstruccion, 0, 0);
 }
 
 int32_t conectarConMemoria() {
@@ -63,16 +66,14 @@ int32_t conectarConMemoria() {
 	}
 	Serializar(CPU, 4, &noInteresa, clienteMEM);
 	while (1) {
-		sem_wait(&semProcesar);
+		//sem_wait(&semProcesar);
 		paquete* paqueteRecibido = Deserializar(clienteMEM);
 		if (paqueteRecibido->header < 0) {
 			perror("Memoria se desconectó");
 			return 1;
 		}
-		pthread_mutex_lock(&mutexProcesar);
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
 				tamanoPaquete);
-		pthread_mutex_unlock(&mutexProcesar);
 	}
 }
 
@@ -94,10 +95,8 @@ int32_t ConectarConKernel() {
 			perror("Kernel se desconectó");
 			return 1;
 		}
-		pthread_mutex_lock(&mutexProcesar);
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
 				tamanoPaquete);
-		pthread_mutex_unlock(&mutexProcesar);
 	}
 
 	free(buffer);
@@ -127,12 +126,13 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	case MEMORIA: {
 		memcpy(&tamanoPag, (paquete), sizeof(int));
 		printf("Se conecto Memoria\n");
-		sem_post(&semProcesar);
 		break;
 	}
 	case VARIABLELEER: {
+		instruccionLeida = malloc (tamanoPaquete);
+		memcpy(instruccionLeida, paquete, tamanoPaquete);
 		printf("nO SERVIS PARA NADA\n");
-		sem_post(&semProcesar);
+		sem_post(&semInstruccion);
 		break;
 	}
 	case PCB: {
@@ -341,16 +341,11 @@ char* leerSentencia(int pagina, int offset, int tamanio) {
 		datos_para_memoria->pag = pagina;
 		datos_para_memoria->size = tamanio;
 		enviarDirecParaLeerMemoria(lecturaMemoria, datos_para_memoria);
+		sem_wait(&semInstruccion);
 
-		paquete* instruccion2;
-
-		instruccion2 = Deserializar(clienteMEM);
-		sem_post(&semProcesar);
-
-		printf("Codigo de operacion recibido: %d\n", instruccion2->header);
 
 		char* sentencia2 = malloc(datos_para_memoria->size);
-		memcpy(sentencia2, instruccion2->package, datos_para_memoria->size);
+		memcpy(sentencia2, instruccionLeida, datos_para_memoria->size);
 		free(lecturaMemoria);
 		free(datos_para_memoria);
 		return sentencia2;
