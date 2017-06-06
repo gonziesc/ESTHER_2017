@@ -9,7 +9,6 @@ struct sockaddr_in direccionMem;
 int32_t clienteMEM;
 int32_t bytesRecibidos;
 int32_t header;
-int32_t tamanoPaquete;
 programControlBlock *pcb;
 int32_t tamanoPag;
 pthread_t hiloKernel;
@@ -17,6 +16,7 @@ pthread_t hiloMemoria;
 pthread_mutex_t mutexProcesar;
 sem_t semProcesar;
 sem_t semInstruccion;
+sem_t semSentenciaCompleta;
 int noInteresa;
 char * instruccionLeida;
 AnSISOP_funciones primitivas = { .AnSISOP_definirVariable =
@@ -53,6 +53,7 @@ void Configuracion(char* dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigCPU));
 	configuracionCpu(t_archivoConfig, config, dir);
 	sem_init(&semProcesar, 0, 1);
+	sem_init(&semSentenciaCompleta, 0, 0);
 	sem_init(&semInstruccion, 0, 0);
 }
 
@@ -73,7 +74,7 @@ int32_t conectarConMemoria() {
 			return 1;
 		}
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
-				tamanoPaquete);
+				paqueteRecibido->size);
 	}
 }
 
@@ -96,7 +97,7 @@ int32_t ConectarConKernel() {
 			return 1;
 		}
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
-				tamanoPaquete);
+				paqueteRecibido->size);
 	}
 
 	free(buffer);
@@ -131,7 +132,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	case VARIABLELEER: {
 		instruccionLeida = malloc (tamanoPaquete);
 		memcpy(instruccionLeida, paquete, tamanoPaquete);
-		printf("nO SERVIS PARA NADA\n");
+		paquete[tamanoPaquete] = "\0";
 		sem_post(&semInstruccion);
 		break;
 	}
@@ -146,6 +147,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 					datos_para_memoria->off, datos_para_memoria->size);
 			char* barra_cero = "\0";
 			memcpy(sentencia + (datos_para_memoria->size - 1), barra_cero, 1);
+			sem_wait(&semSentenciaCompleta);
+			printf("sentencia leida:%s \n", sentencia);
 			analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 			unPcb->programCounter++;
 			if (unPcb->programCounter == 4)
@@ -342,12 +345,11 @@ char* leerSentencia(int pagina, int offset, int tamanio) {
 		datos_para_memoria->size = tamanio;
 		enviarDirecParaLeerMemoria(lecturaMemoria, datos_para_memoria);
 		sem_wait(&semInstruccion);
-
-
 		char* sentencia2 = malloc(datos_para_memoria->size);
 		memcpy(sentencia2, instruccionLeida, datos_para_memoria->size);
 		free(lecturaMemoria);
 		free(datos_para_memoria);
+		sem_post(&semSentenciaCompleta);
 		return sentencia2;
 	} else {
 		int tamano1 = tamanoPag - offset;
@@ -364,6 +366,7 @@ char* leerSentencia(int pagina, int offset, int tamanio) {
 		memcpy(nuevo + (20 - offset), lectura2, tamanio - (20 - offset));
 		free(lectura1);
 		free(lectura2);
+		sem_post(&semSentenciaCompleta);
 		return nuevo;
 	}
 	char * lecturaMemoria = malloc(12);
