@@ -9,7 +9,7 @@ struct sockaddr_in direccionMem;
 int32_t clienteMEM;
 int32_t bytesRecibidos;
 int32_t header;
-programControlBlock *pcb;
+programControlBlock *unPcb;
 int32_t tamanoPag;
 pthread_t hiloKernel;
 pthread_t hiloMemoria;
@@ -137,7 +137,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case PCB: {
-		programControlBlock *unPcb = deserializarPCB(paquete);
+		unPcb = deserializarPCB(paquete);
 		printf("pcb id: %d\n", unPcb->programId);
 		while (unPcb->exitCode != 0) {
 			posicionMemoria* datos_para_memoria = malloc(
@@ -177,10 +177,10 @@ t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
 	posicionMemoria *direccionVariable = malloc(sizeof(posicionMemoria));
 	variable *variable = malloc(sizeof(variable));
 	indiceDeStack *indiceStack = malloc(sizeof(indiceDeStack));
-	indiceStack = (indiceDeStack*) (list_get(pcb->indiceStack,
-			pcb->tamanoIndiceStack - 1));
+	indiceStack = (indiceDeStack*) (list_get(unPcb->indiceStack,
+			unPcb->tamanoIndiceStack - 1));
 
-	if (pcb->tamanoIndiceStack == 1 && indiceStack->tamanoVars == 0) {
+	if (unPcb->tamanoIndiceStack == 1 && indiceStack->tamanoVars == 0) {
 
 		armarDireccionPrimeraPagina(direccionVariable);
 		variable->etiqueta = nombreVariable;
@@ -242,12 +242,12 @@ void armarDireccionPrimeraPagina(posicionMemoria *direccionReal) {
 }
 
 int primeraPagina() {
-	return pcb->cantidadDePaginas;
+	return unPcb->cantidadDePaginas;
 }
 
 void armarProximaDireccion(posicionMemoria* direccionReal) {
-	int ultimaPosicionStack = pcb->tamanoIndiceStack - 1;
-	int posicionUltimaVariable = ((indiceDeStack*) (list_get(pcb->indiceStack,
+	int ultimaPosicionStack = unPcb->tamanoIndiceStack - 1;
+	int posicionUltimaVariable = ((indiceDeStack*) (list_get(unPcb->indiceStack,
 			ultimaPosicionStack)))->tamanoVars - 1;
 	proximaDireccion(ultimaPosicionStack, posicionUltimaVariable,
 			direccionReal);
@@ -258,11 +258,11 @@ void proximaDireccion(int posStack, int posUltVar,
 		posicionMemoria* direccionReal) {
 	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
 	int offset = ((variable*) (list_get(
-			((indiceDeStack*) (list_get(pcb->indiceStack, posStack)))->vars,
+			((indiceDeStack*) (list_get(unPcb->indiceStack, posStack)))->vars,
 			posUltVar)))->direccion->off + 4;
 	if (offset >= tamanoPag) {
 		direccion->pag = ((variable*) (list_get(
-				((indiceDeStack*) (list_get(pcb->indiceStack, posStack)))->vars,
+				((indiceDeStack*) (list_get(unPcb->indiceStack, posStack)))->vars,
 				posUltVar)))->direccion->pag + 1;
 		direccion->off = 0;
 		direccion->size = 4;
@@ -270,7 +270,7 @@ void proximaDireccion(int posStack, int posUltVar,
 		free(direccion);
 	} else {
 		direccion->pag = ((variable*) (list_get(
-				((indiceDeStack*) (list_get(pcb->indiceStack, posStack)))->vars,
+				((indiceDeStack*) (list_get(unPcb->indiceStack, posStack)))->vars,
 				posUltVar)))->direccion->pag;
 		direccion->off = offset;
 		direccion->size = 4;
