@@ -15,6 +15,7 @@ int32_t tamanoPaquete;
 int32_t opcion;
 cache cache1;
 
+
 frame frameGeneral;
 int32_t tamanoFrame;
 
@@ -40,6 +41,7 @@ int32_t main(int argc, char**argv) {
 	printf("memoria \n");
 	configuracion(argv[1]);
 	crearFrameGeneral();
+	iniciarCache();
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
 			levantarConexion, NULL);
 	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando,
@@ -132,6 +134,12 @@ int atenderKernel() {
 	return 0;
 }
 
+void iniciarCache(){
+	cache1.tamanio = t_archivoConfig->ENTRADAS_CACHE;
+	cache1.tamanioDisponible = cache1.tamanio;
+
+}
+
 void leerComando() {
 	while (1) {
 		printf("\nIngrese comando\n"
@@ -139,7 +147,8 @@ void leerComando() {
 				"2: buscar frame\n"
 				"3: leer de pagina\n"
 				"4: escribir en pagina\n"
-				"5: size\n");
+				"5: size\n"
+				"6: liberar pagina de proceso\n");
 		scanf("%d", &opcion);
 		switch (opcion) {
 		case 1: {
@@ -198,6 +207,17 @@ void leerComando() {
 		case 5: {
 			size();
 			break;
+		}
+		case 6: {
+			int32_t pid;
+			int32_t pagina;
+			printf("ingresar pid\n");
+			scanf("%d", &pid);
+			printf("ingresar pagina\n");
+			scanf("%d", &pagina);
+			liberarPaginaDeProceso(pid,pagina);
+			break;
+
 		}
 
 		}
@@ -381,6 +401,14 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 	//PROBAR
 
 }
+void liberarPaginaDeProceso(int32_t pid, int32_t pagina){
+	int32_t frameBorrar = buscarFrame(pid,pagina);
+	int32_t i;
+	for(i = frameBorrar+1; i<=500; i++){
+	    tablaMemoria[i-1] = tablaMemoria[i];
+	}
+
+}
 
 int32_t buscarFrame(int32_t pid, int32_t numeroPagina) {
 	int32_t i;
@@ -411,5 +439,10 @@ void escribirEnPagina(int32_t pid, int32_t pagina, int32_t offset,
 	int32_t unFrame = buscarFrame(pid, pagina);
 	int32_t desplazamiento = unFrame * +offset;
 	memcpy(frameGeneral.puntero + desplazamiento, contenido, tamano);
+}
+
+void escribirEnCache(int32_t pid, int32_t pagina){
+
+
 }
 
