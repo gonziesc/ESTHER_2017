@@ -144,7 +144,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 					sizeof(posicionMemoria));
 			crearEstructuraParaMemoria(unPcb, tamanoPag, datos_para_memoria);
 			char* sentencia = leerSentencia(datos_para_memoria->pag,
-					datos_para_memoria->off, datos_para_memoria->size);
+					datos_para_memoria->off, datos_para_memoria->size, 0);
 			char* barra_cero = "\0";
 			memcpy(sentencia + (datos_para_memoria->size - 1), barra_cero, 1);
 			sem_wait(&semSentenciaCompleta);
@@ -185,6 +185,7 @@ t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
 		armarDireccionPrimeraPagina(direccionVariable);
 		variable->etiqueta = nombreVariable;
 		variable->direccion = direccionVariable;
+		//OJO DIRECCION VARIABLE NO TIENE NADA...
 		list_add(indiceStack->vars, variable);
 		indiceStack->pos = 0;
 		indiceStack->tamanoVars++;
@@ -336,7 +337,7 @@ void crearEstructuraParaMemoria(programControlBlock* pcb, int tamPag,
 	return;
 }
 
-char* leerSentencia(int pagina, int offset, int tamanio) {
+char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
 	if ((tamanio + offset) <= 20) {
 		char * lecturaMemoria = malloc(12);
 		posicionMemoria *datos_para_memoria = malloc(sizeof(posicionMemoria));
@@ -349,15 +350,16 @@ char* leerSentencia(int pagina, int offset, int tamanio) {
 		memcpy(sentencia2, instruccionLeida, datos_para_memoria->size);
 		free(lecturaMemoria);
 		free(datos_para_memoria);
+		if(flag == 0)
 		sem_post(&semSentenciaCompleta);
 		return sentencia2;
 	} else {
 		int tamano1 = tamanoPag - offset;
 		int tamano2 = tamanio - tamano1;
-		char* lectura1 = leerSentencia(pagina, offset, tamano1);
+		char* lectura1 = leerSentencia(pagina, offset, tamano1, 1);
 		if (lectura1 == NULL)
 			return NULL;
-		char* lectura2 = leerSentencia(pagina + 1, 0, tamano2);
+		char* lectura2 = leerSentencia(pagina + 1, 0, tamano2, 1);
 		if (lectura2 == NULL)
 			return NULL;
 

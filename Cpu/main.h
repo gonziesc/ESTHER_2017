@@ -33,7 +33,7 @@ void crearEstructuraParaMemoria(programControlBlock*, int, posicionMemoria *);
 void dummy_asignar(t_puntero , t_valor_variable );
 void dummy_finalizar(void);
 char* depurarSentencia(char*);
-char* leerSentencia(int , int , int );
+char* leerSentencia(int , int , int, int );
 
 bool terminoElPrograma(void);
 
