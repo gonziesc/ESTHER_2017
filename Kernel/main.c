@@ -171,6 +171,8 @@ int32_t levantarServidor() {
 						// error o conexión cerrada por el cliente
 						if (paqueteRecibido->header == -1) {
 							// conexión cerrada
+							//PROCESAR: SI ES CONSOLA, ABORTAR PIDS
+							//SI ES CPU, SCAARLA DE LA LISA
 							close(i); // bye!
 							FD_CLR(i, &master); // eliminar del conjunto maestro
 							printf("selectserver: socket %d hung up\n", i);
