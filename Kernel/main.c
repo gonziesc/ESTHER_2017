@@ -214,7 +214,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	case ARCHIVO: {
 		printf("%s\n", paquete);
 		printf("%d\n", tamanoPaquete);
-		paquete[tamanoPaquete] = '\0';
+		//paquete[tamanoPaquete] = '\0';
 		int cantidadDePaginas = ceil(
 				(double) tamanoPaquete / (double) MARCOS_SIZE);
 		int cantidadDePaginasToales = cantidadDePaginas
@@ -336,7 +336,7 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo) {
 		memcpy(envioPagina, codigo + offset, MARCOS_SIZE);
 		memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
 		offset = offset + MARCOS_SIZE;
-		printf("%s\n", envioPagina);
+		//printf("%s\n", envioPagina);
 		Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina, clienteMEM);
 		recv(clienteMEM, &header, sizeof(header), 0);
 		printf("Se enviaron las paginas a memoria\n");

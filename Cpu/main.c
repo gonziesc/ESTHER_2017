@@ -147,7 +147,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 			char* barra_cero = "\0";
 			memcpy(sentencia + (datos_para_memoria->size - 1), barra_cero, 1);
 			sem_wait(&semSentenciaCompleta);
-			printf("sentencia leida:%s \n", sentencia);
+			//printf("sentencia leida:%s \n", sentencia);
 			analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 			unPcb->programCounter++;
 			if (unPcb->programCounter == 4)
@@ -297,8 +297,8 @@ void enviarDirecParaEscribirMemoria(
 
 }
 
-void enviarDirecParaLeerMemoria(char* variableALeer, posicionMemoria* direccion) {
-
+void enviarDirecParaLeerMemoria(posicionMemoria* direccion) {
+	char * variableALeer = malloc(12);
 	memcpy(variableALeer, &direccion->pag, 4);
 	memcpy(variableALeer + 4, &direccion->off, 4);
 	memcpy(variableALeer + 8, &direccion->size, 4);
@@ -306,6 +306,7 @@ void enviarDirecParaLeerMemoria(char* variableALeer, posicionMemoria* direccion)
 			((int*) (variableALeer))[0], ((int*) (variableALeer))[1],
 			((int*) (variableALeer))[2]);
 	Serializar(VARIABLELEER, 12, variableALeer, clienteMEM);
+	free(variableALeer);
 
 }
 
@@ -337,16 +338,14 @@ void crearEstructuraParaMemoria(programControlBlock* pcb, int tamPag,
 
 char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
 	if ((tamanio + offset) <= 20) {
-		char * lecturaMemoria = malloc(12);
 		posicionMemoria *datos_para_memoria = malloc(sizeof(posicionMemoria));
 		datos_para_memoria->off = offset;
 		datos_para_memoria->pag = pagina;
 		datos_para_memoria->size = tamanio;
-		enviarDirecParaLeerMemoria(lecturaMemoria, datos_para_memoria);
+		enviarDirecParaLeerMemoria(datos_para_memoria);
 		sem_wait(&semInstruccion);
 		char* sentencia2 = malloc(datos_para_memoria->size);
 		memcpy(sentencia2, instruccionLeida, datos_para_memoria->size);
-		free(lecturaMemoria);
 		free(datos_para_memoria);
 		if(flag == 0)
 		sem_post(&semSentenciaCompleta);
