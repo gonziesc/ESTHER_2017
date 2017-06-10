@@ -10,9 +10,15 @@ uint32_t tamanoDireccion;
 int32_t cliente;
 int32_t tamanoPaquete;
 char* buffer;
+pthread_t hiloLevantarConexion;
+int32_t idHiloLevantarConexion;
+int noInteresa;
+
 int32_t main(int argc, char**argv) {
 	configuracion(argv[1]);
-	levantarConexion();
+	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
+			levantarConexion, NULL);
+	pthread_join(hiloLevantarConexion, NULL);
 	return EXIT_SUCCESS;
 }
 void configuracion(char * dir) {
@@ -33,8 +39,7 @@ int32_t levantarConexion() {
 	printf("Estoy escuchando\n");
 	listen(servidor, 100);
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-	int noInteresa;
-	Serializar(FILESYSTEM, 4, noInteresa, cliente);
+	Serializar(FILESYSTEM, 4, &noInteresa, cliente);
 	printf("Recibí una conexión en %d!!\n", cliente);
 	while (1) {
 		paquete* paqueteRecibido = Deserializar(cliente);
@@ -44,9 +49,8 @@ int32_t levantarConexion() {
 		}
 
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
-				tamanoPaquete);
+				paqueteRecibido->size);
 	}
-	return 69;
 }
 
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {

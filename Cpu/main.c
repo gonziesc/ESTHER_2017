@@ -155,6 +155,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 				unPcb->exitCode = 0;
 
 		}
+		Serializar(PROGRAMATERMINADO, 4, &noInteresa,cliente);
 		break;
 	}
 	}
