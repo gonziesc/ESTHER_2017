@@ -25,7 +25,7 @@ int32_t conectarConMemoria();
 t_puntero dummy_definirVariable(t_nombre_variable );
 t_puntero dummy_obtenerPosicionVariable(t_nombre_variable );
 t_valor_variable dummy_dereferenciar(t_puntero );
-void enviarDirecParaEscribirMemoria(char*, posicionMemoria* , int );
+void enviarDirecParaEscribirMemoria( posicionMemoria* , int );
 void proximaDireccion(int , int , posicionMemoria* );
 void armarProximaDireccion(posicionMemoria* );
 void armarDireccionPrimeraPagina(posicionMemoria *);

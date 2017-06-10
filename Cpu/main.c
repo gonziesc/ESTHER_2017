@@ -132,7 +132,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	case VARIABLELEER: {
 		instruccionLeida = malloc (tamanoPaquete);
 		memcpy(instruccionLeida, paquete, tamanoPaquete);
-		paquete[tamanoPaquete] = "\0";
 		sem_post(&semInstruccion);
 		break;
 	}
@@ -176,7 +175,7 @@ t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
 	//REVISAAAAAAR
 	printf("Entre a definir variable %c\n", nombreVariable);
 	posicionMemoria *direccionVariable = malloc(sizeof(posicionMemoria));
-	variable *variable = malloc(sizeof(variable));
+	variable *unaVariable = malloc(sizeof(variable));
 	indiceDeStack *indiceStack = malloc(sizeof(indiceDeStack));
 	indiceStack = (indiceDeStack*) (list_get(unPcb->indiceStack,
 			unPcb->tamanoIndiceStack - 1));
@@ -184,26 +183,23 @@ t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
 	if (unPcb->tamanoIndiceStack == 1 && indiceStack->tamanoVars == 0) {
 
 		armarDireccionPrimeraPagina(direccionVariable);
-		variable->etiqueta = nombreVariable;
-		variable->direccion = direccionVariable;
+		unaVariable->etiqueta = nombreVariable;
+		unaVariable->direccion = direccionVariable;
 		//OJO DIRECCION VARIABLE NO TIENE NADA...
-		list_add(indiceStack->vars, variable);
+		list_add(indiceStack->vars, unaVariable);
 		indiceStack->pos = 0;
 		indiceStack->tamanoVars++;
 	} else {
 		armarProximaDireccion(direccionVariable);
-		variable->etiqueta = nombreVariable;
-		variable->direccion = direccionVariable;
-		list_add(indiceStack->vars, variable);
+		unaVariable->etiqueta = nombreVariable;
+		unaVariable->direccion = direccionVariable;
+		list_add(indiceStack->vars, unaVariable);
 		indiceStack->tamanoVars++;
 	}
-
-	char* escribirUMC = malloc(16);
-	int valor;
+	int valor =0;
 	int direccionRetorno = convertirDireccionAPuntero(direccionVariable);
 
-	enviarDirecParaEscribirMemoria(escribirUMC, direccionVariable, valor);
-	free(escribirUMC);
+	enviarDirecParaEscribirMemoria(direccionVariable, valor);
 	printf("Devuelvo direccion: %d\n", direccionRetorno);
 
 	return (direccionRetorno);
@@ -283,9 +279,9 @@ void proximaDireccion(int posStack, int posUltVar,
 	return;
 }
 
-void enviarDirecParaEscribirMemoria(char* variableAEnviar,
+void enviarDirecParaEscribirMemoria(
 		posicionMemoria* direccion, int valor) {
-
+	char* variableAEnviar = malloc(16);
 	memcpy(variableAEnviar, &direccion->pag, 4);
 	memcpy(variableAEnviar + 4, &direccion->off, 4);
 	memcpy(variableAEnviar + 8, &direccion->size, 4);
@@ -294,6 +290,7 @@ void enviarDirecParaEscribirMemoria(char* variableAEnviar,
 			((int*) (variableAEnviar))[0], ((int*) (variableAEnviar))[1],
 			((int*) (variableAEnviar))[2], ((int*) (variableAEnviar))[3]);
 	Serializar(VARIABLEESCRIBIR, 16, variableAEnviar, clienteMEM);
+	free(variableAEnviar);
 	//paquete * paquetin;
 	//paquetin = Deserializar(clienteMEM);
 	//liberar_paquete(paquetin);
