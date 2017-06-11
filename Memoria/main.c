@@ -277,10 +277,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		char *pagina = malloc(t_archivoConfig->MARCOS_SIZE);
 
 		memcpy(pagina, paquete, t_archivoConfig->MARCOS_SIZE);
-		pagina[t_archivoConfig->MARCOS_SIZE] = '\0';
+		//pagina[t_archivoConfig->MARCOS_SIZE] = '\0';
 		memcpy(&pid, paquete + t_archivoConfig->MARCOS_SIZE, sizeof(int));
-		printf("pagina: %s\n", pagina);
-		printf("pid: %d\n", pid);
+		//printf("pagina: %s\n", pagina);
+		//printf("pid: %d\n", pid);
 		Serializar(OK, 4, &noIMporta, socket);
 		almacernarPaginaEnFrame(pid, tamanoPaquete, paquete);
 		break;
@@ -293,7 +293,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 							numero_pagina, offset,
 							offset, socket);
 		char * contenido = leerDePagina(1, numero_pagina, offset, tamanio);
-		printf("lei: %s\n", contenido);
+		//printf("lei: %s\n", contenido);
 		Serializar(VARIABLELEER, tamanio, contenido, socket);
 		//ojo pid actual
 		break;
@@ -309,8 +309,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		escribirEnPagina(1, numero_pagina, offset, tamanio, buffer);
 
-		int a;
-		Serializar(VARIABLELEER, sizeof(int), &a, socket);
+
+		Serializar(VARIABLELEER, sizeof(int), &noIMporta, socket);
 
 		free(buffer);
 		break;
@@ -329,7 +329,7 @@ void crearFrameGeneral() {
 	frameGeneral.tamanio = cantidadMarcos * tamanioMarcos;
 	frameGeneral.tamanioDisponible = frameGeneral.tamanio;
 	frameGeneral.tamanioOcupado = 0;
-	frameGeneral.puntero = malloc(frameGeneral.tamanio);
+	frameGeneral.puntero = malloc(cantidadMarcos * tamanioMarcos);
 	frameGeneral.punteroDisponible = frameGeneral.puntero;
 
 }
@@ -449,7 +449,7 @@ char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano) 
 	char* contenido = malloc(tamano);
 	int32_t desplazamiento = unFrame * t_archivoConfig->MARCOS_SIZE + offset;
 	memcpy(contenido, frameGeneral.puntero + desplazamiento, tamano);
-	contenido[tamano] = '\0';
+	//contenido[tamano] = '\0';
 	return contenido;
 }
 

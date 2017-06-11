@@ -43,7 +43,7 @@ int32_t ConectarseConKernel(int noIMporta) {
 		return 1;
 	}
 
-	//Serializar(CONSOLA, 4, noIMporta, cliente);
+	Serializar(CONSOLA, 4, &noIMporta, cliente);
 	//VER POR QUE MIERDA NO ANDA ESTO
 
 }
@@ -51,7 +51,10 @@ int32_t ConectarseConKernel(int noIMporta) {
 void leerComando() {
 	while (1) {
 		printf("Ingrese comando\n");
-		printf("1: iniciar programa\n");
+		printf("1: iniciar programa mandando path absoluto \n");
+		printf("2: finalizar programa ingresando pid\n");
+		printf("3: desconectar consolsa\n");
+		printf("4: limpiar mensajes\n");
 		scanf("%d", &opcion);
 		switch (opcion) {
 		case 1: {
@@ -63,6 +66,24 @@ void leerComando() {
 					idHiloId;
 			procesosActualesPosicion++;
 			pthread_join(hiloPrograma, NULL);
+			break;
+		}
+		case 2: {
+			int pidAMatar;
+			printf("Ingrese pid a finalizar\n");
+			scanf("%d", &pidAMatar);
+			Serializar(MATARPIDPORCONSOLA, 4, &pidAMatar, cliente);
+			//serializar envio de programa muerto
+			pthread_cancel(procesosActuales[pidAMatar].identificadorHilo);
+			break;
+		}
+		case 3: {
+			close(cliente);
+			pthread_cancel(idHiloConectarseConKernel);
+			break;
+		}
+		case 4: {
+			printf("\e[1;1H\e[2J");
 			break;
 		}
 		}

@@ -20,7 +20,16 @@
 #include <parser/parser.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <commons/log.h>
 
+typedef struct {
+  int socketCPU;
+  int socketCONSOLA;
+  programControlBlock *pcb;
+  bool abortado;
+
+
+} proceso;
 
 void configuracion(char*);
 void planificadorLargoPlazo();
@@ -28,6 +37,9 @@ int32_t conectarConMemoria();
 int32_t ConectarConFS();
 int32_t levantarServidor();
 char* empaquetarPagina(int, char *, int);
+void ejecutar(proceso* , int );
+void planificadorCortoPlazo();
+proceso* sacarProcesoDeEjecucion(int );
 
 
 

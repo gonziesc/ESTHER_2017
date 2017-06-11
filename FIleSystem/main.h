@@ -13,6 +13,8 @@
 #include <configuracion.h>
 #include <serializador.h>
 
+#include <pthread.h>
+
 
 void configuracion(char*);
 int32_t levantarConexion();
