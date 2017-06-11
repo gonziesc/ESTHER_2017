@@ -36,7 +36,7 @@ typedef struct {
 typedef struct{
 	int32_t tamanio;
 	int32_t tamanioDisponible;
-
+	//infoNodoCache* tablaCache;
 }cache;
 
 typedef struct{
