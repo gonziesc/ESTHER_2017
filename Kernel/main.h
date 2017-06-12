@@ -31,6 +31,12 @@ typedef struct {
 
 } proceso;
 
+typedef struct {
+  int tamano;
+  char* codigo;
+  int socket;
+} script;
+
 void configuracion(char*);
 void planificadorLargoPlazo();
 int32_t conectarConMemoria();
@@ -40,6 +46,7 @@ char* empaquetarPagina(int, char *, int);
 void ejecutar(proceso* , int );
 void planificadorCortoPlazo();
 proceso* sacarProcesoDeEjecucion(int );
+void procesarScript();
 
 
 

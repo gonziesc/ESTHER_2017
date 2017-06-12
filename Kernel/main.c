@@ -2,6 +2,7 @@
 
 struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
+script* unScript;
 int32_t fdmax;
 int32_t cpuDisponible;
 int32_t newfd;        // descriptor de socket de nueva conexión aceptada
@@ -33,19 +34,24 @@ t_queue* colaBlock;
 t_queue* colaExit;
 t_queue* colaCpu;
 sem_t gradoMultiprogramacion;
+sem_t semUnScript;
 sem_t semNew;
 sem_t semReady;
 sem_t semEnvioPaginas;
 sem_t semProcesar;
 sem_t semCpu;
+sem_t semEntraElProceso;
+sem_t semPaginaEnviada;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaExit;
 pthread_mutex_t mutexColaBlock;
 pthread_mutex_t mutexColaEx;
 pthread_mutex_t mutexColaReady;
 pthread_mutex_t mutexProcesar;
+pthread_mutex_t mutexProcesarPaquetes;
 pthread_mutex_t mutexColaCpu;
 pthread_t hiloPlanificadorLargoPlazo;
+pthread_t hiloEnviarProceso;
 pthread_t hiloPlanificadorCortoPlazo;
 pthread_t hiloConexionFS;
 pthread_t hiloConexionMemoria;
@@ -62,16 +68,23 @@ int32_t main(int argc, char**argv) {
 	NULL);
 	pthread_create(&hiloPlanificadorCortoPlazo, NULL, planificadorCortoPlazo,
 	NULL);
+
+	pthread_create(&hiloEnviarProceso, NULL, procesarScript, NULL);
 	levantarServidor();
 	pthread_join(hiloPlanificadorLargoPlazo, NULL);
+	pthread_join(hiloPlanificadorCortoPlazo, NULL);
+	pthread_join(hiloEnviarProceso, NULL);
 	return EXIT_SUCCESS;
 }
 
 void configuracion(char*dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigKernel));
 	configuracionKernel(t_archivoConfig, config, dir);
+	sem_init(&semUnScript, 0, 0);
 	sem_init(&semNew, 0, 0);
 	sem_init(&semReady, 0, 0);
+	sem_init(&semEntraElProceso, 0, 0);
+	sem_init(&semPaginaEnviada, 0, 0);
 	sem_init(&semEnvioPaginas, 0, 1);
 	sem_init(&semCpu, 0, 0);
 	sem_init(&semProcesar, 0, 1);
@@ -197,6 +210,7 @@ int32_t levantarServidor() {
 							FD_CLR(i, &master); // eliminar del conjunto maestro
 							perror("recv");
 						} else {
+
 							procesar(paqueteRecibido->package,
 									paqueteRecibido->header,
 									paqueteRecibido->size, i);
@@ -209,44 +223,55 @@ int32_t levantarServidor() {
 	}
 }
 
-void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
-	switch (id) {
-	case ARCHIVO: {
-		printf("%s\n", paquete);
-		printf("%d\n", tamanoPaquete);
-		//paquete[tamanoPaquete] = '\0';
+void procesarScript() {
+	while (1) {
+		sem_wait(&semUnScript);
 		int cantidadDePaginas = ceil(
-				(double) tamanoPaquete / (double) MARCOS_SIZE);
+				(double) unScript->tamano / (double) MARCOS_SIZE);
 		int cantidadDePaginasToales = cantidadDePaginas
 				+ t_archivoConfig->STACK_SIZE;
 		Serializar(TAMANO, sizeof(int), &cantidadDePaginasToales, clienteMEM);
-		recv(clienteMEM, &header, sizeof(header), 0);
+		sem_wait(&semEntraElProceso);
 		if (header == OK) {
 			proceso* unProceso = malloc(sizeof(proceso));
-			programControlBlock *unPcb = malloc(sizeof(programControlBlock));
+			programControlBlock* unPcb = malloc(sizeof(programControlBlock));
 			unPcb->cantidadDePaginas = cantidadDePaginas;
-			crearPCB(paquete, unPcb);
+			crearPCB(unScript->codigo, unPcb);
 			unProceso->pcb = unPcb;
-			unProceso->socketCONSOLA = socket;
-			Serializar(PID, 4, &processID, socket);
+			unProceso->socketCONSOLA = unScript->socket;
+			Serializar(PID, 4, &processID, unScript->socket);
+			enviarProcesoAMemoria(unPcb->cantidadDePaginas, unScript->codigo,
+					unScript->tamano);
+			sem_wait(&semEnvioPaginas);
 			pthread_mutex_lock(&mutexColaNew);
 			queue_push(colaNew, unProceso);
 			pthread_mutex_unlock(&mutexColaNew);
 			sem_post(&semNew);
-			enviarProcesoAMemoria(unPcb->cantidadDePaginas, paquete);
-			sem_wait(&semEnvioPaginas);
+			free(unScript->codigo);
 		}
+	}
 
+}
+
+void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
+	switch (id) {
+	case ARCHIVO: {
+		//printf("%s\n", paquete);
+		//printf("%d\n", tamanoPaquete);
+		//paquete[tamanoPaquete] = '\0';
+		unScript = malloc(sizeof(script));
+		unScript->tamano = tamanoPaquete;
+		unScript->codigo = malloc(tamanoPaquete);
+		unScript->socket = socket;
+		memcpy(unScript->codigo, paquete, tamanoPaquete);
+		sem_post(&semUnScript);
 		break;
 	}
 	case FILESYSTEM: {
 		printf("Se conecto FS\n");
 		break;
 	}
-	case KERNEL: {
-		printf("Se conecto Kernel\n");
-		break;
-	}
+
 	case CPU: {
 		pthread_mutex_lock(&mutexColaCpu);
 		queue_push(colaCpu, socket);
@@ -270,6 +295,17 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	case OK: {
 		break;
 	}
+	case PAGINAENVIADA: {
+		sem_post(&semPaginaEnviada);
+		break;
+	}
+	case ENTRAPROCESO: {
+		sem_post(&semEntraElProceso);
+		memcpy(&header, paquete, 4);
+
+		printf("header %d\n", header);
+		break;
+	}
 	case PROGRAMATERMINADO: {
 		pthread_mutex_lock(&mutexColaEx);
 		proceso * procesoTerminado = sacarProcesoDeEjecucion(socket);
@@ -286,6 +322,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		//procesar pid muerto
 		//semaforear los procesar
 	}
+	return;
 }
 
 void crearPCB(char* codigo, programControlBlock *unPcb) {
@@ -299,11 +336,11 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 	unPcb->indiceCodigo = malloc(unPcb->tamanoIndiceCodigo * 2 * sizeof(int));
 
 	for (i = 0; i < metadata_program->instrucciones_size; i++) {
-		printf("Instruccion inicio:%d offset:%d %.*s",
-				metadata_program->instrucciones_serializado[i].start,
-				metadata_program->instrucciones_serializado[i].offset,
-				metadata_program->instrucciones_serializado[i].offset,
-				codigo + metadata_program->instrucciones_serializado[i].start);
+		/*printf("Instruccion inicio:%d offset:%d %.*s",
+		 metadata_program->instrucciones_serializado[i].start,
+		 metadata_program->instrucciones_serializado[i].offset,
+		 metadata_program->instrucciones_serializado[i].offset,
+		 codigo + metadata_program->instrucciones_serializado[i].start);*/
 		unPcb->indiceCodigo[i * 2] =
 				metadata_program->instrucciones_serializado[i].start;
 		unPcb->indiceCodigo[i * 2 + 1] =
@@ -328,21 +365,36 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 	metadata_destruir(metadata_program);
 }
 
-void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo) {
-	pthread_mutex_lock(&mutexProcesar);
+void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo,
+		int tamanoPaquete) {
 	int offset = 0;
-	for (i = 0; i < cantidadDePaginas; i++) {
-		void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));
-		memcpy(envioPagina, codigo + offset, MARCOS_SIZE);
-		memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
-		offset = offset + MARCOS_SIZE;
-		//printf("%s\n", envioPagina);
-		Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina, clienteMEM);
-		recv(clienteMEM, &header, sizeof(header), 0);
-		printf("Se enviaron las paginas a memoria\n");
-		free(envioPagina);
+	int i = 0;
+	int sobra = tamanoPaquete % MARCOS_SIZE;
+	for (i = 1; i <= cantidadDePaginas; i++) {
+		if (i == cantidadDePaginas) {
+			void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));
+			char * sobras = "0000000000000000000000";
+			memcpy(envioPagina, codigo + offset, sobra);
+			memcpy(envioPagina + sobra, sobras, MARCOS_SIZE - sobra);
+			memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
+			Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina,
+					clienteMEM);
+			printf("envio pagina %s\n", envioPagina);
+			sem_wait(&semPaginaEnviada);
+			free(envioPagina);
+		} else {
+			void* envioPagina = malloc(MARCOS_SIZE + sizeof(int));
+			memcpy(envioPagina, codigo + offset, MARCOS_SIZE);
+			memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
+			offset = offset + MARCOS_SIZE;
+			Serializar(PAGINA, MARCOS_SIZE + sizeof(int), envioPagina,
+					clienteMEM);
+			printf("envio pagina %s\n", envioPagina);
+			sem_wait(&semPaginaEnviada);
+			free(envioPagina);
+		}
+
 	}
-	pthread_mutex_unlock(&mutexProcesar);
 	sem_post(&semEnvioPaginas);
 }
 
@@ -385,8 +437,7 @@ void ejecutar(proceso* procesoAEjecutar, int socket) {
 	pthread_mutex_lock(&mutexColaEx);
 	queue_push(colaExec, procesoAEjecutar);
 	pthread_mutex_unlock(&mutexColaEx);
-	char* pcbSerializado = serializarPCB(procesoAEjecutar->pcb);
-	Serializar(PCB, procesoAEjecutar->pcb->tamanoTotal, pcbSerializado, socket);
+	serializarPCB(procesoAEjecutar->pcb, socket);
 }
 
 proceso* sacarProcesoDeEjecucion(int sock) {
