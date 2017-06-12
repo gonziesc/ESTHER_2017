@@ -36,7 +36,14 @@ typedef struct {
 typedef struct{
 	int32_t tamanio;
 	int32_t tamanioDisponible;
+	//infoNodoCache* tablaCache;
 }cache;
+
+typedef struct{
+	int32_t pid;
+	int32_t numeroPagina;
+	char* contenido;
+}infoNodoCache;
 
 
 
@@ -55,6 +62,8 @@ void conectarseConKernel();
 void atenderConexionesCPu();
 void escribirEnPagina(int32_t , int32_t , int32_t , int32_t ,char* );
 void size();
+void liberarPaginaDeProceso(int32_t , int32_t );
+void iniciarCache();
 
 
 

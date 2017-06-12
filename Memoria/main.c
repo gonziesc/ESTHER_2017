@@ -15,14 +15,19 @@ int32_t tamanoPaquete;
 int32_t opcion;
 cache cache1;
 
+
 frame frameGeneral;
 int32_t tamanoFrame;
 
-infoTablaMemoria tablaMemoria[500];
+//infoTablaMemoria tablaMemoria[500];
+infoTablaMemoria* punteroMemoria;
 int32_t indiceTabla = 0;
 infoTablaMemoria nodoTablaMemoria;
 int32_t numeroPagina = 0;
 int32_t pidAnt = -1;
+infoNodoCache nodoCache;
+
+int32_t desplazamientoFrame = 0;
 
 pthread_t hiloLevantarConexion;
 int32_t idHiloLevantarConexion;
@@ -41,7 +46,11 @@ int32_t main(int argc, char**argv) {
 
 	printf("memoria \n");
 	configuracion(argv[1]);
+	infoTablaMemoria tablaMemoria[t_archivoConfig->MARCOS];
+	punteroMemoria = tablaMemoria;
+
 	crearFrameGeneral();
+	iniciarCache();
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
 			levantarConexion, NULL);
 	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando,
@@ -141,6 +150,12 @@ int atenderKernel() {
 	return 0;
 }
 
+void iniciarCache(){
+	cache1.tamanio = t_archivoConfig->ENTRADAS_CACHE;
+	cache1.tamanioDisponible = cache1.tamanio;
+
+}
+
 void leerComando() {
 	while (1) {
 		printf("\nIngrese comando\n"
@@ -148,7 +163,8 @@ void leerComando() {
 				"2: buscar frame\n"
 				"3: leer de pagina\n"
 				"4: escribir en pagina\n"
-				"5: size\n");
+				"5: size\n"
+				"6: liberar pagina de proceso\n");
 		scanf("%d", &opcion);
 		switch (opcion) {
 		case 1: {
@@ -207,6 +223,17 @@ void leerComando() {
 		case 5: {
 			size();
 			break;
+		}
+		case 6: {
+			int32_t pid;
+			int32_t pagina;
+			printf("ingresar pid\n");
+			scanf("%d", &pid);
+			printf("ingresar pagina\n");
+			scanf("%d", &pagina);
+			liberarPaginaDeProceso(pid,pagina);
+			break;
+
 		}
 
 		}
@@ -331,10 +358,10 @@ void dump() {
 	log_info(log, "Tamanio disponible de cache %d", cache1.tamanioDisponible);
 	int32_t i;
 	for (i = 0; i <= 500; i++) {
-		if (tablaMemoria[i].pid > 0) {
+		if ((punteroMemoria+ i)->pid > 0) {
 			log_info(log, "numero de frame %d", i);
-			log_info(log, "pid %d", tablaMemoria[i].pid);
-			log_info(log, "numero de pagina %d", tablaMemoria[i].numeroPagina);
+			log_info(log, "pid %d", (punteroMemoria+ i)->pid);
+			log_info(log, "numero de pagina %d", (punteroMemoria + i)->numeroPagina);
 		}
 	}
 
@@ -390,21 +417,38 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 	frameGeneral.tamanioDisponible -= tamanioBuffer;
 	nodoTablaMemoria.pid = pid;
 
-	//memcpy(tablaMemoria[indiceTabla], nodoTablaMemoria, sizeof(nodoTablaMemoria));
-	// esta opcion es para usar una tablaMemoria*, el problema es que no se podria
-	// accerder a la posicion []
-	tablaMemoria[indiceTabla] = nodoTablaMemoria;
+
+
+	punteroMemoria[indiceTabla] = nodoTablaMemoria;
 	indiceTabla++;
+
+
+
 	numeroPagina++;
 	//PROBAR
+
+}
+void liberarPaginaDeProceso(int32_t pid, int32_t pagina){
+	int32_t frameBorrar = buscarFrame(pid,pagina);
+	int32_t i;
+	for(i = frameBorrar+1; i<=500; i++){
+	    punteroMemoria[i-1] = punteroMemoria[i];
+	}
+
+}
+
+int32_t hashFrame(int32_t pid,int32_t numeroPagina){
+	int32_t posicion;
+	return posicion;
+
 
 }
 
 int32_t buscarFrame(int32_t pid, int32_t numeroPagina) {
 	int32_t i;
 	for (i = 0; i <= 500; i++) {
-		if (tablaMemoria[i].pid == pid
-				&& tablaMemoria[i].numeroPagina == numeroPagina) {
+		if ((punteroMemoria + i)->pid == pid
+				&& (punteroMemoria+i)->numeroPagina == numeroPagina) {
 			return i;
 		}
 	}
@@ -412,6 +456,10 @@ int32_t buscarFrame(int32_t pid, int32_t numeroPagina) {
 	return -1;
 
 }
+
+
+
+
 
 char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano) {
 
@@ -427,7 +475,14 @@ void escribirEnPagina(int32_t pid, int32_t pagina, int32_t offset,
 		int32_t tamano, char* contenido) {
 
 	int32_t unFrame = buscarFrame(pid, pagina);
-	int32_t desplazamiento = unFrame * +offset;
+	int32_t desplazamiento = unFrame * t_archivoConfig->MARCOS_SIZE +offset;
 	memcpy(frameGeneral.puntero + desplazamiento, contenido, tamano);
+}
+
+void escribirEnCache(int32_t pid, int32_t pagina){
+	nodoCache.pid = pid;
+	nodoCache.numeroPagina = pagina;
+	nodoCache.contenido = leerDePagina(pid,pagina,0,5);// 5 harcodeado
+
 }
 
