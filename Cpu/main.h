@@ -36,6 +36,7 @@ char* depurarSentencia(char*);
 char* leerSentencia(int , int , int, int );
 
 bool terminoElPrograma(void);
+void procesarScript();
 
 
 #endif

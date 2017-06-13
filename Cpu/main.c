@@ -13,10 +13,12 @@ programControlBlock *unPcb;
 int32_t tamanoPag;
 pthread_t hiloKernel;
 pthread_t hiloMemoria;
+pthread_t hiloProcesarScript;
 pthread_mutex_t mutexProcesar;
 sem_t semProcesar;
 sem_t semInstruccion;
 sem_t semSentenciaCompleta;
+sem_t semHayScript;
 int noInteresa;
 char * instruccionLeida;
 AnSISOP_funciones primitivas = { .AnSISOP_definirVariable =
@@ -31,6 +33,7 @@ int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
 	pthread_create(&hiloKernel, NULL, ConectarConKernel, NULL);
 	pthread_create(&hiloMemoria, NULL, conectarConMemoria, NULL);
+	pthread_create(&hiloProcesarScript, NULL, procesarScript, NULL);
 
 	/*char* sentencia = "begin";
 	 analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
@@ -47,6 +50,7 @@ int32_t main(int argc, char**argv) {
 	 */
 	pthread_join(hiloKernel, NULL);
 	pthread_join(hiloMemoria, NULL);
+	pthread_join(hiloProcesarScript, NULL);
 	return EXIT_SUCCESS;
 }
 void Configuracion(char* dir) {
@@ -55,6 +59,7 @@ void Configuracion(char* dir) {
 	sem_init(&semProcesar, 0, 1);
 	sem_init(&semSentenciaCompleta, 0, 0);
 	sem_init(&semInstruccion, 0, 0);
+	sem_init(&semHayScript, 0, 0);
 }
 
 int32_t conectarConMemoria() {
@@ -130,7 +135,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case VARIABLELEER: {
-		instruccionLeida = malloc (tamanoPaquete);
+		instruccionLeida = malloc(tamanoPaquete);
 		memcpy(instruccionLeida, paquete, tamanoPaquete);
 		sem_post(&semInstruccion);
 		break;
@@ -138,6 +143,16 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	case PCB: {
 		unPcb = deserializarPCB(paquete);
 		printf("pcb id: %d\n", unPcb->programId);
+		sem_post(&semHayScript);
+		break;
+	}
+	}
+
+}
+
+void procesarScript() {
+	while (1) {
+		sem_wait(&semHayScript);
 		while (unPcb->exitCode != 0) {
 			posicionMemoria* datos_para_memoria = malloc(
 					sizeof(posicionMemoria));
@@ -154,11 +169,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 				unPcb->exitCode = 0;
 
 		}
-		Serializar(PROGRAMATERMINADO, 4, &noInteresa,cliente);
-		break;
+		Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
 	}
-	}
-
 }
 
 char* depurarSentencia(char* sentencia) {
@@ -196,7 +208,7 @@ t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
 		list_add(indiceStack->vars, unaVariable);
 		indiceStack->tamanoVars++;
 	}
-	int valor =0;
+	int valor = 0;
 	int direccionRetorno = convertirDireccionAPuntero(direccionVariable);
 
 	enviarDirecParaEscribirMemoria(direccionVariable, valor);
@@ -259,17 +271,20 @@ void proximaDireccion(int posStack, int posUltVar,
 			((indiceDeStack*) (list_get(unPcb->indiceStack, posStack)))->vars,
 			posUltVar)))->direccion->off + 4;
 	if (offset >= tamanoPag) {
-		direccion->pag = ((variable*) (list_get(
-				((indiceDeStack*) (list_get(unPcb->indiceStack, posStack)))->vars,
-				posUltVar)))->direccion->pag + 1;
+		direccion->pag =
+				((variable*) (list_get(
+						((indiceDeStack*) (list_get(unPcb->indiceStack,
+								posStack)))->vars, posUltVar)))->direccion->pag
+						+ 1;
 		direccion->off = 0;
 		direccion->size = 4;
 		memcpy(direccionReal, direccion, sizeof(posicionMemoria));
 		free(direccion);
 	} else {
-		direccion->pag = ((variable*) (list_get(
-				((indiceDeStack*) (list_get(unPcb->indiceStack, posStack)))->vars,
-				posUltVar)))->direccion->pag;
+		direccion->pag =
+				((variable*) (list_get(
+						((indiceDeStack*) (list_get(unPcb->indiceStack,
+								posStack)))->vars, posUltVar)))->direccion->pag;
 		direccion->off = offset;
 		direccion->size = 4;
 		memcpy(direccionReal, direccion, sizeof(posicionMemoria));
@@ -279,8 +294,7 @@ void proximaDireccion(int posStack, int posUltVar,
 	return;
 }
 
-void enviarDirecParaEscribirMemoria(
-		posicionMemoria* direccion, int valor) {
+void enviarDirecParaEscribirMemoria(posicionMemoria* direccion, int valor) {
 	char* variableAEnviar = malloc(16);
 	memcpy(variableAEnviar, &direccion->pag, 4);
 	memcpy(variableAEnviar + 4, &direccion->off, 4);
@@ -347,8 +361,8 @@ char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
 		char* sentencia2 = malloc(datos_para_memoria->size);
 		memcpy(sentencia2, instruccionLeida, datos_para_memoria->size);
 		free(datos_para_memoria);
-		if(flag == 0)
-		sem_post(&semSentenciaCompleta);
+		if (flag == 0)
+			sem_post(&semSentenciaCompleta);
 		return sentencia2;
 	} else {
 		int tamano1 = tamanoPag - offset;
