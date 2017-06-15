@@ -34,7 +34,11 @@ void dummy_asignar(t_puntero , t_valor_variable );
 void dummy_finalizar(void);
 char* depurarSentencia(char*);
 char* leerSentencia(int , int , int, int );
-
+int primeraPagina();
+void procesar(char * paquete, int32_t id, int32_t tamanoPaquete);
+void enviarDirecParaLeerMemoria(posicionMemoria* direccion);
+void convertirPunteroADireccion(int puntero, posicionMemoria* direccion);
+int convertirDireccionAPuntero(posicionMemoria* direccion);
 bool terminoElPrograma(void);
 void procesarScript();
 
