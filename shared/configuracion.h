@@ -26,7 +26,8 @@ typedef enum {
 	PROGRAMAABORTADO = 16,
 	DATOSPLANIFICACION = 17,
 	PAGINAENVIADA = 18,
-	ENTRAPROCESO = 19
+	ENTRAPROCESO = 19,
+	PUNTEROPAGINAHEAP = 20
 } codigosSerializador;
 
 typedef struct{

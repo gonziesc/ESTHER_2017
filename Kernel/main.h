@@ -41,12 +41,13 @@ typedef struct {
   int tamanoDisponible;
   int pid;
   int numeroPagina;
+  int cantidadDeAlocaciones;
 } datosHeap;
 
 typedef struct {
 int size;
 bool isFree;
-}HeapMetadata;
+}HeapMetaData;
 
 
 void configuracion(char*);
@@ -59,7 +60,10 @@ void ejecutar(proceso* , int );
 void planificadorCortoPlazo();
 proceso* sacarProcesoDeEjecucion(int );
 void procesarScript();
-
-
+int existePaginaParaPidConEspacio(int, int);
+void pedirAMemoriaUnaPaginaPara(int, int);
+void guardarPaginaENTabla(int, int, int);
+void actualizarPaginaEnMemoria(char*, int, int, int);
+void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int, int) ;
 
 #endif

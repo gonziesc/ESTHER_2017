@@ -16,6 +16,7 @@ t_config *config;
 struct sockaddr_in direccionMem;
 int32_t clienteMEM;
 char* buffer;
+char* punteroPaginaHeap;
 char buf[3];    // buffer para datos del cliente
 int32_t servidor;
 int32_t MARCOS_SIZE;
@@ -43,6 +44,7 @@ sem_t semProcesar;
 sem_t semCpu;
 sem_t semEntraElProceso;
 sem_t semPaginaEnviada;
+sem_t semPunteroPaginaHeap;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaExit;
 pthread_mutex_t mutexColaBlock;
@@ -89,6 +91,7 @@ void configuracion(char*dir) {
 	sem_init(&semPaginaEnviada, 0, 0);
 	sem_init(&semEnvioPaginas, 0, 1);
 	sem_init(&semCpu, 0, 0);
+	sem_init(&semPunteroPaginaHeap, 0, 0);
 	sem_init(&semProcesar, 0, 1);
 	//ojo con este semaforo
 	sem_init(&gradoMultiprogramacion, 0, t_archivoConfig->GRADO_MULTIPROG);
@@ -330,6 +333,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semCpu);
 		break;
 	}
+	case PUNTEROPAGINAHEAP: {
+		punteroPaginaHeap = malloc(tamanoPaquete);
+		memcpy(punteroPaginaHeap, paquete, tamanoPaquete);
+		sem_post(&semPunteroPaginaHeap);
+		break;
+	}
 		//procesar pid muerto
 		//semaforear los procesar
 	}
@@ -464,6 +473,33 @@ proceso* sacarProcesoDeEjecucion(int sock) {
 	return NULL;
 }
 
+proceso* buscarProcesoEnEjecucion(int pid) {
+	int a = 0, t;
+	proceso *procesoABuscar;
+	while (procesoABuscar = (proceso*) list_get(colaExec->elements, a)) {
+		if (procesoABuscar->pcb->programId == pid)
+			return procesoABuscar;
+		a++;
+	}
+	printf("NO HAY PROCESO\n");
+	exit(0);
+	return NULL;
+}
+
+void modificarCantidadDePaginas(int pid) {
+	int a = 0, t;
+	proceso *procesoABuscar;
+	while (procesoABuscar = (proceso*) list_get(colaExec->elements, a)) {
+		if (procesoABuscar->pcb->programId == pid){
+			procesoABuscar->pcb->cantidadDePaginas++;
+			list_replace(colaExec->elements, a, procesoABuscar);
+		}
+		a++;
+	}
+	printf("NO HAY PROCESO\n");
+	exit(0);
+}
+
 int *pideSemaforo(char *semaforo) {
 	int i;
 	//printf("NUCLEO: pide sem %s\n", semaforo);
@@ -586,18 +622,53 @@ void bloqueoSemaforo(proceso *proceso, char *semaforo) {
 t_puntero reservarMemoria(int pid, int tamano) {
 	int pagina;
 	t_puntero puntero;
+	proceso* proceso= buscarProcesoEnEjecucion(pid);
 	if (tamano < MARCOS_SIZE - 10) {
-		pagina = existePaginaParaPidConEspacio(pid, tamano)
+		HeapMetaData* heapOcupado = malloc(sizeof(HeapMetaData));
+		heapOcupado->isFree = false;
+		heapOcupado->size = tamano;
+		pagina = existePaginaParaPidConEspacio(pid, tamano);
 		if (pagina) {
-			puntero = pedirAMemoriaElPunteroDeLaPaginaDondeEStaLibre(pagina,
-					tamano);
-			actualizarTamanioOcupado(pagina, tamanio);
-			defragmentar (pagina)
+			pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(pagina, pid);
+			actualizarPaginaEnMemoria(punteroPaginaHeap, pid, pagina, tamano); //actualiza tabla, actualiza mem
 		} else {
-			puntero = pedirAMemoriaUnaPaginaPara(pid, tamano, &pagina);
-			guardarPaginaENTabla(pagina, pid, tamano)
-
+			HeapMetaData* heapLibre = malloc(sizeof(HeapMetaData));
+			heapLibre->isFree = true;
+			heapLibre->size = MARCOS_SIZE - 2*sizeof(HeapMetaData) - tamano;
+			pedirAMemoriaUnaPaginaPara(pid, proceso->pcb->cantidadDePaginas + 1); //implementar
+			modificarCantidadDePaginas(pid);
+			guardarPaginaENTabla(pagina, pid, MARCOS_SIZE - 2*sizeof(HeapMetaData) - tamano); //implementar
+			actualizarPaginaEnMemoria(punteroPaginaHeap, pid, pagina, tamano); //implementar
 		}
 	}
 	return puntero;
+}
+
+int existePaginaParaPidConEspacio(int pid, int tamano) {
+	int i;
+	for (i = 0; i < 100; i++) {
+		if (tablaHeap[i].pid == pid && tablaHeap[i].tamanoDisponible >= tamano)
+			return tablaHeap[i].numeroPagina;
+	}
+	return 0;
+}
+
+void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int pagina, int pid) {
+	void* envioPedidoPagina = malloc(2 * sizeof(int));
+	memcpy(envioPedidoPagina, pagina, sizeof(int));
+	memcpy(envioPedidoPagina + sizeof(int), pid, sizeof(int));
+	Serializar(PUNTEROPAGINAHEAP, 2 * sizeof(int), envioPedidoPagina,
+			clienteMEM);
+	sem_wait(&semPunteroPaginaHeap);
+	return;
+}
+
+void pedirAMemoriaUnaPaginaPara(int pid, int tamano){
+
+}
+void guardarPaginaENTabla(int pagina, int pid, int tamano){
+
+}
+void actualizarPaginaEnMemoria(char *punteroPaginaHeap, int pid, int pagina, int tamano){
+
 }

@@ -308,6 +308,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 							numero_pagina, offset,
 							offset, socket);
 		char * contenido = leerDePagina(1, numero_pagina, offset, tamanio);
+		//TODO HARCODEADO PIDDDDDDDD
 		//printf("lei: %s\n", contenido);
 		Serializar(VARIABLELEER, tamanio, contenido, socket);
 		//ojo pid actual
