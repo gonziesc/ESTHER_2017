@@ -70,7 +70,8 @@ int32_t conectarConMemoria() {
 			perror("Memoria se desconectó");
 			return 1;
 		}
-		procesar(paqueteRecibido->package, paqueteRecibido->header, paqueteRecibido->size);
+		procesar(paqueteRecibido->package, paqueteRecibido->header,
+				paqueteRecibido->size);
 	}
 }
 
@@ -132,9 +133,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case VARIABLEESCRIBIR: {
-			sem_post(&okDeMemoria);
-			break;
-		}
+		sem_post(&okDeMemoria);
+		break;
+	}
 	case DEREFERENCIAR: {
 		memcpy(&valorDerenferenciado, paquete, 4);
 		sem_post(&semDereferenciar);
@@ -219,52 +220,65 @@ t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
 }
 
 t_puntero dummy_obtenerPosicionVariable(t_nombre_variable nombreVariable) {
-    printf("Obtener posicion de %c\n", nombreVariable);
-    int posicionStack= unPcb->tamanoIndiceStack-1;
-    int direccionRetorno;
-    variable *variableNueva;
-    int posMax= (((indiceDeStack*)(list_get(unPcb->indiceStack, posicionStack)))->tamanoVars)-1;
-    while(posMax>=0){
-        variableNueva=((variable*)(list_get(((indiceDeStack*)(list_get(unPcb->indiceStack, posicionStack)))->vars, posMax)));
-        printf("Variable: %c\n", variableNueva->etiqueta);
-        if(variableNueva->etiqueta==nombreVariable){
-            direccionRetorno = convertirDireccionAPuntero(((variable*)(list_get(((indiceDeStack*)(list_get(unPcb->indiceStack, posicionStack)))->vars, posMax)))->direccion);
-            printf("Obtengo valor de %c: %d %d %d\n", variableNueva->etiqueta, variableNueva->direccion->pag, variableNueva->direccion->off, variableNueva->direccion->size);
-            return(direccionRetorno);
-        }
-        posMax--;
-    }
+	printf("Obtener posicion de %c\n", nombreVariable);
+	int posicionStack = unPcb->tamanoIndiceStack - 1;
+	int direccionRetorno;
+	variable *variableNueva;
+	int posMax =
+			(((indiceDeStack*) (list_get(unPcb->indiceStack, posicionStack)))->tamanoVars)
+					- 1;
+	while (posMax >= 0) {
+		variableNueva =
+				((variable*) (list_get(
+						((indiceDeStack*) (list_get(unPcb->indiceStack,
+								posicionStack)))->vars, posMax)));
+		printf("Variable: %c\n", variableNueva->etiqueta);
+		if (variableNueva->etiqueta == nombreVariable) {
+			direccionRetorno =
+					convertirDireccionAPuntero(
+							((variable*) (list_get(
+									((indiceDeStack*) (list_get(
+											unPcb->indiceStack, posicionStack)))->vars,
+									posMax)))->direccion);
+			printf("Obtengo valor de %c: %d %d %d\n", variableNueva->etiqueta,
+					variableNueva->direccion->pag,
+					variableNueva->direccion->off,
+					variableNueva->direccion->size);
+			return (direccionRetorno);
+		}
+		posMax--;
+	}
 }
 
 void dummy_finalizar(void) {
-    printf("Finalizar\n");
+	printf("Finalizar\n");
 }
 
 bool terminoElPrograma(void) {
-    return false;
+	return false;
 }
 
 t_valor_variable dummy_dereferenciar(t_puntero puntero) {
-    posicionMemoria *direccion= malloc(sizeof(posicionMemoria));
-    convertirPunteroADireccion(puntero, direccion);
-    enviarDirecParaLeerMemoria(direccion, DEREFERENCIAR);
-    sem_wait(&semDereferenciar);
-    free(direccion);
-    printf("Dereferenciar %d y su valor es: %d\n", puntero, valorDerenferenciado);
-    return valorDerenferenciado;
+	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
+	convertirPunteroADireccion(puntero, direccion);
+	enviarDirecParaLeerMemoria(direccion, DEREFERENCIAR);
+	sem_wait(&semDereferenciar);
+	free(direccion);
+	printf("Dereferenciar %d y su valor es: %d\n", puntero,
+			valorDerenferenciado);
+	return valorDerenferenciado;
 }
 
 void dummy_asignar(t_puntero punteroAVariable, t_valor_variable valor) {
-    printf("Asignando en %d el valor %d\n", punteroAVariable, valor);
-    posicionMemoria *direccion= malloc(sizeof(posicionMemoria));
-    convertirPunteroADireccion(punteroAVariable, direccion);
-    //ARREGLAR INAKI
-    enviarDirecParaEscribirMemoria(direccion, valor);
-    //falta el semaforo de ok
-    free(direccion);
-    return;
+	printf("Asignando en %d el valor %d\n", punteroAVariable, valor);
+	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
+	convertirPunteroADireccion(punteroAVariable, direccion);
+	//ARREGLAR INAKI
+	enviarDirecParaEscribirMemoria(direccion, valor);
+	//falta el semaforo de ok
+	free(direccion);
+	return;
 }
-
 
 void armarDireccionPrimeraPagina(posicionMemoria *direccionReal) {
 	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
@@ -359,70 +373,70 @@ int convertirDireccionAPuntero(posicionMemoria* direccion) {
 	return direccion_real;
 }
 
-void convertirPunteroADireccion(int puntero, posicionMemoria* direccion){
-	if(tamanoPag>puntero){
-			direccion->pag=0;
-				direccion->off=puntero;
-					direccion->size=4;
-			direccion->pag = (puntero/tamanoPag);
-			direccion->off = puntero%tamanoPag;
-			direccion->size=4;
+void convertirPunteroADireccion(int puntero, posicionMemoria* direccion) {
+	if (tamanoPag > puntero) {
+		direccion->pag = 0;
+		direccion->off = puntero;
+		direccion->size = 4;
+	} else {
+		direccion->pag = (puntero / tamanoPag);
+		direccion->off = puntero % tamanoPag;
+		direccion->size = 4;
 	}
 	return;
 }
 
-
 void crearEstructuraParaMemoria(programControlBlock* unPcb, int tamPag,
-		posicionMemoria* informacion) {
+	posicionMemoria* informacion) {
 
-	posicionMemoria* info = malloc(sizeof(posicionMemoria));
-	info->pag = ceil(
-			(double) unPcb->indiceCodigo[(unPcb->programCounter) * 2]
-					/ (double) tamPag);
-	printf("Voy a leer la pagina: %d\n", info->pag);
-	info->off = (unPcb->indiceCodigo[((unPcb->programCounter) * 2)] % tamPag);
-	printf("Voy a leer con offswet: %d\n", info->off);
-	info->size = unPcb->indiceCodigo[((unPcb->programCounter) * 2) + 1];
-	printf("Voy a leer el tamano: %d\n", info->size);
-	memcpy(informacion, info, 12);
-	free(info);
-	return;
+posicionMemoria* info = malloc(sizeof(posicionMemoria));
+info->pag = ceil(
+		(double) unPcb->indiceCodigo[(unPcb->programCounter) * 2]
+				/ (double) tamPag);
+printf("Voy a leer la pagina: %d\n", info->pag);
+info->off = (unPcb->indiceCodigo[((unPcb->programCounter) * 2)] % tamPag);
+printf("Voy a leer con offswet: %d\n", info->off);
+info->size = unPcb->indiceCodigo[((unPcb->programCounter) * 2) + 1];
+printf("Voy a leer el tamano: %d\n", info->size);
+memcpy(informacion, info, 12);
+free(info);
+return;
 }
 
 char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
-	if ((tamanio + offset) <= 20) {
-		posicionMemoria *datos_para_memoria = malloc(sizeof(posicionMemoria));
-		datos_para_memoria->off = offset;
-		datos_para_memoria->pag = pagina;
-		datos_para_memoria->size = tamanio;
-		enviarDirecParaLeerMemoria(datos_para_memoria, VARIABLELEER);
-		sem_wait(&semInstruccion);
-		char* sentencia2 = malloc(datos_para_memoria->size);
-		memcpy(sentencia2, instruccionLeida, datos_para_memoria->size);
-		free(datos_para_memoria);
-		if (flag == 0)
-			sem_post(&semSentenciaCompleta);
-		return sentencia2;
-	} else {
-		int tamano1 = tamanoPag - offset;
-		int tamano2 = tamanio - tamano1;
-		char* lectura1 = leerSentencia(pagina, offset, tamano1, 1);
-		if (lectura1 == NULL)
-			return NULL;
-		char* lectura2 = leerSentencia(pagina + 1, 0, tamano2, 1);
-		if (lectura2 == NULL)
-			return NULL;
-
-		char* nuevo = malloc((20 - offset) + tamanio - (20 - offset));
-		memcpy(nuevo, lectura1, (20 - offset));
-		memcpy(nuevo + (20 - offset), lectura2, tamanio - (20 - offset));
-		free(lectura1);
-		free(lectura2);
+if ((tamanio + offset) <= 20) {
+	posicionMemoria *datos_para_memoria = malloc(sizeof(posicionMemoria));
+	datos_para_memoria->off = offset;
+	datos_para_memoria->pag = pagina;
+	datos_para_memoria->size = tamanio;
+	enviarDirecParaLeerMemoria(datos_para_memoria, VARIABLELEER);
+	sem_wait(&semInstruccion);
+	char* sentencia2 = malloc(datos_para_memoria->size);
+	memcpy(sentencia2, instruccionLeida, datos_para_memoria->size);
+	free(datos_para_memoria);
+	if (flag == 0)
 		sem_post(&semSentenciaCompleta);
-		return nuevo;
-	}
-	char * lecturaMemoria = malloc(12);
-	return lecturaMemoria;
+	return sentencia2;
+} else {
+	int tamano1 = tamanoPag - offset;
+	int tamano2 = tamanio - tamano1;
+	char* lectura1 = leerSentencia(pagina, offset, tamano1, 1);
+	if (lectura1 == NULL)
+		return NULL;
+	char* lectura2 = leerSentencia(pagina + 1, 0, tamano2, 1);
+	if (lectura2 == NULL)
+		return NULL;
+
+	char* nuevo = malloc((20 - offset) + tamanio - (20 - offset));
+	memcpy(nuevo, lectura1, (20 - offset));
+	memcpy(nuevo + (20 - offset), lectura2, tamanio - (20 - offset));
+	free(lectura1);
+	free(lectura2);
+	sem_post(&semSentenciaCompleta);
+	return nuevo;
+}
+char * lecturaMemoria = malloc(12);
+return lecturaMemoria;
 }
 
 char* procesarSentencia() {
