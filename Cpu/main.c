@@ -19,7 +19,10 @@ sem_t semProcesar;
 sem_t semInstruccion;
 sem_t semSentenciaCompleta;
 sem_t semHayScript;
+sem_t okDeMemoria;
+sem_t semDereferenciar;
 int noInteresa;
+int valorDerenferenciado;
 char * instruccionLeida;
 AnSISOP_funciones primitivas = { .AnSISOP_definirVariable =
 		dummy_definirVariable, .AnSISOP_obtenerPosicionVariable =
@@ -35,19 +38,6 @@ int32_t main(int argc, char**argv) {
 	pthread_create(&hiloMemoria, NULL, conectarConMemoria, NULL);
 	pthread_create(&hiloProcesarScript, NULL, procesarScript, NULL);
 
-	/*char* sentencia = "begin";
-	 analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
-	 char* sentencia = "variables a, b";
-	 analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
-	 sentencia = "a = 3";
-	 analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
-	 sentencia = "b = 5";
-	 analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
-	 sentencia = "a = b + 12";
-	 analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
-	 sentencia = "end";
-	 analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
-	 */
 	pthread_join(hiloKernel, NULL);
 	pthread_join(hiloMemoria, NULL);
 	pthread_join(hiloProcesarScript, NULL);
@@ -60,6 +50,8 @@ void Configuracion(char* dir) {
 	sem_init(&semSentenciaCompleta, 0, 0);
 	sem_init(&semInstruccion, 0, 0);
 	sem_init(&semHayScript, 0, 0);
+	sem_init(&okDeMemoria, 0, 0);
+	sem_init(&semDereferenciar, 0, 0);
 }
 
 int32_t conectarConMemoria() {
@@ -137,6 +129,15 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		instruccionLeida = malloc(tamanoPaquete);
 		memcpy(instruccionLeida, paquete, tamanoPaquete);
 		sem_post(&semInstruccion);
+		break;
+	}
+	case VARIABLEESCRIBIR: {
+			sem_post(&okDeMemoria);
+			break;
+		}
+	case DEREFERENCIAR: {
+		memcpy(&valorDerenferenciado, paquete, 4);
+		sem_post(&semDereferenciar);
 		break;
 	}
 	case PCB: {
@@ -246,22 +247,20 @@ bool terminoElPrograma(void) {
 t_valor_variable dummy_dereferenciar(t_puntero puntero) {
     posicionMemoria *direccion= malloc(sizeof(posicionMemoria));
     convertirPunteroADireccion(puntero, direccion);
-    enviarDirecParaLeerMemoria(direccion);
+    enviarDirecParaLeerMemoria(direccion, DEREFERENCIAR);
+    sem_wait(&semDereferenciar);
     free(direccion);
-    paquete *unPaquete; //=malloc(sizeof(t_paquete));
-    unPaquete = Deserializar(clienteMEM);
-    int valor;
-    memcpy(&valor, unPaquete->package, 4);
-    //liberarPaquete(unPaquete);
-    printf("Dereferenciar %d y su valor es: %d\n", puntero, 20);
-    return valor;
+    printf("Dereferenciar %d y su valor es: %d\n", puntero, valorDerenferenciado);
+    return valorDerenferenciado;
 }
 
 void dummy_asignar(t_puntero punteroAVariable, t_valor_variable valor) {
     printf("Asignando en %d el valor %d\n", punteroAVariable, valor);
     posicionMemoria *direccion= malloc(sizeof(posicionMemoria));
     convertirPunteroADireccion(punteroAVariable, direccion);
+    //ARREGLAR INAKI
     enviarDirecParaEscribirMemoria(direccion, valor);
+    //falta el semaforo de ok
     free(direccion);
     return;
 }
@@ -332,13 +331,13 @@ void enviarDirecParaEscribirMemoria(posicionMemoria* direccion, int valor) {
 			((int*) (variableAEnviar))[2], ((int*) (variableAEnviar))[3]);
 	Serializar(VARIABLEESCRIBIR, 16, variableAEnviar, clienteMEM);
 	free(variableAEnviar);
-	paquete * paquetin;
-	paquetin = Deserializar(clienteMEM);
+	//paquete * paquetin;
+	//paquetin = Deserializar(clienteMEM);
 	//liberarPaquete(paquetin);
 
 }
 
-void enviarDirecParaLeerMemoria(posicionMemoria* direccion) {
+void enviarDirecParaLeerMemoria(posicionMemoria* direccion, int header) {
 	char * variableALeer = malloc(12);
 	memcpy(variableALeer, &direccion->pag, 4);
 	memcpy(variableALeer + 4, &direccion->off, 4);
@@ -346,7 +345,7 @@ void enviarDirecParaLeerMemoria(posicionMemoria* direccion) {
 	printf("Quiero leer en la direccion: %d %d %d\n",
 			((int*) (variableALeer))[0], ((int*) (variableALeer))[1],
 			((int*) (variableALeer))[2]);
-	Serializar(VARIABLELEER, 12, variableALeer, clienteMEM);
+	Serializar(header, 12, variableALeer, clienteMEM);
 	free(variableALeer);
 
 }
@@ -396,7 +395,7 @@ char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
 		datos_para_memoria->off = offset;
 		datos_para_memoria->pag = pagina;
 		datos_para_memoria->size = tamanio;
-		enviarDirecParaLeerMemoria(datos_para_memoria);
+		enviarDirecParaLeerMemoria(datos_para_memoria, VARIABLELEER);
 		sem_wait(&semInstruccion);
 		char* sentencia2 = malloc(datos_para_memoria->size);
 		memcpy(sentencia2, instruccionLeida, datos_para_memoria->size);

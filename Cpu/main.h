@@ -35,10 +35,10 @@ void dummy_finalizar(void);
 char* depurarSentencia(char*);
 char* leerSentencia(int , int , int, int );
 int primeraPagina();
-void procesar(char * paquete, int32_t id, int32_t tamanoPaquete);
-void enviarDirecParaLeerMemoria(posicionMemoria* direccion);
-void convertirPunteroADireccion(int puntero, posicionMemoria* direccion);
-int convertirDireccionAPuntero(posicionMemoria* direccion);
+void procesar(char * , int32_t , int32_t );
+void enviarDirecParaLeerMemoria(posicionMemoria* , int);
+void convertirPunteroADireccion(int , posicionMemoria* );
+int convertirDireccionAPuntero(posicionMemoria* );
 bool terminoElPrograma(void);
 void procesarScript();
 
