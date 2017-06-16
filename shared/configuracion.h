@@ -53,6 +53,7 @@ typedef struct{
 		char** SEM_IDS; //ojo memoria
 		char** SEM_INIT;
 		char** SHARED_VARS;
+		char** SHARED_VARS_INIT;
 		int32_t STACK_SIZE;
 }archivoConfigKernel;
 

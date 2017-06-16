@@ -33,6 +33,7 @@ t_queue* colaExec;
 t_queue* colaBlock;
 t_queue* colaExit;
 t_queue* colaCpu;
+t_queue** colas_semaforos;
 sem_t gradoMultiprogramacion;
 sem_t semUnScript;
 sem_t semNew;
@@ -57,6 +58,7 @@ pthread_t hiloConexionFS;
 pthread_t hiloConexionMemoria;
 int noInteresa;
 t_log * logger;
+datosHeap tablaHeap[100];
 
 int32_t main(int argc, char**argv) {
 	logger = log_create("KERNEL.log", "KERNEL", 0, LOG_LEVEL_INFO);
@@ -97,6 +99,15 @@ void configuracion(char*dir) {
 	colaExit = queue_create();
 	colaCpu = queue_create();
 	colaCodigosAMemoria = queue_create();
+	colas_semaforos = malloc(
+			strlen((char*) t_archivoConfig->SEM_INIT) * sizeof(char*));
+
+	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_INIT) / sizeof(char*);
+			i++) {
+
+		colas_semaforos[i] = malloc(sizeof(t_queue*));
+		colas_semaforos[i] = queue_create();
+	}
 }
 int32_t conectarConMemoria() {
 	llenarSocketAdrrConIp(&direccionMem, t_archivoConfig->IP_MEMORIA,
@@ -451,4 +462,142 @@ proceso* sacarProcesoDeEjecucion(int sock) {
 	printf("NO HAY PROCESO\n");
 	exit(0);
 	return NULL;
+}
+
+int *pideSemaforo(char *semaforo) {
+	int i;
+	//printf("NUCLEO: pide sem %s\n", semaforo);
+
+	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
+			i++) {
+		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
+
+			//if (config_nucleo->VALOR_SEM[i] == -1) {return &config_nucleo->VALOR_SEM[i];}
+			//config_nucleo->VALOR_SEM[i]--;
+			return (&t_archivoConfig->SEM_INIT[i]);
+		}
+	}
+	printf("No encontre SEM id, exit\n");
+	exit(0);
+}
+
+void escribeSemaforo(char *semaforo, int valor) {
+	int i;
+	//printf("NUCLEO: pide sem %s\n", semaforo);
+
+	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
+			i++) {
+		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
+
+			//if (config_nucleo->VALOR_SEM[i] == -1) {return &config_nucleo->VALOR_SEM[i];}
+			t_archivoConfig->SEM_INIT[i] = valor;
+			return;
+		}
+	}
+	printf("No encontre SEM id, exit\n");
+	exit(0);
+}
+
+int *pideVariable(char *variable) {
+	int i;
+	log_info(logger, "NUCLEO: pide variable %s", variable);
+	for (i = 0;
+			i < strlen((char*) t_archivoConfig->SHARED_VARS) / sizeof(char*);
+			i++) {
+		//TODO: mutex confignucleo
+		if (strcmp((char*) t_archivoConfig->SHARED_VARS[i], variable) == 0) {
+			return &t_archivoConfig->SHARED_VARS_INIT[i];
+		}
+	}
+	printf("No encontre variable %s %d id, exit\n", variable, strlen(variable));
+	exit(0);
+}
+
+void escribeVariable(char *variable) {
+	int *valor = (int*) variable;
+	variable += 4;
+	int i;
+	for (i = 0;
+			i < strlen((char*) t_archivoConfig->SHARED_VARS) / sizeof(char*);
+			i++) {
+		if (strcmp((char*) t_archivoConfig->SHARED_VARS[i], variable) == 0) {
+			//printf("ASIGNO%d\n",*valor);
+			memcpy(&t_archivoConfig->SHARED_VARS_INIT[i], valor, sizeof(int));
+			return;
+		}
+	}
+	printf("No encontre VAR %s id, exit\n", variable);
+	exit(0);
+
+}
+
+void liberaSemaforo(char *semaforo) {
+	int i;
+	proceso *proceso;
+
+	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
+			i++) {
+		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
+
+			if (list_size(colas_semaforos[i]->elements)) {
+				proceso = queue_pop(colas_semaforos[i]);
+				pthread_mutex_lock(&mutexColaReady);
+				queue_push(colaReady, proceso);
+				pthread_mutex_unlock(&mutexColaReady);
+				sem_post(&semReady);
+			} else {
+
+				t_archivoConfig->SEM_INIT[i]++;
+			}
+
+			return;
+			/*
+			 config_nucleo->VALOR_SEM[i]++;
+			 printf("VALRO SEM %d\n",config_nucleo->VALOR_SEM[i]);
+			 if (proceso = queue_pop(colas_semaforos[i])) {
+			 //config_nucleo->VALOR_SEM[i]--;
+			 queue_push(cola_ready, proceso);
+			 sem_post(&sem_ready);
+			 }
+			 return;
+			 */
+		}
+	}
+	printf("No encontre SEM id, exit\n");
+	exit(0);
+}
+
+void bloqueoSemaforo(proceso *proceso, char *semaforo) {
+	int i;
+
+	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
+			i++) {
+		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
+
+			queue_push(colas_semaforos[i], proceso);
+			return;
+
+		}
+	}
+	printf("No encontre SEM id, exit\n");
+	exit(0);
+}
+
+t_puntero reservarMemoria(int pid, int tamano) {
+	int pagina;
+	t_puntero puntero;
+	if (tamano < MARCOS_SIZE - 10) {
+		pagina = existePaginaParaPidConEspacio(pid, tamano)
+		if (pagina) {
+			puntero = pedirAMemoriaElPunteroDeLaPaginaDondeEStaLibre(pagina,
+					tamano);
+			actualizarTamanioOcupado(pagina, tamanio);
+			defragmentar (pagina)
+		} else {
+			puntero = pedirAMemoriaUnaPaginaPara(pid, tamano, &pagina);
+			guardarPaginaENTabla(pagina, pid, tamano)
+
+		}
+	}
+	return puntero;
 }

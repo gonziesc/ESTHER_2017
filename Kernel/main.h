@@ -37,6 +37,18 @@ typedef struct {
   int socket;
 } script;
 
+typedef struct {
+  int tamanoDisponible;
+  int pid;
+  int numeroPagina;
+} datosHeap;
+
+typedef struct {
+int size;
+bool isFree;
+}HeapMetadata;
+
+
 void configuracion(char*);
 void planificadorLargoPlazo();
 int32_t conectarConMemoria();
