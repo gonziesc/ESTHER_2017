@@ -19,7 +19,7 @@ cacheLru* punteroUsos;
 int32_t frameCache=0;
 frame frameGeneral;
 int32_t tamanoFrame;
-
+cacheLru nodoUso;
 //infoTablaMemoria tablaMemoria[500];
 infoTablaMemoria* punteroMemoria;
 int32_t indiceTabla = 0;
@@ -523,13 +523,16 @@ void almacenarFrameEnCache(int32_t pid, int32_t tamanioBuffer, char* buffer, int
 	nodoCache.pid = pid;
 	nodoCache.numeroPagina = pagina;
 	nodoCache.inicioContenido = t_archivoConfig->MARCOS_SIZE * indiceCache;
-
+	nodoUso.pid = pid;
+	nodoUso.pagina = pagina;
+	nodoUso.uso = 0;
 	if(entradasCache < t_archivoConfig->ENTRADAS_CACHE){
 			if (buscarPidCache(pid)==0) {
 
 				memcpy(cache1.punteroDisponible,buffer,tamanioBuffer);
 				entradasPid =0;
 				punteroCache[indiceCache] = nodoCache;
+				punteroUsos[indiceCache] = nodoUso;
 				indiceCache++;
 				entradasPid++;
 				entradasCache++;
@@ -662,7 +665,7 @@ void remplazoLru(infoNodoCache nodoCache, char* contenido){
 	cacheLru menosUsado = punteroUsos[0];
 	int32_t posicionCache;
 	posicionCache= buscarNodoCache(menosUsado.pid,menosUsado.pagina);
-	for(i = posicionCache+1; i<=500; i++){
+	for(i = posicionCache+1; i<=t_archivoConfig->ENTRADAS_CACHE; i++){
 	    punteroCache[i-1] = punteroCache[i];
 	}
 	memcpy(cache1.punteroDisponible+posicionCache, contenido, t_archivoConfig->MARCOS_SIZE);
