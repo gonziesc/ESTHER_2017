@@ -335,11 +335,18 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semCpu);
 		break;
 	}
-	case PUNTEROPAGINAHEAP: case ESCRITURAPAGINA: {
+	case PUNTEROPAGINAHEAP:
+	case ESCRITURAPAGINA: {
 		punteroPaginaHeap = malloc(tamanoPaquete);
 		memcpy(punteroPaginaHeap, paquete, tamanoPaquete);
 		sem_post(&semPunteroPaginaHeap);
 		break;
+	}
+	case MATARPIDPORCONSOLA: {
+		int pid;
+		char* fechaFIn = temporal_get_string_time();
+		memcpy(&pid, paquete, sizeof(int));
+		abortarProgramaPorConsola(pid);
 	}
 		//procesar pid muerto
 		//semaforear los procesar
@@ -633,7 +640,8 @@ t_puntero reservarMemoria(int pid, int tamano) {
 		pagina = existePaginaParaPidConEspacio(pid, tamano);
 		if (pagina) {
 			pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(pagina, pid);
-			offset = actualizarPaginaEnMemoria(punteroPaginaHeap, pid, pagina, tamano); //actualiza tabla, actualiza mem
+			offset = actualizarPaginaEnMemoria(punteroPaginaHeap, pid, pagina,
+					tamano); //actualiza tabla, actualiza mem
 		} else {
 			HeapMetaData* heapLibre = malloc(sizeof(HeapMetaData));
 			heapLibre->isFree = true;
@@ -766,12 +774,118 @@ int actualizarPaginaEnMemoria(char* pagina, int pid, int numeroPagina,
 	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
 			estructuraAEscribir2, clienteMEM);
 	sem_wait(&semPunteroPaginaHeap);
-	return corriendoPagina +5;
+	return corriendoPagina + 5;
 }
 
-void liberarMemoria(int pid, t_puntero unaDireccion){
+void liberarMemoria(int pid, t_puntero unaDireccion) {
 	//ANTES: GUARDAR PUNTERO y posicion real (offset en la pagina) EN DATOS HEAP como lista
 	//traerme esa pagina
 	//buscar en donde est'a ese puntero
 	//defragmentar..
+}
+
+void abortar(proceso *proceso, int exitCode) {
+	proceso->pcb->exitCode = exitCode;
+	pthread_mutex_lock(&mutexColaExit);
+	destruirCONTEXTO(proceso->pcb);
+	queue_push(colaExit, proceso);
+	pthread_mutex_unlock(&mutexColaExit);
+	//TODO : liberar recursos de memoria
+}
+
+void abortarProgramaPorConsola(int pid) {
+	proceso* unProceso;
+	bool esMiPid(void * entrada) {
+		proceso * unproceso = (proceso *) entrada;
+		return unproceso->pcb->programId == pid;
+	}
+	pthread_mutex_lock(&mutexColaReady);
+	unProceso = (proceso*) list_remove_by_condition(colaReady->elements,
+			esMiPid);
+	pthread_mutex_unlock(&mutexColaReady);
+	if (unProceso != NULL) {
+		log_info(logger, "NUCLEO: Abortado x consola, en ready. Pre wait");
+		sem_post(&semCpu);
+		log_info(logger, "NUCLEO: post wait");
+		abortar(unProceso, codeFinalizarPrograma);
+	} else {
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = (proceso*) list_find(colaExec->elements, esMiPid);
+		pthread_mutex_unlock(&mutexColaEx);
+
+		if (unProceso != NULL) {
+			pthread_mutex_lock(&mutexColaEx);
+			unProceso = (proceso*) list_remove_by_condition(colaExec->elements,
+					esMiPid);
+			pthread_mutex_unlock(&mutexColaEx);
+			abortar(unProceso, codeFinalizarPrograma);
+			//TODO esperar a que termine
+			log_info(logger,
+					"NUCLEO: Abortado x consola, en exec, espero que termine de trabajar");
+			unProceso->abortado = true;
+		} else {
+			int i;
+			for (i = 0;
+					i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
+					i++) {
+
+				unProceso = (proceso*) list_remove_by_condition(
+						colas_semaforos[i]->elements, esMiPid);
+				if (unProceso != NULL)
+					break;
+
+			}
+			if (unProceso != NULL) {
+				log_info(logger, "NUCLEO: Abortado x consola, en semaforo");
+				abortar(unProceso, codeFinalizarPrograma);
+
+			}
+		}
+	}
+}
+
+void destruirCONTEXTO(programControlBlock *pcb) {
+
+	indiceDeStack *stackADestruir;
+	while (pcb->tamanoIndiceStack != 0) {
+		stackADestruir = list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1);
+
+		while (stackADestruir->tamanoVars != 0) {
+
+			posicionMemoria*temp = (((variable*) list_get(stackADestruir->vars,
+					stackADestruir->tamanoVars - 1))->direccion);
+			free(temp);
+			free(
+					list_get(stackADestruir->vars,
+							stackADestruir->tamanoVars - 1));
+			stackADestruir->tamanoVars--;
+		}
+		while (stackADestruir->tamanoArgs != 0) {
+			free(
+					(posicionMemoria*) list_get(stackADestruir->args,
+							stackADestruir->tamanoArgs - 1));
+			stackADestruir->tamanoArgs--;
+		}
+		list_destroy(stackADestruir->vars);
+
+		list_destroy(stackADestruir->args);
+
+		free(list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1));
+
+		pcb->tamanoIndiceStack--;
+	}
+	list_destroy(pcb->indiceStack);
+
+	free(pcb->indiceCodigo);
+
+	free(pcb->indiceEtiquetas);
+
+}
+
+
+void destruirPCB(programControlBlock *pcb) {
+
+destruirCONTEXTO(pcb);
+free(pcb);
+
 }

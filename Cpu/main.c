@@ -143,6 +143,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	case PCB: {
 		unPcb = deserializarPCB(paquete);
+		sleep(10000);
 		printf("unPcb id: %d\n", unPcb->programId);
 		sem_post(&semHayScript);
 		break;

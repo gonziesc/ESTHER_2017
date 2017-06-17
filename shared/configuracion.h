@@ -30,8 +30,25 @@ typedef enum {
 	PUNTEROPAGINAHEAP = 20,
 	DEREFERENCIAR = 21,
 	PIDOPAGINAHEAP = 22,
-	ESCRITURAPAGINA = 23
+	ESCRITURAPAGINA = 23,
+	FINALIZOPROGRAMA = 24,
+	IMPRESIONPORCONSOLA = 25
 } codigosSerializador;
+
+typedef enum {
+	codeFinalizoCorrectamente = 0,
+	codeFaltanRecursos = -1,
+	codeArchivoNoexiste = -2,
+	codeLeerSinPermisos = -3,
+	codeEscribirSinPermisos = -4,
+	codeExcepcionMemoria = -5,
+	codeDesconexionConsola = -6,
+	codeFinalizarPrograma = -7,
+	codeMasMemoriaQuePaginas = -8,
+	codeNoSePuedeAsignarMasPaginas = -9,
+	codeDesconocido = -20
+
+}exitCode;
 
 typedef struct{
 	int32_t PUERTO;

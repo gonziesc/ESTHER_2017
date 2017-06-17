@@ -5,6 +5,7 @@
 #include<stdlib.h>
 #include <string.h>
 #include <commons/config.h>
+#include <commons/temporal.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <unistd.h>
@@ -15,10 +16,13 @@
 #include <pthread.h>
 #include <serializador.h>
 #include <parser/metadata_program.h>
+#include <semaphore.h>
 
 typedef struct{
 	int PID;
 	int identificadorHilo;
+	char* horaInicio;
+	int cantidadDeImpresiones;
 }ProcesosActuales;
 
 void Configuracion(char *);
@@ -26,7 +30,9 @@ int32_t ConectarseConKernel();
 void crearNuevoProceso();
 int abrirYLeerArchivo(char*, char*);
 void leerComando();
-
+ProcesosActuales buscarProceso(int );
+void matarTodosLosProcesos();
+void imprimioProceso(int);
 
 
 
