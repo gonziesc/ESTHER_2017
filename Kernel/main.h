@@ -67,6 +67,7 @@ void guardarPaginaEnTabla(int, int, int);
 int actualizarPaginaEnMemoria(char*, int, int, int);
 int crearPaginaEnMemoria( int, int, int);
 void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int, int) ;
+void abortarProgramaPorConsola(int);
 
 
 #endif
