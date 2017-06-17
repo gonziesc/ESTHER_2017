@@ -17,6 +17,7 @@ struct sockaddr_in direccionMem;
 int32_t clienteMEM;
 char* buffer;
 char* punteroPaginaHeap;
+char* nuevaPaginaHeap;
 char buf[3];    // buffer para datos del cliente
 int32_t servidor;
 int32_t MARCOS_SIZE;
@@ -61,6 +62,7 @@ pthread_t hiloConexionMemoria;
 int noInteresa;
 t_log * logger;
 datosHeap tablaHeap[100];
+int indiceLibreHeap = 0;
 
 int32_t main(int argc, char**argv) {
 	logger = log_create("KERNEL.log", "KERNEL", 0, LOG_LEVEL_INFO);
@@ -490,7 +492,7 @@ void modificarCantidadDePaginas(int pid) {
 	int a = 0, t;
 	proceso *procesoABuscar;
 	while (procesoABuscar = (proceso*) list_get(colaExec->elements, a)) {
-		if (procesoABuscar->pcb->programId == pid){
+		if (procesoABuscar->pcb->programId == pid) {
 			procesoABuscar->pcb->cantidadDePaginas++;
 			list_replace(colaExec->elements, a, procesoABuscar);
 		}
@@ -622,7 +624,7 @@ void bloqueoSemaforo(proceso *proceso, char *semaforo) {
 t_puntero reservarMemoria(int pid, int tamano) {
 	int pagina;
 	t_puntero puntero;
-	proceso* proceso= buscarProcesoEnEjecucion(pid);
+	proceso* proceso = buscarProcesoEnEjecucion(pid);
 	if (tamano < MARCOS_SIZE - 10) {
 		HeapMetaData* heapOcupado = malloc(sizeof(HeapMetaData));
 		heapOcupado->isFree = false;
@@ -634,11 +636,13 @@ t_puntero reservarMemoria(int pid, int tamano) {
 		} else {
 			HeapMetaData* heapLibre = malloc(sizeof(HeapMetaData));
 			heapLibre->isFree = true;
-			heapLibre->size = MARCOS_SIZE - 2*sizeof(HeapMetaData) - tamano;
-			pedirAMemoriaUnaPaginaPara(pid, proceso->pcb->cantidadDePaginas + 1); //implementar
+			heapLibre->size = MARCOS_SIZE - 2 * sizeof(HeapMetaData) - tamano;
+			pedirAMemoriaUnaPaginaPara(pid,
+					proceso->pcb->cantidadDePaginas + 1);
 			modificarCantidadDePaginas(pid);
-			guardarPaginaENTabla(pagina, pid, MARCOS_SIZE - 2*sizeof(HeapMetaData) - tamano); //implementar
-			actualizarPaginaEnMemoria(punteroPaginaHeap, pid, pagina, tamano); //implementar
+			guardarPaginaEnTabla(proceso->pcb->cantidadDePaginas + 1, pid,
+					MARCOS_SIZE - 2 * sizeof(HeapMetaData) - tamano);
+			crearPaginaEnMemoria(pid, pagina, tamano);
 		}
 	}
 	return puntero;
@@ -663,12 +667,95 @@ void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int pagina, int pid) {
 	return;
 }
 
-void pedirAMemoriaUnaPaginaPara(int pid, int tamano){
-
+void pedirAMemoriaUnaPaginaPara(int pid, int numeroPagina) {
+	void* envioPedidoPagina = malloc(2 * sizeof(int));
+	memcpy(envioPedidoPagina, pid, sizeof(int));
+	memcpy(envioPedidoPagina + sizeof(int), numeroPagina, sizeof(int));
+	Serializar(PIDOPAGINAHEAP, 2 * sizeof(int), envioPedidoPagina, clienteMEM);
 }
-void guardarPaginaENTabla(int pagina, int pid, int tamano){
-
+void guardarPaginaEnTabla(int pagina, int pid, int tamano) {
+	tablaHeap[indiceLibreHeap].pid = pid;
+	tablaHeap[indiceLibreHeap].numeroPagina = pagina;
+	tablaHeap[indiceLibreHeap].tamanoDisponible = MARCOS_SIZE - tamano;
+	tablaHeap[indiceLibreHeap].cantidadDeAlocaciones = 2;
+	indiceLibreHeap++;
 }
-void actualizarPaginaEnMemoria(char *punteroPaginaHeap, int pid, int pagina, int tamano){
+void crearPaginaEnMemoria(int pid, int pagina, int tamano) {
+	int offset = 0;
+	int tamanoAEnviar = sizeof(HeapMetaData);
+	HeapMetaData* datosAEnviar = malloc(tamanoAEnviar);
+	datosAEnviar->size = tamano;
+	datosAEnviar->isFree = false;
+	void* estructuraAEscribir = malloc(sizeof(int) * 4 + sizeof(HeapMetaData));
+	memcpy(estructuraAEscribir, &pid, sizeof(int));
+	memcpy(estructuraAEscribir, &pagina, sizeof(int));
+	memcpy(estructuraAEscribir, &offset, sizeof(int));
+	memcpy(estructuraAEscribir, &tamanoAEnviar, sizeof(int));
+	memcpy(estructuraAEscribir, datosAEnviar->size, sizeof(int));
+	printf("estoy haciendo bien las cosas?, %d", &datosAEnviar->isFree);
+	memcpy(estructuraAEscribir, &datosAEnviar->isFree, sizeof(_Bool));
+	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
+			estructuraAEscribir, clienteMEM);
+	void* estructuraAEscribir2 = malloc(sizeof(int) * 4 + sizeof(HeapMetaData));
+	datosAEnviar->size = MARCOS_SIZE - tamano - 2 * sizeof(HeapMetaData);
+	datosAEnviar->isFree = true;
+	memcpy(estructuraAEscribir2, &pid, sizeof(int));
+	memcpy(estructuraAEscribir2, &pagina, sizeof(int));
+	memcpy(estructuraAEscribir2, &tamano, sizeof(int));
+	memcpy(estructuraAEscribir2, &tamanoAEnviar, sizeof(int));
+	memcpy(estructuraAEscribir2, datosAEnviar->size, sizeof(int));
+	//OJO CHEQUEAR SI ESTO SE HACE BIEN
+	memcpy(estructuraAEscribir2, &datosAEnviar->isFree, sizeof(_Bool));
+	printf("estoy haciendo bien las cosas?, %d", &datosAEnviar->isFree);
+	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
+			estructuraAEscribir2, clienteMEM);
+}
 
+void actualizarPaginaEnMemoria(char* pagina, int pid, int numeroPagina,
+		int tamano) {
+	int isFree = false;
+	int size = 0;
+	int corriendoPagina = 0;
+	while (isFree == false) {
+		memcpy(pagina + corriendoPagina, &size, sizeof(int));
+		memcpy(pagina + 4 + corriendoPagina, &isFree, sizeof(bool));
+		if (isFree == false) {
+			corriendoPagina += size;
+		}
+	}
+	int tamanoAEnviar = sizeof(HeapMetaData);
+	HeapMetaData* datosAEnviar = malloc(tamanoAEnviar);
+	datosAEnviar->size = tamano;
+	datosAEnviar->isFree = false;
+	void* estructuraAEscribir = malloc(sizeof(int) * 4 + sizeof(HeapMetaData));
+	memcpy(estructuraAEscribir, &pid, sizeof(int));
+	memcpy(estructuraAEscribir, &pagina, sizeof(int));
+	memcpy(estructuraAEscribir, &corriendoPagina, sizeof(int));
+	memcpy(estructuraAEscribir, &tamanoAEnviar, sizeof(int));
+	memcpy(estructuraAEscribir, datosAEnviar->size, sizeof(int));
+	memcpy(estructuraAEscribir, &datosAEnviar->isFree, sizeof(_Bool));
+	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
+			estructuraAEscribir, clienteMEM);
+	int i, tamanoLibre, temOffset;
+	for (i = 0; i <= 100; i++) {
+		if (tablaHeap[i].pid == pid
+				&& tablaHeap[i].numeroPagina == numeroPagina) {
+			tablaHeap[indiceLibreHeap].tamanoDisponible -= sizeof(HeapMetaData)
+					+ tamano;
+			tamanoLibre = tablaHeap[indiceLibreHeap].tamanoDisponible;
+			tablaHeap[indiceLibreHeap].cantidadDeAlocaciones++;
+		}
+	}
+	temOffset = corriendoPagina + tamano;
+	void* estructuraAEscribir2 = malloc(sizeof(int) * 4 + sizeof(HeapMetaData));
+	datosAEnviar->size = tamanoLibre;
+	datosAEnviar->isFree = true;
+	memcpy(estructuraAEscribir2, &pid, sizeof(int));
+	memcpy(estructuraAEscribir2, &pagina, sizeof(int));
+	memcpy(estructuraAEscribir2, &temOffset, sizeof(int));
+	memcpy(estructuraAEscribir2, &tamanoAEnviar, sizeof(int));
+	memcpy(estructuraAEscribir2, datosAEnviar->size, sizeof(int));
+	memcpy(estructuraAEscribir2, &datosAEnviar->isFree, sizeof(_Bool));
+	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
+			estructuraAEscribir2, clienteMEM);
 }

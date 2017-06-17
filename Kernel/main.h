@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <commons/log.h>
+#include <stdbool.h>
 
 typedef struct {
   int socketCPU;
@@ -62,8 +63,10 @@ proceso* sacarProcesoDeEjecucion(int );
 void procesarScript();
 int existePaginaParaPidConEspacio(int, int);
 void pedirAMemoriaUnaPaginaPara(int, int);
-void guardarPaginaENTabla(int, int, int);
+void guardarPaginaEnTabla(int, int, int);
 void actualizarPaginaEnMemoria(char*, int, int, int);
+void crearPaginaEnMemoria( int, int, int);
 void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int, int) ;
+
 
 #endif
