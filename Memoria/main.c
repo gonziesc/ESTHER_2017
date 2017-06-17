@@ -541,6 +541,7 @@ void almacenarFrameEnCache(int32_t pid, int32_t tamanioBuffer, char* buffer, int
 			else if(buscarPidCache(pid)==1 && entradasPid < t_archivoConfig->CACHE_X_PROC){
 				memcpy(cache1.punteroDisponible,buffer,tamanioBuffer);
 				punteroCache[indiceCache] = nodoCache;
+				punteroUsos[indiceCache] = nodoUso;
 				indiceCache++;
 				entradasPid++;
 				entradasCache++;
@@ -608,7 +609,7 @@ void escribirEnCache(int32_t pid, int32_t pagina, int32_t offset,
 
 char* leerDeCache(int32_t pid, int32_t pagina,int32_t offset,int32_t tamano){
 	char* contenido= malloc(tamano);
-	contenido='\0';
+
 	int32_t  offsetContenido;
 	int32_t i;
 		for (i = 0; i <= t_archivoConfig->ENTRADAS_CACHE; i++) {
@@ -617,9 +618,12 @@ char* leerDeCache(int32_t pid, int32_t pagina,int32_t offset,int32_t tamano){
 				offsetContenido = (punteroCache+i)->inicioContenido;
 				(punteroUsos+i)->uso++;
 				memcpy(contenido,cache1.punteroDisponible + offsetContenido+ offset,tamano);
+				return contenido;
 			}
 
+
 		}
+	contenido='\0';
 	return contenido;
 }
 
@@ -677,7 +681,7 @@ void ordenarPorUso(){
 	cacheLru aux;
 	 for(i=0;i<=t_archivoConfig->ENTRADAS_CACHE;i++){
 	        for(x=i+1;x<=t_archivoConfig->ENTRADAS_CACHE-1;x++){
-	        if((punteroUsos+i)->uso < (punteroUsos+x)->uso){
+	        if((punteroUsos+i)->uso > (punteroUsos+x)->uso){
 	            aux=punteroUsos[i];
 	            punteroUsos[i]=punteroUsos[x];
 	           punteroUsos[x]=aux;
