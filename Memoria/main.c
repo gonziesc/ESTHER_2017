@@ -5,7 +5,7 @@ struct sockaddr_in direccionServidor;
 int32_t servidor;
 int32_t activado;
 int32_t cliente;
-int noIMporta;
+int noIMporta =0;
 int32_t header;
 int clienteCpu;
 struct sockaddr_in direccionCliente;
@@ -43,6 +43,8 @@ int32_t idHiloCpu;
 
 pthread_t hiloLeerComando;
 int32_t idHiloLeerComando;
+sem_t semPaginas;
+pthread_mutex_t mutexProcesar;
 
 int32_t main(int argc, char**argv) {
 
@@ -128,8 +130,11 @@ int atenderCpu(int socket) {
 			perror("El chabón se desconectó\n");
 			return 1;
 		}
+		pthread_mutex_lock(&mutexProcesar);
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
 				paqueteRecibido->size, socket);
+
+		pthread_mutex_unlock(&mutexProcesar);
 
 	}
 	return 0;
@@ -142,8 +147,12 @@ int atenderKernel() {
 			perror("El chabón se desconectó\n");
 			return 1;
 		}
+
+		pthread_mutex_lock(&mutexProcesar);
 		procesar(paqueteRecibido->package, paqueteRecibido->header,
 				paqueteRecibido->size, cliente);
+
+		pthread_mutex_unlock(&mutexProcesar);
 
 	}
 	return 0;
@@ -279,7 +288,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		if (paginas > 0) {
 			//if (frameGeneral.tamanioDisponible - (paginas*20) >= 0){
-			Serializar(OK, 4, &noIMporta, socket);
+			int32_t paginasNegativas = -paginas;
+			sem_init(&semPaginas, 0, &paginasNegativas);
+			int i;
+
+			Serializar(ENTRAPROCESO, 4, &noIMporta, socket);
 			//}
 		}
 		break;
@@ -290,15 +303,17 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		char *pagina = malloc(t_archivoConfig->MARCOS_SIZE);
 
 		memcpy(pagina, paquete, t_archivoConfig->MARCOS_SIZE);
-		//pagina[t_archivoConfig->MARCOS_SIZE] = '\0';
+		//pagina[t_archivoConfiheaderg->MARCOS_SIZE] = '\0';
 		memcpy(&pid, paquete + t_archivoConfig->MARCOS_SIZE, sizeof(int));
 		//printf("pagina: %s\n", pagina);
 		//printf("pid: %d\n", pid);
-		Serializar(OK, 4, &noIMporta, socket);
+		Serializar(PAGINAENVIADA, 4, &noIMporta, socket);
 		almacernarPaginaEnFrame(pid, tamanoPaquete, paquete);
+		sem_post(&semPaginas);
 		break;
 	}
 	case VARIABLELEER: {
+		sem_wait(&semPaginas);
 		memcpy(&numero_pagina, paquete, sizeof(int));
 		memcpy(&offset, paquete + sizeof(int), sizeof(int));
 		memcpy(&tamanio, paquete + sizeof(int) * 2, sizeof(int));
@@ -306,12 +321,31 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 							numero_pagina, offset,
 							offset, socket);
 		char * contenido = leerDePagina(1, numero_pagina, offset, tamanio);
+		//TODO HARCODEADO PIDDDDDDDD
 		//printf("lei: %s\n", contenido);
 		Serializar(VARIABLELEER, tamanio, contenido, socket);
 		//ojo pid actual
+		sem_post(&semPaginas);
 		break;
 	}
+	case DEREFERENCIAR: {
+			sem_wait(&semPaginas);
+			memcpy(&numero_pagina, paquete, sizeof(int));
+			memcpy(&offset, paquete + sizeof(int), sizeof(int));
+			memcpy(&tamanio, paquete + sizeof(int) * 2, sizeof(int));
+			printf("Quiero leer en la direccion: %d %d %d y le voy a enviar a socket: %d\n",
+								numero_pagina, offset,
+								offset, socket);
+			char * contenido = leerDePagina(1, numero_pagina, offset, tamanio);
+			//TODO HARCODEADO PIDDDDDDDD
+			//printf("lei: %s\n", contenido);
+			Serializar(DEREFERENCIAR, tamanio, contenido, socket);
+			//ojo pid actual
+			sem_post(&semPaginas);
+			break;
+		}
 	case VARIABLEESCRIBIR: {
+		sem_wait(&semPaginas);
 		memcpy(&numero_pagina, paquete, sizeof(int));
 		memcpy(&offset, paquete + sizeof(int), sizeof(int));
 		memcpy(&tamanio, paquete + sizeof(int) * 2, sizeof(int));
@@ -323,8 +357,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		escribirEnPagina(1, numero_pagina, offset, tamanio, buffer);
 
 
-		Serializar(VARIABLELEER, sizeof(int), &noIMporta, socket);
-
+		Serializar(VARIABLEESCRIBIR, sizeof(int), &noIMporta, socket);
+		sem_post(&semPaginas);
 		free(buffer);
 		break;
 	}
@@ -409,6 +443,7 @@ void size() {
 
 void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 	//SIEMPRE LE TIENE QUE LLEGAR TAMANIO<MARCOS_SIZE OJO
+
 	memcpy(frameGeneral.punteroDisponible, buffer, tamanioBuffer);
 
 	if (pid != pidAnt) {

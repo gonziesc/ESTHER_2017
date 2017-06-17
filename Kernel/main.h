@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <commons/log.h>
+#include <stdbool.h>
 
 typedef struct {
   int socketCPU;
@@ -31,6 +32,25 @@ typedef struct {
 
 } proceso;
 
+typedef struct {
+  int tamano;
+  char* codigo;
+  int socket;
+} script;
+
+typedef struct {
+  int tamanoDisponible;
+  int pid;
+  int numeroPagina;
+  int cantidadDeAlocaciones;
+} datosHeap;
+
+typedef struct {
+int size;
+bool isFree;
+}HeapMetaData;
+
+
 void configuracion(char*);
 void planificadorLargoPlazo();
 int32_t conectarConMemoria();
@@ -40,7 +60,13 @@ char* empaquetarPagina(int, char *, int);
 void ejecutar(proceso* , int );
 void planificadorCortoPlazo();
 proceso* sacarProcesoDeEjecucion(int );
-
+void procesarScript();
+int existePaginaParaPidConEspacio(int, int);
+void pedirAMemoriaUnaPaginaPara(int, int);
+void guardarPaginaEnTabla(int, int, int);
+int actualizarPaginaEnMemoria(char*, int, int, int);
+int crearPaginaEnMemoria( int, int, int);
+void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int, int) ;
 
 
 #endif

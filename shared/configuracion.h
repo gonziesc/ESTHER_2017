@@ -24,7 +24,13 @@ typedef enum {
 	MATARPIDPORCONSOLA = 14,
 	PROGRAMATERMINADO = 15,
 	PROGRAMAABORTADO = 16,
-	DATOSPLANIFICACION = 17
+	DATOSPLANIFICACION = 17,
+	PAGINAENVIADA = 18,
+	ENTRAPROCESO = 19,
+	PUNTEROPAGINAHEAP = 20,
+	DEREFERENCIAR = 21,
+	PIDOPAGINAHEAP = 22,
+	ESCRITURAPAGINA = 23
 } codigosSerializador;
 
 typedef struct{
@@ -51,6 +57,7 @@ typedef struct{
 		char** SEM_IDS; //ojo memoria
 		char** SEM_INIT;
 		char** SHARED_VARS;
+		char** SHARED_VARS_INIT;
 		int32_t STACK_SIZE;
 }archivoConfigKernel;
 

@@ -44,7 +44,7 @@ paquete* Deserializar(int32_t socket) {
 
 }
 
-char *serializarPCB(programControlBlock *unPcb) {
+void serializarPCB(programControlBlock *unPcb,int socket) {
 	int size = 0;
 	char *pcbEntero, *pcbConCodigo;
 	//char *pcbConEtiquetas;
@@ -108,7 +108,7 @@ char *serializarPCB(programControlBlock *unPcb) {
 		}
 
 	}
-	return pcbEntero;
+	Serializar(PCB, unPcb->tamanoTotal, pcbEntero, socket);
 }
 
 programControlBlock *deserializarPCB(char *paquete) {
