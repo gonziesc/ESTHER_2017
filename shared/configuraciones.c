@@ -21,7 +21,7 @@ void configuracionMemoria(archivoConfigMemoria *unArchivo, t_config* config, cha
 		unArchivo->ENTRADAS_CACHE = config_get_int_value(config, "ENTRADAS_CACHE");
 		printf("ENTRADAS_CACHE: %d\n", unArchivo->ENTRADAS_CACHE);
 
-		unArchivo->CACHE_X_PROC = config_get_int_value(config, "CACHE_X_PROG");
+		unArchivo->CACHE_X_PROC = config_get_int_value(config, "CACHE_X_PROC");
 		printf("CACHE_X_PROC: %d\n", unArchivo->CACHE_X_PROC);
 
 		unArchivo->REEMPLAZO_CACHE = config_get_string_value(config, "REEMPLAZO_CACHE");

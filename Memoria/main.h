@@ -36,20 +36,29 @@ typedef struct {
 typedef struct{
 	int32_t tamanio;
 	int32_t tamanioDisponible;
-	//infoNodoCache* tablaCache;
+	char* puntero;
+	char*punteroDisponible;
 }cache;
 
 typedef struct{
 	int32_t pid;
 	int32_t numeroPagina;
-	char* contenido;
+	int32_t inicioContenido;
+
 }infoNodoCache;
+
+typedef struct{
+	int32_t pid;
+	int32_t pagina;
+	int32_t uso;
+}cacheLru;
 
 
 
 void configuracion(char*);
 int32_t levantarConexion();
 void crearFrameGeneral();
+void crearCache();
 void almacernarPaginaEnFrame(int32_t, int32_t, char*);
 void procesar(char *, int32_t , int32_t,int32_t);
 void dump();
@@ -63,8 +72,12 @@ void atenderConexionesCPu();
 void escribirEnPagina(int32_t , int32_t , int32_t , int32_t ,char* );
 void size();
 void liberarPaginaDeProceso(int32_t , int32_t );
-void iniciarCache();
-
-
-
+int32_t buscarPidCache(int32_t);
+void remplazoLru(infoNodoCache,char*);
+int32_t buscarNodoCache(int32_t , int32_t );
+void ordenarPorUso();
+char* leerDeCache(int32_t , int32_t ,int32_t, int32_t );
+void escribirEnCache(int32_t , int32_t , int32_t , int32_t , char* );
+void almacenarFrameEnCache(int32_t , int32_t , char* , int32_t);
+int32_t buscarPosicionContenido(int32_t, int32_t );
 #endif
