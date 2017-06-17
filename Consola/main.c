@@ -18,6 +18,8 @@ pthread_t hiloLeerComando;
 hiloConectarseConKernel;
 ProcesosActuales procesosActuales[100];
 int noInteresa;
+sem_t semPidListo;
+int pidActual;
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
@@ -32,6 +34,7 @@ int32_t main(int argc, char**argv) {
 void Configuracion(char* dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigConsola));
 	configuracionConsola(t_archivoConfig, config, dir);
+	sem_init(&semPidListo, 0, 0);
 }
 int32_t ConectarseConKernel(int noIMporta) {
 	llenarSocketAdrrConIp(&direccionKernel, t_archivoConfig->IP_KERNEL,
@@ -80,6 +83,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("el pid %d imprimio la cantidad de : %d \n", pid,
 				procesoTerminado.cantidadDeImpresiones);
 		break;
+	}
+	case PID: {
+		memcpy(&pidActual, paquete, sizeof(int));
+		sem_post(&semPidListo);
 	}
 	}
 }
@@ -139,15 +146,12 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 	char *contenidoDelArchivo = malloc(1000);
 	int tamano = abrirYLeerArchivo(nombreArchivo, contenidoDelArchivo);
 	Serializar(ARCHIVO, tamano, contenidoDelArchivo, cliente);
-	paquete* paqueteRecibido = Deserializar(cliente);
-	if (paqueteRecibido->header == PID) {
-		int processID;
-		memcpy(&processID, paqueteRecibido->package, 4);
-		procesosActuales[procesosActualesPosicion].PID = processID;
+	sem_wait(&semPidListo);
+		procesosActuales[procesosActualesPosicion].PID = pidActual;
 		procesosActuales[procesosActualesPosicion].horaInicio =
 				temporal_get_string_time();
-		printf("process id: %d\n", processID);
-	}
+		printf("process id: %d\n", pidActual);
+
 
 }
 

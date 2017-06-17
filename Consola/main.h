@@ -16,6 +16,7 @@
 #include <pthread.h>
 #include <serializador.h>
 #include <parser/metadata_program.h>
+#include <semaphore.h>
 
 typedef struct{
 	int PID;

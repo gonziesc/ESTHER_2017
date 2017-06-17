@@ -342,7 +342,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semPunteroPaginaHeap);
 		break;
 	}
-	case FINALIZOPROGRAMA: {
+	case MATARPIDPORCONSOLA: {
 		int pid;
 		char* fechaFIn = temporal_get_string_time();
 		memcpy(&pid, paquete, sizeof(int));
@@ -809,6 +809,38 @@ void abortarProgramaPorConsola(int pid) {
 		log_info(logger, "NUCLEO: post wait");
 		abortar(unProceso, codeFinalizarPrograma);
 	} else {
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = (proceso*) list_find(colaExec->elements, esMiPid);
+		pthread_mutex_unlock(&mutexColaEx);
+
+		if (unProceso != NULL) {
+			pthread_mutex_lock(&mutexColaEx);
+			unProceso = (proceso*) list_remove_by_condition(colaExec->elements,
+					esMiPid);
+			pthread_mutex_unlock(&mutexColaEx);
+			abortar(unProceso, codeFinalizarPrograma);
+			//TODO esperar a que termine
+			log_info(logger,
+					"NUCLEO: Abortado x consola, en exec, espero que termine de trabajar");
+			unProceso->abortado = true;
+		} else {
+			int i;
+			for (i = 0;
+					i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
+					i++) {
+
+				unProceso = (proceso*) list_remove_by_condition(
+						colas_semaforos[i]->elements, esMiPid);
+				if (unProceso != NULL)
+					break;
+
+			}
+			if (unProceso != NULL) {
+				log_info(logger, "NUCLEO: Abortado x consola, en semaforo");
+				abortar(unProceso, codeFinalizarPrograma);
+
+			}
+		}
 	}
 }
 
@@ -816,13 +848,11 @@ void destruirCONTEXTO(programControlBlock *pcb) {
 
 	indiceDeStack *stackADestruir;
 	while (pcb->tamanoIndiceStack != 0) {
-		stackADestruir = list_get(pcb->indiceStack,
-				pcb->tamanoIndiceStack - 1);
+		stackADestruir = list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1);
 
 		while (stackADestruir->tamanoVars != 0) {
 
-			posicionMemoria*temp = (((variable*) list_get(
-					stackADestruir->vars,
+			posicionMemoria*temp = (((variable*) list_get(stackADestruir->vars,
 					stackADestruir->tamanoVars - 1))->direccion);
 			free(temp);
 			free(
@@ -840,12 +870,11 @@ void destruirCONTEXTO(programControlBlock *pcb) {
 
 		list_destroy(stackADestruir->args);
 
-
 		free(list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1));
 
 		pcb->tamanoIndiceStack--;
 	}
-	list_destroy(pcb->tamanoIndiceStack);
+	list_destroy(pcb->indiceStack);
 
 	free(pcb->indiceCodigo);
 
@@ -853,9 +882,10 @@ void destruirCONTEXTO(programControlBlock *pcb) {
 
 }
 
+
 void destruirPCB(programControlBlock *pcb) {
 
-	destruirCONTEXTO(pcb);
-	free(pcb);
+destruirCONTEXTO(pcb);
+free(pcb);
 
 }
