@@ -335,7 +335,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semCpu);
 		break;
 	}
-	case PUNTEROPAGINAHEAP: {
+	case PUNTEROPAGINAHEAP: case ESCRITURAPAGINA: {
 		punteroPaginaHeap = malloc(tamanoPaquete);
 		memcpy(punteroPaginaHeap, paquete, tamanoPaquete);
 		sem_post(&semPunteroPaginaHeap);
@@ -624,6 +624,7 @@ void bloqueoSemaforo(proceso *proceso, char *semaforo) {
 t_puntero reservarMemoria(int pid, int tamano) {
 	int pagina;
 	t_puntero puntero;
+	int offset;
 	proceso* proceso = buscarProcesoEnEjecucion(pid);
 	if (tamano < MARCOS_SIZE - 10) {
 		HeapMetaData* heapOcupado = malloc(sizeof(HeapMetaData));
@@ -632,7 +633,7 @@ t_puntero reservarMemoria(int pid, int tamano) {
 		pagina = existePaginaParaPidConEspacio(pid, tamano);
 		if (pagina) {
 			pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(pagina, pid);
-			actualizarPaginaEnMemoria(punteroPaginaHeap, pid, pagina, tamano); //actualiza tabla, actualiza mem
+			offset = actualizarPaginaEnMemoria(punteroPaginaHeap, pid, pagina, tamano); //actualiza tabla, actualiza mem
 		} else {
 			HeapMetaData* heapLibre = malloc(sizeof(HeapMetaData));
 			heapLibre->isFree = true;
@@ -642,9 +643,10 @@ t_puntero reservarMemoria(int pid, int tamano) {
 			modificarCantidadDePaginas(pid);
 			guardarPaginaEnTabla(proceso->pcb->cantidadDePaginas + 1, pid,
 					MARCOS_SIZE - 2 * sizeof(HeapMetaData) - tamano);
-			crearPaginaEnMemoria(pid, pagina, tamano);
+			offset = crearPaginaEnMemoria(pid, pagina, tamano);
 		}
 	}
+	puntero = (t_puntero) punteroPaginaHeap + offset;
 	return puntero;
 }
 
@@ -672,6 +674,7 @@ void pedirAMemoriaUnaPaginaPara(int pid, int numeroPagina) {
 	memcpy(envioPedidoPagina, pid, sizeof(int));
 	memcpy(envioPedidoPagina + sizeof(int), numeroPagina, sizeof(int));
 	Serializar(PIDOPAGINAHEAP, 2 * sizeof(int), envioPedidoPagina, clienteMEM);
+	sem_wait(&semPunteroPaginaHeap);
 }
 void guardarPaginaEnTabla(int pagina, int pid, int tamano) {
 	tablaHeap[indiceLibreHeap].pid = pid;
@@ -680,7 +683,7 @@ void guardarPaginaEnTabla(int pagina, int pid, int tamano) {
 	tablaHeap[indiceLibreHeap].cantidadDeAlocaciones = 2;
 	indiceLibreHeap++;
 }
-void crearPaginaEnMemoria(int pid, int pagina, int tamano) {
+int crearPaginaEnMemoria(int pid, int pagina, int tamano) {
 	int offset = 0;
 	int tamanoAEnviar = sizeof(HeapMetaData);
 	HeapMetaData* datosAEnviar = malloc(tamanoAEnviar);
@@ -696,6 +699,7 @@ void crearPaginaEnMemoria(int pid, int pagina, int tamano) {
 	memcpy(estructuraAEscribir, &datosAEnviar->isFree, sizeof(_Bool));
 	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
 			estructuraAEscribir, clienteMEM);
+	sem_wait(&semPunteroPaginaHeap);
 	void* estructuraAEscribir2 = malloc(sizeof(int) * 4 + sizeof(HeapMetaData));
 	datosAEnviar->size = MARCOS_SIZE - tamano - 2 * sizeof(HeapMetaData);
 	datosAEnviar->isFree = true;
@@ -709,9 +713,11 @@ void crearPaginaEnMemoria(int pid, int pagina, int tamano) {
 	printf("estoy haciendo bien las cosas?, %d", &datosAEnviar->isFree);
 	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
 			estructuraAEscribir2, clienteMEM);
+	sem_wait(&semPunteroPaginaHeap);
+	return 5;
 }
 
-void actualizarPaginaEnMemoria(char* pagina, int pid, int numeroPagina,
+int actualizarPaginaEnMemoria(char* pagina, int pid, int numeroPagina,
 		int tamano) {
 	int isFree = false;
 	int size = 0;
@@ -736,6 +742,7 @@ void actualizarPaginaEnMemoria(char* pagina, int pid, int numeroPagina,
 	memcpy(estructuraAEscribir, &datosAEnviar->isFree, sizeof(_Bool));
 	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
 			estructuraAEscribir, clienteMEM);
+	sem_wait(&semPunteroPaginaHeap);
 	int i, tamanoLibre, temOffset;
 	for (i = 0; i <= 100; i++) {
 		if (tablaHeap[i].pid == pid
@@ -758,4 +765,13 @@ void actualizarPaginaEnMemoria(char* pagina, int pid, int numeroPagina,
 	memcpy(estructuraAEscribir2, &datosAEnviar->isFree, sizeof(_Bool));
 	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
 			estructuraAEscribir2, clienteMEM);
+	sem_wait(&semPunteroPaginaHeap);
+	return corriendoPagina +5;
+}
+
+void liberarMemoria(int pid, t_puntero unaDireccion){
+	//ANTES: GUARDAR PUNTERO y posicion real (offset en la pagina) EN DATOS HEAP como lista
+	//traerme esa pagina
+	//buscar en donde est'a ese puntero
+	//defragmentar..
 }

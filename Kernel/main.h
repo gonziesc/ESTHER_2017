@@ -64,8 +64,8 @@ void procesarScript();
 int existePaginaParaPidConEspacio(int, int);
 void pedirAMemoriaUnaPaginaPara(int, int);
 void guardarPaginaEnTabla(int, int, int);
-void actualizarPaginaEnMemoria(char*, int, int, int);
-void crearPaginaEnMemoria( int, int, int);
+int actualizarPaginaEnMemoria(char*, int, int, int);
+int crearPaginaEnMemoria( int, int, int);
 void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int, int) ;
 
 
