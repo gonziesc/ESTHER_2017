@@ -25,10 +25,10 @@ int noInteresa;
 int valorDerenferenciado;
 char * instruccionLeida;
 AnSISOP_funciones primitivas = { .AnSISOP_definirVariable =
-		dummy_definirVariable, .AnSISOP_obtenerPosicionVariable =
-		dummy_obtenerPosicionVariable, .AnSISOP_dereferenciar =
-		dummy_dereferenciar, .AnSISOP_asignar = dummy_asignar,
-		.AnSISOP_finalizar = dummy_finalizar,
+		definirVariable, .AnSISOP_obtenerPosicionVariable =
+		obtenerPosicionVariable, .AnSISOP_dereferenciar =
+		dereferenciar, .AnSISOP_asignar = asignar,
+		.AnSISOP_finalizar = finalizar,
 
 };
 
@@ -143,7 +143,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	case PCB: {
 		unPcb = deserializarPCB(paquete);
-		sleep(10000);
 		printf("unPcb id: %d\n", unPcb->programId);
 		sem_post(&semHayScript);
 		break;
@@ -164,7 +163,7 @@ void procesarScript() {
 			char* barra_cero = "\0";
 			memcpy(sentencia + (datos_para_memoria->size - 1), barra_cero, 1);
 			sem_wait(&semSentenciaCompleta);
-			//printf("sentencia leida:%s \n", sentencia);
+			printf("[procesarScript]Sentencia: %s \n", sentencia);
 			analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 			unPcb->programCounter++;
 			if (unPcb->programCounter == 4)
@@ -185,9 +184,8 @@ char* depurarSentencia(char* sentencia) {
 	return sentencia;
 
 }
-t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
-	//REVISAAAAAAR
-	printf("Entre a definir variable %c\n", nombreVariable);
+t_puntero definirVariable(t_nombre_variable nombreVariable) {
+	printf("[definirVariable]Entre a definir variable %c\n", nombreVariable);
 	posicionMemoria *direccionVariable = malloc(sizeof(posicionMemoria));
 	variable *unaVariable = malloc(sizeof(variable));
 	indiceDeStack *indiceStack = malloc(sizeof(indiceDeStack));
@@ -199,7 +197,6 @@ t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
 		armarDireccionPrimeraPagina(direccionVariable);
 		unaVariable->etiqueta = nombreVariable;
 		unaVariable->direccion = direccionVariable;
-		//OJO DIRECCION VARIABLE NO TIENE NADA...
 		list_add(indiceStack->vars, unaVariable);
 		indiceStack->pos = 0;
 		indiceStack->tamanoVars++;
@@ -214,14 +211,14 @@ t_puntero dummy_definirVariable(t_nombre_variable nombreVariable) {
 	int direccionRetorno = convertirDireccionAPuntero(direccionVariable);
 
 	enviarDirecParaEscribirMemoria(direccionVariable, valor);
-	printf("Devuelvo direccion: %d\n", direccionRetorno);
+	printf("[definirVariable]Devuelvo direccion: %d\n", direccionRetorno);
 
 	return (direccionRetorno);
 
 }
 
-t_puntero dummy_obtenerPosicionVariable(t_nombre_variable nombreVariable) {
-	printf("Obtener posicion de %c\n", nombreVariable);
+t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
+	printf("[obtenerPosicionVariable]Obtener posicion de %c\n", nombreVariable);
 	int posicionStack = unPcb->tamanoIndiceStack - 1;
 	int direccionRetorno;
 	variable *variableNueva;
@@ -233,7 +230,7 @@ t_puntero dummy_obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 				((variable*) (list_get(
 						((indiceDeStack*) (list_get(unPcb->indiceStack,
 								posicionStack)))->vars, posMax)));
-		printf("Variable: %c\n", variableNueva->etiqueta);
+		printf("[obtenerPosicionVariable]Variable: %c\n", variableNueva->etiqueta);
 		if (variableNueva->etiqueta == nombreVariable) {
 			direccionRetorno =
 					convertirDireccionAPuntero(
@@ -241,7 +238,7 @@ t_puntero dummy_obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 									((indiceDeStack*) (list_get(
 											unPcb->indiceStack, posicionStack)))->vars,
 									posMax)))->direccion);
-			printf("Obtengo valor de %c: %d %d %d\n", variableNueva->etiqueta,
+			printf("[obtenerPosicionVariable]Obtengo valor de %c: %d %d %d\n", variableNueva->etiqueta,
 					variableNueva->direccion->pag,
 					variableNueva->direccion->off,
 					variableNueva->direccion->size);
@@ -251,7 +248,7 @@ t_puntero dummy_obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 	}
 }
 
-void dummy_finalizar(void) {
+void finalizar(void) {
 	printf("Finalizar\n");
 }
 
@@ -259,19 +256,19 @@ bool terminoElPrograma(void) {
 	return false;
 }
 
-t_valor_variable dummy_dereferenciar(t_puntero puntero) {
+t_valor_variable dereferenciar(t_puntero puntero) {
 	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
 	convertirPunteroADireccion(puntero, direccion);
 	enviarDirecParaLeerMemoria(direccion, DEREFERENCIAR);
 	sem_wait(&semDereferenciar);
 	free(direccion);
-	printf("Dereferenciar %d y su valor es: %d\n", puntero,
+	printf("[dereferenciar]Dereferenciar %d y su valor es: %d\n", puntero,
 			valorDerenferenciado);
 	return valorDerenferenciado;
 }
 
-void dummy_asignar(t_puntero punteroAVariable, t_valor_variable valor) {
-	printf("Asignando en %d el valor %d\n", punteroAVariable, valor);
+void asignar(t_puntero punteroAVariable, t_valor_variable valor) {
+	printf("[asignar]Asignando en %d el valor %d\n", punteroAVariable, valor);
 	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
 	convertirPunteroADireccion(punteroAVariable, direccion);
 	//ARREGLAR INAKI
@@ -341,7 +338,7 @@ void enviarDirecParaEscribirMemoria(posicionMemoria* direccion, int valor) {
 	memcpy(variableAEnviar + 4, &direccion->off, 4);
 	memcpy(variableAEnviar + 8, &direccion->size, 4);
 	memcpy(variableAEnviar + 12, &valor, 4);
-	printf("Quiero escribir en la direccion: %d %d %d %d\n",
+	printf("[enviarDirecParaEscribirMemoria]Quiero escribir en la direccion: %d %d %d %d\n",
 			((int*) (variableAEnviar))[0], ((int*) (variableAEnviar))[1],
 			((int*) (variableAEnviar))[2], ((int*) (variableAEnviar))[3]);
 	Serializar(VARIABLEESCRIBIR, 16, variableAEnviar, clienteMEM);
@@ -357,7 +354,7 @@ void enviarDirecParaLeerMemoria(posicionMemoria* direccion, int header) {
 	memcpy(variableALeer, &direccion->pag, 4);
 	memcpy(variableALeer + 4, &direccion->off, 4);
 	memcpy(variableALeer + 8, &direccion->size, 4);
-	printf("Quiero leer en la direccion: %d %d %d\n",
+	printf("[enviarDirecParaLeerMemoria]Quiero leer en la direccion: %d %d %d\n",
 			((int*) (variableALeer))[0], ((int*) (variableALeer))[1],
 			((int*) (variableALeer))[2]);
 	Serializar(header, 12, variableALeer, clienteMEM);
@@ -394,11 +391,11 @@ posicionMemoria* info = malloc(sizeof(posicionMemoria));
 info->pag = ceil(
 		(double) unPcb->indiceCodigo[(unPcb->programCounter) * 2]
 				/ (double) tamPag);
-printf("Voy a leer la pagina: %d\n", info->pag);
+//printf("[crearEstructuraParaMemoria]Voy a leer la pagina: %d\n", info->pag);
 info->off = (unPcb->indiceCodigo[((unPcb->programCounter) * 2)] % tamPag);
-printf("Voy a leer con offswet: %d\n", info->off);
+//printf("[crearEstructuraParaMemoria]Voy a leer con offswet: %d\n", info->off);
 info->size = unPcb->indiceCodigo[((unPcb->programCounter) * 2) + 1];
-printf("Voy a leer el tamano: %d\n", info->size);
+//printf("[crearEstructuraParaMemoria]Voy a leer el tamano: %d\n", info->size);
 memcpy(informacion, info, 12);
 free(info);
 return;
