@@ -394,17 +394,17 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 }
 
 void abortarTodosLosProgramasDeConsola(int socket) {
-	proceso* unProceso;
+	procesoConsola* unProceso;
 	bool esMiSocket(void * entrada) {
-		proceso * unproceso = (proceso *) entrada;
-		return unproceso->socketCONSOLA == socket;
+		procesoConsola * unproceso = (procesoConsola *) entrada;
+		return unproceso->consola == socket;
 	}
-	unProceso = (proceso*) list_remove_by_condition(
+	unProceso = (procesoConsola*) list_remove_by_condition(
 			colaProcesosConsola->elements, esMiSocket);
 	while (unProceso != NULL) {
-		abortarProgramaPorConsola(unProceso->pcb->programId,
+		abortarProgramaPorConsola(unProceso->pid,
 				codeDesconexionConsola);
-		unProceso = (proceso*) list_remove_by_condition(
+		unProceso = (procesoConsola*) list_remove_by_condition(
 				colaProcesosConsola->elements, esMiSocket);
 	}
 }
