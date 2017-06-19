@@ -50,6 +50,11 @@ int size;
 bool isFree;
 }HeapMetaData;
 
+typedef struct {
+int pid;
+int consola;
+}procesoConsola;
+
 
 void configuracion(char*);
 void planificadorLargoPlazo();
@@ -67,7 +72,9 @@ void guardarPaginaEnTabla(int, int, int);
 int actualizarPaginaEnMemoria(char*, int, int, int);
 int crearPaginaEnMemoria( int, int, int);
 void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int, int) ;
-void abortarProgramaPorConsola(int);
+void abortarProgramaPorConsola(int, int);
+
+void abortarTodosLosProgramasDeConsola(int);
 
 
 #endif
