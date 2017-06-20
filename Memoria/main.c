@@ -312,18 +312,18 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semPaginas);
 		break;
 	}
-	case VARIABLELEER: {
+	case LEERSENTENCIA: {
 		sem_wait(&semPaginas);
 		memcpy(&numero_pagina, paquete, sizeof(int));
 		memcpy(&offset, paquete + sizeof(int), sizeof(int));
 		memcpy(&tamanio, paquete + sizeof(int) * 2, sizeof(int));
-		printf("Quiero leer en la direccion: %d %d %d y le voy a enviar a socket: %d\n",
+		printf("[LEERSENTENCIA]Quiero leer en la direccion: %d %d %d y le voy a enviar a socket: %d\n",
 							numero_pagina, offset,
 							offset, socket);
 		char * contenido = leerDePagina(1, numero_pagina, offset, tamanio);
 		//TODO HARCODEADO PIDDDDDDDD
 		//printf("lei: %s\n", contenido);
-		Serializar(VARIABLELEER, tamanio, contenido, socket);
+		Serializar(LEERSENTENCIA, tamanio, contenido, socket);
 		//ojo pid actual
 		sem_post(&semPaginas);
 		break;
@@ -344,7 +344,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			sem_post(&semPaginas);
 			break;
 		}
-	case VARIABLEESCRIBIR: {
+	case ESCRIBIRVARIABLE: {
 		sem_wait(&semPaginas);
 		memcpy(&numero_pagina, paquete, sizeof(int));
 		memcpy(&offset, paquete + sizeof(int), sizeof(int));
@@ -357,7 +357,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		escribirEnPagina(1, numero_pagina, offset, tamanio, buffer);
 
 
-		Serializar(VARIABLEESCRIBIR, sizeof(int), &noIMporta, socket);
+		Serializar(ESCRIBIRVARIABLE, sizeof(int), &noIMporta, socket);
 		sem_post(&semPaginas);
 		free(buffer);
 		break;

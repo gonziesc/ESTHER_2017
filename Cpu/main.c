@@ -19,7 +19,7 @@ sem_t semProcesar;
 sem_t semInstruccion;
 sem_t semSentenciaCompleta;
 sem_t semHayScript;
-sem_t okDeMemoria;
+sem_t semEscribirVariable;
 sem_t semDereferenciar;
 int noInteresa;
 int valorDerenferenciado;
@@ -53,7 +53,7 @@ void Configuracion(char* dir) {
 	sem_init(&semSentenciaCompleta, 0, 0);
 	sem_init(&semInstruccion, 0, 0);
 	sem_init(&semHayScript, 0, 0);
-	sem_init(&okDeMemoria, 0, 0);
+	sem_init(&semEscribirVariable, 0, 0);
 	sem_init(&semDereferenciar, 0, 0);
 }
 
@@ -129,14 +129,14 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("Se conecto Memoria\n");
 		break;
 	}
-	case VARIABLELEER: {
+	case LEERSENTENCIA: {
 		instruccionLeida = malloc(tamanoPaquete);
 		memcpy(instruccionLeida, paquete, tamanoPaquete);
 		sem_post(&semInstruccion);
 		break;
 	}
-	case VARIABLEESCRIBIR: {
-		sem_post(&okDeMemoria);
+	case ESCRIBIRVARIABLE: {
+		sem_post(&semEscribirVariable);
 		break;
 	}
 	case DEREFERENCIAR: {
@@ -213,7 +213,6 @@ char* depurarSentencia(char* sentencia) {
 
 }
 t_puntero definirVariable(t_nombre_variable nombreVariable) {
-	printf("[definirVariable]Entre a definir variable %c\n", nombreVariable);
 	posicionMemoria *direccionVariable = malloc(sizeof(posicionMemoria));
 	variable *unaVariable = malloc(sizeof(variable));
 	indiceDeStack *indiceStack = malloc(sizeof(indiceDeStack));
@@ -237,10 +236,8 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 	}
 	int valor = 0;
 	int direccionRetorno = convertirDireccionAPuntero(direccionVariable);
-
+	printf("[definirVariable]Defino %c ubicada en %d\n", nombreVariable, direccionRetorno);
 	enviarDirecParaEscribirMemoria(direccionVariable, valor);
-	printf("[definirVariable]Devuelvo direccion: %d\n", direccionRetorno);
-
 	return (direccionRetorno);
 
 }
@@ -275,6 +272,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 		}
 		posMax--;
 	}
+	printf("No debería llegar aca\n");
 }
 
 void finalizar(void) {
@@ -302,7 +300,6 @@ void asignar(t_puntero punteroAVariable, t_valor_variable valor) {
 	convertirPunteroADireccion(punteroAVariable, direccion);
 	//ARREGLAR INAKI
 	enviarDirecParaEscribirMemoria(direccion, valor);
-	//falta el semaforo de ok
 	free(direccion);
 	return;
 }
@@ -371,7 +368,8 @@ void enviarDirecParaEscribirMemoria(posicionMemoria* direccion, int valor) {
 			"[enviarDirecParaEscribirMemoria]Quiero escribir en la direccion: %d %d %d %d\n",
 			((int*) (variableAEnviar))[0], ((int*) (variableAEnviar))[1],
 			((int*) (variableAEnviar))[2], ((int*) (variableAEnviar))[3]);
-	Serializar(VARIABLEESCRIBIR, 16, variableAEnviar, clienteMEM);
+	Serializar(ESCRIBIRVARIABLE, 16, variableAEnviar, clienteMEM);
+	sem_wait(&semEscribirVariable);
 	free(variableAEnviar);
 	//paquete * paquetin;
 	//paquetin = Deserializar(clienteMEM);
@@ -438,7 +436,7 @@ char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
 		datos_para_memoria->off = offset;
 		datos_para_memoria->pag = pagina;
 		datos_para_memoria->size = tamanio;
-		enviarDirecParaLeerMemoria(datos_para_memoria, VARIABLELEER);
+		enviarDirecParaLeerMemoria(datos_para_memoria, LEERSENTENCIA);
 		sem_wait(&semInstruccion);
 		char* sentencia2 = malloc(datos_para_memoria->size);
 		memcpy(sentencia2, instruccionLeida, datos_para_memoria->size);
