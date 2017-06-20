@@ -250,6 +250,7 @@ void procesarEntrada(int codigoOperacion) {
 		int pidAMatar;
 		printf("Ingrese pid a finalizar\n");
 		scanf("%d", &pidAMatar);
+		//TODO avisar a consola
 		abortarProgramaPorConsola(pidAMatar, -35);
 		//TODO cambiar codigo
 		break;
@@ -323,6 +324,17 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	}
 
 	case CPU: {
+		datosKernelACpu enviar;
+		enviar.quantum = t_archivoConfig->QUANTUM;
+		enviar.quantumSleep = t_archivoConfig->QUANTUM_SLEEP;
+		enviar.stack = t_archivoConfig->STACK_SIZE;
+		printf("%s\n", t_archivoConfig->ALGORITMO);
+		if (!(strcmp(t_archivoConfig->ALGORITMO, "RR"))) {
+			enviar.algoritmo = 1;
+		} else {
+			enviar.algoritmo = 0;
+		}
+		Serializar(DATOSKERNELCPU, sizeof(datosKernelACpu), &enviar, socket);
 		pthread_mutex_lock(&mutexColaCpu);
 		queue_push(colaCpu, socket);
 		pthread_mutex_unlock(&mutexColaCpu);
@@ -387,10 +399,24 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		abortarTodosLosProgramasDeConsola(socket);
 		break;
 	}
-		//procesar pid muerto
-		//semaforear los procesar
+	case FINDEQUATUM: {
+		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
+				pcbRecibido->programId);
+		destruirPCB(unProceso->pcb);
+		unProceso->pcb = pcbRecibido;
+		pthread_mutex_lock(&mutexColaReady);
+		queue_push(colaReady, unProceso);
+		pthread_mutex_unlock(&mutexColaReady);
+		sem_post(&semReady);
+		pthread_mutex_lock(&mutexColaCpu);
+		queue_push(colaCpu, socket);
+		pthread_mutex_unlock(&mutexColaCpu);
+		sem_post(&semCpu);
+		break;
 	}
-	return;
+		return;
+	}
 }
 
 void abortarTodosLosProgramasDeConsola(int socket) {
@@ -402,8 +428,7 @@ void abortarTodosLosProgramasDeConsola(int socket) {
 	unProceso = (procesoConsola*) list_remove_by_condition(
 			colaProcesosConsola->elements, esMiSocket);
 	while (unProceso != NULL) {
-		abortarProgramaPorConsola(unProceso->pid,
-				codeDesconexionConsola);
+		abortarProgramaPorConsola(unProceso->pid, codeDesconexionConsola);
 		unProceso = (procesoConsola*) list_remove_by_condition(
 				colaProcesosConsola->elements, esMiSocket);
 	}
@@ -521,7 +546,7 @@ void ejecutar(proceso* procesoAEjecutar, int socket) {
 	pthread_mutex_lock(&mutexColaEx);
 	queue_push(colaExec, procesoAEjecutar);
 	pthread_mutex_unlock(&mutexColaEx);
-	serializarPCB(procesoAEjecutar->pcb, socket);
+	serializarPCB(procesoAEjecutar->pcb, socket, PCB);
 }
 
 proceso* sacarProcesoDeEjecucion(int sock) {
@@ -529,6 +554,19 @@ proceso* sacarProcesoDeEjecucion(int sock) {
 	proceso *procesoABuscar;
 	while (procesoABuscar = (proceso*) list_get(colaExec->elements, a)) {
 		if (procesoABuscar->socketCPU == sock)
+			return (proceso*) list_remove(colaExec->elements, a);
+		a++;
+	}
+	printf("NO HAY PROCESO\n");
+	exit(0);
+	return NULL;
+}
+
+proceso* sacarProcesoDeEjecucionPorPid(int pid) {
+	int a = 0, t;
+	proceso *procesoABuscar;
+	while (procesoABuscar = (proceso*) list_get(colaExec->elements, a)) {
+		if (procesoABuscar->pcb->programId == pid)
 			return (proceso*) list_remove(colaExec->elements, a);
 		a++;
 	}
@@ -925,47 +963,3 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 	}
 }
 
-void destruirCONTEXTO(programControlBlock *pcb) {
-
-	indiceDeStack *stackADestruir;
-	while (pcb->tamanoIndiceStack != 0) {
-		stackADestruir = list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1);
-
-		while (stackADestruir->tamanoVars != 0) {
-
-			posicionMemoria*temp = (((variable*) list_get(stackADestruir->vars,
-					stackADestruir->tamanoVars - 1))->direccion);
-			free(temp);
-			free(
-					list_get(stackADestruir->vars,
-							stackADestruir->tamanoVars - 1));
-			stackADestruir->tamanoVars--;
-		}
-		while (stackADestruir->tamanoArgs != 0) {
-			free(
-					(posicionMemoria*) list_get(stackADestruir->args,
-							stackADestruir->tamanoArgs - 1));
-			stackADestruir->tamanoArgs--;
-		}
-		list_destroy(stackADestruir->vars);
-
-		list_destroy(stackADestruir->args);
-
-		free(list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1));
-
-		pcb->tamanoIndiceStack--;
-	}
-	list_destroy(pcb->indiceStack);
-
-	free(pcb->indiceCodigo);
-
-	free(pcb->indiceEtiquetas);
-
-}
-
-void destruirPCB(programControlBlock *pcb) {
-
-	destruirCONTEXTO(pcb);
-	free(pcb);
-
-}

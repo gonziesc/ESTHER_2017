@@ -18,6 +18,10 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+int programaBloqueado;
+int programaFinalizado;
+int programaAbortado;
+
 void Configuracion(char *);
 int32_t ConectarConKernel();
 int32_t conectarConMemoria();
