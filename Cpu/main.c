@@ -147,7 +147,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	case PCB: {
 		unPcb = deserializarPCB(paquete);
 		printf("unPcb id: %d\n", unPcb->programId);
-		sleep(1000000);
+		//sleep(1000000);
 		sem_post(&semHayScript);
 		break;
 	}
@@ -160,7 +160,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("quatum slep: %d\n", quantumSleep);
 		printf("stack: %d\n", stackSize);
 		printf("algoritmo: %d\n", algoritmo);
-		sleep(40);
+		sleep(30);
 	}
 	}
 
