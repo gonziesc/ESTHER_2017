@@ -267,9 +267,8 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 	}
 
 	else if(indiceStack->tamanoVars == 0 && (unPcb->tamanoIndiceStack)>1){
-		//La posicion va a estar definida cuando se llama a la primitiva funcion
 		printf("[definirVariable]Declarando variable %c de funcion\n", nombreVariable);
-	//	armarDirecccionDeFuncion(direccionVariable);
+		armarDirecccionDeFuncion(direccionVariable);
 		unaVariable->etiqueta=nombreVariable;
 		unaVariable->direccion=direccionVariable;
 		list_add(indiceStack->vars, unaVariable);
@@ -339,33 +338,40 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 	printf("[obtenerPosicionVariable]Obtener posicion de %c\n", nombreVariable);
 	int posicionStack = unPcb->tamanoIndiceStack - 1;
 	int direccionRetorno;
-	variable *variableNueva;
-	int posMax =
-			(((indiceDeStack*) (list_get(unPcb->indiceStack, posicionStack)))->tamanoVars)
-			- 1;
-	while (posMax >= 0) {
-		variableNueva =
-				((variable*) (list_get(
-						((indiceDeStack*) (list_get(unPcb->indiceStack,
-								posicionStack)))->vars, posMax)));
-		printf("[obtenerPosicionVariable]Variable: %c\n",
-				variableNueva->etiqueta);
-		if (variableNueva->etiqueta == nombreVariable) {
-			direccionRetorno =
-					convertirDireccionAPuntero(
-							((variable*) (list_get(
-									((indiceDeStack*) (list_get(
-											unPcb->indiceStack, posicionStack)))->vars,
-											posMax)))->direccion);
-			printf("[obtenerPosicionVariable]Obtengo valor de %c: %d %d (tamaño: %d)\n",
-					variableNueva->etiqueta, variableNueva->direccion->pag,
-					variableNueva->direccion->off,
-					variableNueva->direccion->size);
-			return (direccionRetorno);
+	if((nombreVariable>='0')&&(nombreVariable<='9')){
+		posicionMemoria *direccion= (posicionMemoria*)(list_get(((indiceDeStack*)(list_get(unPcb->indiceStack, posicionStack)))->args, (int)nombreVariable-48));
+		direccionRetorno=convertirDireccionAPuntero(direccion);
+		printf("[obtenerPosicionVariable]Obtengo valor de %c: %d %d (tamaño: %d)\n", nombreVariable, direccion->pag, direccion->off, direccion->size);
+		return(direccionRetorno);
+	}else{
+		variable *variableNueva;
+		int posMax =
+				(((indiceDeStack*) (list_get(unPcb->indiceStack, posicionStack)))->tamanoVars)
+				- 1;
+		while (posMax >= 0) {
+			variableNueva =
+					((variable*) (list_get(
+							((indiceDeStack*) (list_get(unPcb->indiceStack,
+									posicionStack)))->vars, posMax)));
+			printf("[obtenerPosicionVariable]Variable: %c\n",
+					variableNueva->etiqueta);
+			if (variableNueva->etiqueta == nombreVariable) {
+				direccionRetorno =
+						convertirDireccionAPuntero(
+								((variable*) (list_get(
+										((indiceDeStack*) (list_get(
+												unPcb->indiceStack, posicionStack)))->vars,
+												posMax)))->direccion);
+				printf("[obtenerPosicionVariable]Obtengo valor de %c: %d %d (tamaño: %d)\n",
+						variableNueva->etiqueta, variableNueva->direccion->pag,
+						variableNueva->direccion->off,
+						variableNueva->direccion->size);
+				return (direccionRetorno);
+			}
+			posMax--;
 		}
-		posMax--;
 	}
-	printf("No debería llegar aca\n");
+	printf("[ERROR]No debería llegar aca\n");
 }
 
 void destruirContextoActual(void){
@@ -444,7 +450,6 @@ void irAlLabel(t_nombre_etiqueta etiqueta) {
 			unPcb->tamanoindiceEtiquetas);
 	printf("[irAlLabel]Ir a instruccion %d\n", instruccion);
 	unPcb->programCounter = instruccion - 1;
-	printf("[irAlLabel]Saliendo de label\n");
 	return;
 }
 
@@ -500,13 +505,13 @@ void armarDireccionPrimeraPagina(posicionMemoria *direccionReal) {
 void armarDireccionDeArgumento(posicionMemoria *direccionReal){
 
 	if(((indiceDeStack*)list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack-1))->tamanoArgs == 0){
-		//log_info(log,"No hay argumentos\n");
+		printf("[armarDireccionDeArgumento]No hay argumentos\n");
 		int posicionStackAnterior = unPcb->tamanoIndiceStack-2;
 		int posicionUltimaVariable = ((indiceDeStack*)(list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack-2)))->tamanoVars-1;
 		proximaDireccion(posicionStackAnterior, posicionUltimaVariable, direccionReal);
 	}
 	else {
-		//log_info(log,"Busco ultimo argumento\n");
+		printf("[armarDireccionDeArgumento]Busco ultimo argumento\n");
 		int posicionStackActual = unPcb->tamanoIndiceStack-1;
 		int posicionUltimoArgumento = ((indiceDeStack*)(list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack-1)))->tamanoArgs-1;
 		proximaDireccion(posicionStackActual, posicionUltimoArgumento, direccionReal);
