@@ -71,8 +71,7 @@ void configuracionKernel(archivoConfigKernel *unArchivo, t_config* config,
 	}
 	i = 0;
 	while (unArchivo->SEM_INIT[i] != NULL) {
-		unArchivo->SEM_INIT[i] = atoi((int) unArchivo->SEM_INIT[i]);
-		printf("SEM_INIT:%d\n", unArchivo->SEM_INIT[i]);
+		printf("SEM_INIT:%s\n", unArchivo->SEM_INIT[i]);
 		i++;
 	}
 	i = 0;

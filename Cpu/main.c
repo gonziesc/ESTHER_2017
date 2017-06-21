@@ -219,6 +219,7 @@ void procesarScript() {
 		if (programaBloqueado) {
 			serializarPCB(unPcb, cliente, SEBLOQUEOELPROCESO);
 			destruirPCB(unPcb);
+			sem_post(&semDestruirPCB);
 		}
 		if ((quantum_aux == 0) && !programaFinalizado && !programaBloqueado
 				&& !programaAbortado) {

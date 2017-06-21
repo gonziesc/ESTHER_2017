@@ -107,6 +107,7 @@ void configuracion(char*dir) {
 	colaCpu = queue_create();
 	colaProcesosConsola = queue_create();
 	colaCodigosAMemoria = queue_create();
+	colaProcesosBloqueados = queue_create();
 	colas_semaforos = malloc(
 			strlen((char*) t_archivoConfig->SEM_INIT) * sizeof(char*));
 
@@ -504,8 +505,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			pthread_mutex_lock(&mutexProcesosBloqueados);
 			queue_push(colaProcesosBloqueados, unProcesoBloqueado);
 			pthread_mutex_unlock(&mutexProcesosBloqueados);
-			queue_push(colaCpu, socket);
-			sem_post(&semCpu);
+			pthread_mutex_lock(&mutexColaEx);
+			queue_push(colaExec, unProceso);
+			pthread_mutex_unlock(&mutexColaEx);
 
 		} else {
 			escribeSemaforo(semaforo, pideSemaforo(semaforo) - 1);
@@ -517,7 +519,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		}
 
 		pthread_mutex_unlock(&mutexConfig);
-		free(semaforo);
+		//free(semaforo);
 		break;
 	}
 	case PROCESOSIGNAL: {
@@ -541,7 +543,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		destruirPCB(unProceso->pcb);
 		char* semaforo = conseguirSemaforoDeBloqueado(pcbRecibido->programId);
 		unProceso->pcb = pcbRecibido;
-		bloqueoSemaforo(unProceso,semaforo);
+		bloqueoSemaforo(unProceso, semaforo);
 		queue_push(colaCpu, socket);
 		sem_post(&semCpu);
 		break;
@@ -555,23 +557,25 @@ char* conseguirSemaforoDeBloqueado(int pid) {
 	char* semaforo;
 	int a = 0, t;
 	procesoBloqueado * unProceso;
-	while (unProceso = (procesoBloqueado*) list_get(colaProcesosBloqueados->elements, a)) {
-			if (unProceso->pid == pid)
-				return unProceso->semaforo;
-			// TODO: REVISAR ESOTOOOO
-			a++;
-		}
+	while (unProceso = (procesoBloqueado*) list_get(
+			colaProcesosBloqueados->elements, a)) {
+		if (unProceso->pid == pid)
+			return unProceso->semaforo;
+		// TODO: REVISAR ESOTOOOO
+		a++;
+	}
 }
 
 void sacarSemaforosDesbloqueados(char* semaforo) {
 	int a = 0, t;
 	procesoBloqueado * unProceso;
-	while (unProceso = (procesoBloqueado*) list_get(colaProcesosBloqueados->elements, a)) {
-			if (strcmp((char*) unProceso->semaforo, semaforo) == 0)
-				list_remove(colaProcesosBloqueados->elements, a);
-			// TODO: REVISAR ESOTOOOO
-			a++;
-		}
+	while (unProceso = (procesoBloqueado*) list_get(
+			colaProcesosBloqueados->elements, a)) {
+		if (strcmp((char*) unProceso->semaforo, semaforo) == 0)
+			list_remove(colaProcesosBloqueados->elements, a);
+		// TODO: REVISAR ESOTOOOO
+		a++;
+	}
 }
 
 void abortarTodosLosProgramasDeConsola(int socket) {
@@ -805,9 +809,6 @@ int pideSemaforo(char *semaforo) {
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
 			i++) {
 		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
-
-			//if (config_nucleo->VALOR_SEM[i] == -1) {return &config_nucleo->VALOR_SEM[i];}
-			//config_nucleo->VALOR_SEM[i]--;
 			return atoi(t_archivoConfig->SEM_INIT[i]);
 		}
 	}
