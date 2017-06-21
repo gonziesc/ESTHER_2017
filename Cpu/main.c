@@ -39,7 +39,7 @@ AnSISOP_funciones primitivas = { .AnSISOP_definirVariable = definirVariable,
 				obtenerValorCompartida, .AnSISOP_asignarValorCompartida =
 						asignarValorCompartida, .AnSISOP_irAlLabel = irAlLabel,
 						.AnSISOP_retornar = retornar, .AnSISOP_llamarConRetorno =
-								llamarConRetorno };
+								llamarConRetorno, .AnSISOP_llamarSinRetorno = llamarSinRetorno };
 AnSISOP_kernel privilegiadas = { .AnSISOP_escribir = escribir, .AnSISOP_wait =
 		wait_kernel, .AnSISOP_signal = signal_kernel };
 
@@ -419,19 +419,30 @@ void finalizar(void) {
 	}
 }
 
+indiceDeStack* crearStack(){
+	indiceDeStack *stack = malloc(sizeof(indiceDeStack));
+	int posicionStack = unPcb->tamanoIndiceStack;
+	stack->pos = posicionStack;
+	stack->args = list_create();
+	stack->vars = list_create();
+	stack->tamanoArgs = 0;
+	stack->tamanoVars = 0;
+	memcpy(&stack->retPos, &unPcb->programCounter, 4);
+	return stack;
+}
+void llamarSinRetorno(t_nombre_etiqueta etiqueta){
+	indiceDeStack *nuevoContexto = crearStack(nuevoContexto);
+	printf("[llamarConRetorno]Creo nuevo contexto con pos: %d que debe volver en la sentencia %d\n",
+			nuevoContexto->pos, nuevoContexto->retPos);
+	list_add(unPcb->indiceStack, nuevoContexto);
+	unPcb->tamanoIndiceStack++;
+	irAlLabel(etiqueta);
+}
+
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero punteroRetorno) {
 	posicionMemoria *direccionRetorno = malloc(sizeof(posicionMemoria));
 	convertirPunteroADireccion(punteroRetorno, direccionRetorno);
-	int posicionStack = unPcb->tamanoIndiceStack;
-	printf("[llamarConRetorno]Tamanio contexto actual %d\n",
-			unPcb->tamanoIndiceStack);
-	indiceDeStack *nuevoContexto = malloc(sizeof(indiceDeStack));
-	nuevoContexto->pos = posicionStack;
-	nuevoContexto->args = list_create();
-	nuevoContexto->vars = list_create();
-	nuevoContexto->tamanoArgs = 0;
-	nuevoContexto->tamanoVars = 0;
-	memcpy(&nuevoContexto->retPos, &unPcb->programCounter, 4);
+	indiceDeStack *nuevoContexto = crearStack(nuevoContexto);
 	memcpy(&nuevoContexto->retVar, direccionRetorno, sizeof(posicionMemoria));
 	printf(
 			"[llamarConRetorno]Creo nuevo contexto con pos: %d que debe volver en la sentencia %d y retorno en la variable de pos %d %d\n",

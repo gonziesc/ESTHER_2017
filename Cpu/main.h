@@ -54,6 +54,7 @@ void escribir(t_descriptor_archivo , void* , t_valor_variable );
 t_valor_variable asignarValorCompartida(t_nombre_compartida ,t_valor_variable );
 t_valor_variable obtenerValorCompartida(t_nombre_compartida );
 void llamarConRetorno(t_nombre_etiqueta, t_puntero);
+void llamarSinRetorno(t_nombre_etiqueta etiqueta);
 void irAlLabel(t_nombre_etiqueta);
 void retornar(t_valor_variable);
 
