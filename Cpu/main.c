@@ -294,7 +294,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 									((indiceDeStack*) (list_get(
 											unPcb->indiceStack, posicionStack)))->vars,
 									posMax)))->direccion);
-			printf("[obtenerPosicionVariable]Obtengo valor de %c: %d %d %d\n",
+			printf("[obtenerPosicionVariable]Obtengo valor de %c: %d %d (tamaño: %d)\n",
 					variableNueva->etiqueta, variableNueva->direccion->pag,
 					variableNueva->direccion->off,
 					variableNueva->direccion->size);
@@ -501,7 +501,7 @@ void enviarDirecParaEscribirMemoria(posicionMemoria* direccion, int valor) {
 	memcpy(variableAEnviar + 12, &valor, 4);
 	memcpy(variableAEnviar + 16, &unPcb->programId, 4);
 	printf(
-			"[enviarDirecParaEscribirMemoria]Quiero escribir en la direccion %d %d %d el valor: %d\n",
+			"[enviarDirecParaEscribirMemoria]Quiero escribir en la direccion %d %d (tamaño: %d) el valor: %d\n",
 			((int*) (variableAEnviar))[0], ((int*) (variableAEnviar))[1],
 			((int*) (variableAEnviar))[2], ((int*) (variableAEnviar))[3]);
 	Serializar(ESCRIBIRVARIABLE, 20, variableAEnviar, clienteMEM);
@@ -520,7 +520,7 @@ void enviarDirecParaLeerMemoria(posicionMemoria* direccion, int header) {
 	memcpy(variableALeer + 8, &direccion->size, 4);
 	memcpy(variableALeer + 12, &unPcb->programId, 4);
 	printf(
-			"[enviarDirecParaLeerMemoria]Quiero leer en la direccion: %d %d %d\n",
+			"[enviarDirecParaLeerMemoria]Quiero leer en la direccion: %d %d (tamaño: %d)\n",
 			((int*) (variableALeer))[0], ((int*) (variableALeer))[1],
 			((int*) (variableALeer))[2]);
 	Serializar(header, 16, variableALeer, clienteMEM);
