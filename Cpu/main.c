@@ -78,7 +78,6 @@ int32_t conectarConMemoria() {
 	}
 	Serializar(CPU, 4, &noInteresa, clienteMEM);
 	while (1) {
-		//sem_wait(&semProcesar);
 		paquete* paqueteRecibido = Deserializar(clienteMEM);
 		if (paqueteRecibido->header < 0) {
 			perror("Memoria se desconectó");
@@ -170,7 +169,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		sem_wait(&semDestruirPCB);
 		unPcb = deserializarPCB(paquete);
 		printf("unPcb id: %d\n", unPcb->programId);
-		//sleep(1000000);
 		sem_post(&semHayScript);
 		break;
 	}
@@ -228,7 +226,6 @@ void procesarScript() {
 			destruirPCB(unPcb);
 			sem_post(&semDestruirPCB);
 		}
-		//Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
 	}
 }
 
@@ -263,7 +260,7 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 
 	else if((nombreVariable>='0')&&(nombreVariable<='9')){
 		printf("[definirVariable]Creando argumento %c\n", nombreVariable);
-	//	armarDireccionDeArgumento(direccionVariable);
+		armarDireccionDeArgumento(direccionVariable);
 		list_add(indiceStack->args, direccionVariable);
 		printf("[definirVariable]Direccion de argumento %c es %d %d %d\n", nombreVariable, direccionVariable->pag, direccionVariable->off, direccionVariable->size);
 		indiceStack->tamanoArgs++;
@@ -294,6 +291,48 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 	enviarDirecParaEscribirMemoria(direccionVariable, valor);
 	return (direccionRetorno);
 
+}
+
+void armarDirecccionDeFuncion(posicionMemoria *direccionReal){
+	indiceDeStack *stackActual = (indiceDeStack*)list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack-1);
+	if(stackActual->tamanoArgs == 0 && stackActual->tamanoVars== 0){
+		printf("Entrando a definir variable en contexto sin argumentos y sin vars\n");
+		int posicionStackAnterior = unPcb->tamanoIndiceStack-2;
+		int posicionUltimaVariable = ((indiceDeStack*)(list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack-2)))->tamanoVars-1;
+		proximaDireccion(posicionStackAnterior, posicionUltimaVariable, direccionReal);
+	}else if(stackActual->tamanoVars == 0){
+		printf("Entrando a definir variable a partir del ultimo argumento\n");
+		int posicionStackActual = unPcb->tamanoIndiceStack-1;
+		int posicionUltimoArgumento = (stackActual)->tamanoArgs-1;
+		proximaDireccionArg(posicionStackActual, posicionUltimoArgumento, direccionReal);
+	}else{
+		printf("Entrando a definir variable a partir de la ultima variable\n");
+		int posicionStackActual = unPcb->tamanoIndiceStack-1;
+		int posicionUltimaVariable = stackActual->tamanoVars-1;
+		proximaDireccion(posicionStackActual, posicionUltimaVariable, direccionReal);
+	}
+	return;
+}
+
+void proximaDireccionArg(int posStack, int posUltVar, posicionMemoria* direccionReal){
+	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
+	printf("Entre a proximadirecArg\n");
+	int offset = ((posicionMemoria*)(list_get(((indiceDeStack*)(list_get(unPcb->indiceStack, posStack)))->args, posUltVar)))->off+ 4;
+	printf("Offset siguiente es %d\n", offset);
+	if(offset>=tamanoPag){
+		direccion->pag= ((posicionMemoria*)(list_get(((indiceDeStack*)(list_get(unPcb->indiceStack, posStack)))->args, posUltVar)))->pag + 1;
+		direccion->off= 0;
+		direccion->size=4;
+		memcpy(direccionReal, direccion , sizeof(posicionMemoria));
+		free(direccion);
+	}else{
+		direccion->pag= ((posicionMemoria*)(list_get(((indiceDeStack*)(list_get(unPcb->indiceStack, posStack)))->args, posUltVar)))->pag;
+		direccion->off= offset;
+		direccion->size=4;
+		memcpy(direccionReal, direccion , sizeof(posicionMemoria));
+		free(direccion);
+	}
+	return;
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
@@ -456,6 +495,22 @@ void armarDireccionPrimeraPagina(posicionMemoria *direccionReal) {
 	free(direccion);
 
 	return;
+}
+
+void armarDireccionDeArgumento(posicionMemoria *direccionReal){
+
+	if(((indiceDeStack*)list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack-1))->tamanoArgs == 0){
+		//log_info(log,"No hay argumentos\n");
+		int posicionStackAnterior = unPcb->tamanoIndiceStack-2;
+		int posicionUltimaVariable = ((indiceDeStack*)(list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack-2)))->tamanoVars-1;
+		proximaDireccion(posicionStackAnterior, posicionUltimaVariable, direccionReal);
+	}
+	else {
+		//log_info(log,"Busco ultimo argumento\n");
+		int posicionStackActual = unPcb->tamanoIndiceStack-1;
+		int posicionUltimoArgumento = ((indiceDeStack*)(list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack-1)))->tamanoArgs-1;
+		proximaDireccion(posicionStackActual, posicionUltimoArgumento, direccionReal);
+	}
 }
 
 int primeraPagina() {
