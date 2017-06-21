@@ -242,6 +242,7 @@ char* depurarSentencia(char* sentencia) {
 
 }
 t_puntero definirVariable(t_nombre_variable nombreVariable) {
+	printf("[definirVariable]Entre a definir %c\n", nombreVariable);
 	posicionMemoria *direccionVariable = malloc(sizeof(posicionMemoria));
 	variable *unaVariable = malloc(sizeof(variable));
 	indiceDeStack *indiceStack = malloc(sizeof(indiceDeStack));
@@ -256,7 +257,29 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 		list_add(indiceStack->vars, unaVariable);
 		indiceStack->pos = 0;
 		indiceStack->tamanoVars++;
-	} else {
+	}
+
+
+	else if((nombreVariable>='0')&&(nombreVariable<='9')){
+		printf("[definirVariable]Creando argumento %c\n", nombreVariable);
+	//	armarDireccionDeArgumento(direccionVariable);
+		list_add(indiceStack->args, direccionVariable);
+		printf("[definirVariable]Direccion de argumento %c es %d %d %d\n", nombreVariable, direccionVariable->pag, direccionVariable->off, direccionVariable->size);
+		indiceStack->tamanoArgs++;
+	}
+
+	else if(indiceStack->tamanoVars == 0 && (unPcb->tamanoIndiceStack)>1){
+		//La posicion va a estar definida cuando se llama a la primitiva funcion
+		printf("[definirVariable]Declarando variable %c de funcion\n", nombreVariable);
+	//	armarDirecccionDeFuncion(direccionVariable);
+		unaVariable->etiqueta=nombreVariable;
+		unaVariable->direccion=direccionVariable;
+		list_add(indiceStack->vars, unaVariable);
+		indiceStack->tamanoVars++;
+
+	}
+
+	else {
 		armarProximaDireccion(direccionVariable);
 		unaVariable->etiqueta = nombreVariable;
 		unaVariable->direccion = direccionVariable;
