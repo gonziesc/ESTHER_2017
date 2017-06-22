@@ -81,6 +81,12 @@ char* leerDeCache(int32_t , int32_t ,int32_t, int32_t );
 void escribirEnCache(int32_t , int32_t , int32_t , int32_t , char* );
 void almacenarFrameEnCache(int32_t , int32_t , char* , int32_t);
 int32_t buscarPosicionContenido(int32_t, int32_t );
+void inicializarPrograma(int32_t, int32_t );
+void inicializarMemoria();
+int32_t estaLibre(int32_t);
+int32_t buscarUltimaPag(int32_t);
+int32_t buscarFrameLibre();
+int32_t cantidadFramesLibres();
 
 t_list** overflow;
 int CANTIDAD_DE_MARCOS;

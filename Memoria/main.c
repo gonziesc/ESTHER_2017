@@ -56,6 +56,8 @@ int32_t main(int argc, char**argv) {
 	punteroMemoria = tablaMemoria;
 	punteroCache = tablaCache;
 	punteroUsos = tablaUsos;
+	inicializarMemoria();
+	inicializarOverflow(t_archivoConfig->MARCOS);
 	//hacer un malloc , como memoria, hago un malloc del lugar de memoria ademas de tener una tabla
 	crearFrameGeneral();
 	crearCache();
@@ -293,22 +295,43 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			int i;
 
 			Serializar(ENTRAPROCESO, 4, &noIMporta, socket);
+
 			//}
 		}
 		break;
 	}
+	case INICIALIZARPROCESO: {
+		int pid;
+		int cantidadDePaginas;
+		memcpy(&pid, paquete, 4);
+		memcpy(&cantidadDePaginas, paquete +4, 4);
+		inicializarPrograma(pid,cantidadDePaginas);
+		break;
+	}
 	case PAGINA: {
 		int32_t pid;
+		int32_t numeroPagina;
+		int32_t offset;
+		int32_t tamano;
+		char *codigoPagina = malloc(t_archivoConfig->MARCOS_SIZE);
 		printf("%s\n", paquete);
-		char *pagina = malloc(t_archivoConfig->MARCOS_SIZE);
 
-		memcpy(pagina, paquete, t_archivoConfig->MARCOS_SIZE);
+
+
 		//pagina[t_archivoConfiheaderg->MARCOS_SIZE] = '\0';
-		memcpy(&pid, paquete + t_archivoConfig->MARCOS_SIZE, sizeof(int));
+		memcpy(&pid, paquete, sizeof(int));
+		memcpy(&numeroPagina, paquete+4, sizeof(int));
+		memcpy(&tamano, paquete+8, sizeof(int));
+		memcpy(&offset, paquete+12, sizeof(int));
+		memcpy(codigoPagina, paquete+16, t_archivoConfig->MARCOS_SIZE);
+		escribirEnPagina(pid,numeroPagina,offset,tamanoPaquete,codigoPagina);
 		//printf("pagina: %s\n", pagina);
 		//printf("pid: %d\n", pid);
 		Serializar(PAGINAENVIADA, 4, &noIMporta, socket);
-		almacernarPaginaEnFrame(pid, tamanoPaquete, paquete);
+		//tamanoPaquete es la cantidad de paginas que necesito
+
+
+		//almacernarPaginaEnFrame(pid, tamanoPaquete, paquete);
 		sem_post(&semPaginas);
 		break;
 	}
@@ -390,7 +413,13 @@ void crearCache(){
 	cache1.puntero = malloc(cache1.tamanio);
 	cache1.punteroDisponible = cache1.puntero;
 }
-
+void inicializarMemoria(){
+	int32_t i;
+	for(i=0;i<=t_archivoConfig->MARCOS;i++){
+		(punteroMemoria+i)->pid =0;
+		(punteroMemoria+i)->numeroPagina =0;
+	}
+}
 void dump() {
 	t_log * log;
 	log = log_create("dump.log", "Memoria", 0, LOG_LEVEL_INFO);
@@ -426,20 +455,122 @@ void size() {
 	}
 }
 
-/*void crearFrame() {
+void inicializarPrograma(int32_t pid, int32_t cantPaginas){
+	int32_t i;
+	for(i=0;i<=cantPaginas-1;i++){
 
- frame unFrame;
- int32_t tamanioMarcos, cantidadMarcos;
- cantidadMarcos = t_archivoConfig->MARCOS;
- tamanioMarcos = t_archivoConfig->MARCOS_SIZE;
+		int32_t frame =calcularPosicion(pid,i);
+		int32_t libre;
+		libre = estaLibre(frame);
+		if(libre==1){
 
- unFrame.id = 1;
- unFrame.tamanio = cantidadMarcos * tamanioMarcos;
- unFrame.tamanioDisponible = unFrame.tamanio;
- unFrame.tamanioOcupado = 0;
- unFrame.puntero = malloc(unFrame.tamanio);
- }
- */
+
+			nodoTablaMemoria.numeroPagina = i;
+			nodoTablaMemoria.pid = pid;
+			punteroMemoria[frame] = nodoTablaMemoria;
+
+		}
+		else{
+			int32_t frameLibre;
+			frameLibre= buscarFrameLibre();
+			agregarSiguienteEnOverflow(frame,frameLibre);
+			nodoTablaMemoria.numeroPagina = i;
+			nodoTablaMemoria.pid = pid;
+			punteroMemoria[frameLibre] = nodoTablaMemoria;
+
+		}
+	}
+}
+
+int32_t estaLibre(int32_t unFrame){
+	if((punteroMemoria+unFrame)->pid ==0 && (punteroMemoria+unFrame)->numeroPagina ==0)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;
+	}
+}
+int32_t buscarUltimaPag(int32_t pid){
+	int32_t ultimaPagina=0;
+	int32_t i;
+	for(i=0; i<=t_archivoConfig->MARCOS;i++){
+		if((punteroMemoria+i)->pid == pid && (punteroMemoria+i)->numeroPagina > ultimaPagina){
+			ultimaPagina = (punteroMemoria+i)->numeroPagina;
+		}
+	}
+	return ultimaPagina;
+}
+
+void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas){
+	//TODO corregir
+	int32_t ultimaPag = buscarUltimaPag(pid);
+		if(ultimaPag==0){
+			printf("el proceso todavia no fue iniciado");
+			// TODO no entra el proceso porque todavia no se inicioserializar(NOENTROPROCESO, );
+			return;
+		}
+
+
+	int32_t i;
+	int32_t cantFL = cantidadFramesLibres();
+	//int32_t frameLibre;
+	if(cantPaginas > cantFL){
+		printf("no se podran asignar todas las paginas requeridas");
+		return;
+	}
+	else{
+		for(i=0;i<=cantPaginas-1;i++){
+
+				int32_t frame =calcularPosicion(pid,i);
+				int32_t libre;
+				libre = estaLibre(frame);
+				if(libre==1){
+
+
+					nodoTablaMemoria.numeroPagina = i+ultimaPag;
+					nodoTablaMemoria.pid = pid;
+					punteroMemoria[frame] = nodoTablaMemoria;
+
+				}
+				else{
+					int32_t frameLibre;
+					frameLibre= buscarFrameLibre();
+					agregarSiguienteEnOverflow(frame,frameLibre);
+					nodoTablaMemoria.numeroPagina = i+ultimaPag;
+					nodoTablaMemoria.pid = pid;
+					punteroMemoria[frameLibre] = nodoTablaMemoria;
+
+				}
+			}
+
+
+	}
+}
+
+int32_t buscarFrameLibre(){
+	int32_t i;
+	for(i=0; i<=t_archivoConfig->MARCOS;i++){
+		if((punteroMemoria+i)->pid == 0 && (punteroMemoria+i)->numeroPagina == 0){
+			return i;
+		}
+
+	}
+	return 0;
+}
+int32_t cantidadFramesLibres(){
+	int32_t cantFL=0;
+	int32_t i;
+	for(i=0;i <= t_archivoConfig->MARCOS; i++)
+	{
+		if((punteroMemoria+i)->pid==0 && (punteroMemoria+i)->numeroPagina==0){
+			cantFL++;
+		}
+	}
+	return cantFL;
+}
+
 
 void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 	//SIEMPRE LE TIENE QUE LLEGAR TAMANIO<MARCOS_SIZE OJO
@@ -452,7 +583,8 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 	}
 	//nodoTablaMemoria.puntero = frameGeneral.tamanioOcupado;
 	nodoTablaMemoria.numeroPagina = numeroPagina;
-	frameGeneral.punteroDisponible += t_archivoConfig->MARCOS_SIZE;
+
+	//frameGeneral.punteroDisponible += t_archivoConfig->MARCOS_SIZE;
 	frameGeneral.tamanioOcupado += t_archivoConfig->MARCOS_SIZE;
 	frameGeneral.tamanioDisponible -= tamanioBuffer;
 	nodoTablaMemoria.pid = pid;
@@ -473,15 +605,15 @@ void liberarPaginaDeProceso(int32_t pid, int32_t pagina){
 	    punteroMemoria[i-1] = punteroMemoria[i];
 	}
 	*/
-	(punteroMemoria + frameBorrar)->pid = -1;
-	(punteroMemoria + frameBorrar)->numeroPagina = -1;
+	(punteroMemoria + frameBorrar)->pid = 0;
+	(punteroMemoria + frameBorrar)->numeroPagina = 0;
 }
 
 
 
 int32_t buscarFrame(int32_t pid, int32_t numeroPagina) {
 	int32_t i;
-	for (i = 0; i <= 500; i++) {
+	for (i = 0; i <= t_archivoConfig->MARCOS; i++) {
 		if ((punteroMemoria + i)->pid == pid
 				&& (punteroMemoria+i)->numeroPagina == numeroPagina) {
 			return i;
@@ -498,20 +630,48 @@ int32_t buscarFrame(int32_t pid, int32_t numeroPagina) {
 
 char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano) {
 
-	int32_t unFrame = buscarFrame(pid, pagina);
+	//int32_t unFrame = buscarFrame(pid, pagina);
+	int32_t unFrame = calcularPosicion(pid,pagina);
+
+	int32_t correcta = esPaginaCorrecta(unFrame,pid,pagina);
 	char* contenido = malloc(tamano);
-	int32_t desplazamiento = unFrame * t_archivoConfig->MARCOS_SIZE + offset;
-	memcpy(contenido, frameGeneral.puntero + desplazamiento, tamano);
-	//contenido[tamano] = '\0';
-	return contenido;
+	if(correcta==1){
+		int32_t desplazamiento = unFrame * t_archivoConfig->MARCOS_SIZE + offset;
+		memcpy(contenido, frameGeneral.puntero + desplazamiento, tamano);
+		//contenido[tamano] = '\0';
+		return contenido;
+	}
+	else
+	{
+
+		int32_t colision = buscarEnOverflow(unFrame,pid,pagina);
+		agregarSiguienteEnOverflow(unFrame, colision);
+		int32_t desplazamiento = colision * t_archivoConfig->MARCOS_SIZE +offset;
+		memcpy(contenido, frameGeneral.puntero + desplazamiento, tamano);
+		return contenido;
+	}
+
 }
 
 void escribirEnPagina(int32_t pid, int32_t pagina, int32_t offset,
 		int32_t tamano, char* contenido) {
 
-	int32_t unFrame = buscarFrame(pid, pagina);
+	//int32_t unFrame = buscarFrame(pid, pagina);
+	int32_t unFrame = calcularPosicion(pid,pagina);
+	int32_t correcta = esPaginaCorrecta(unFrame,pid,pagina);
+	if(correcta ==1){
 	int32_t desplazamiento = unFrame * t_archivoConfig->MARCOS_SIZE +offset;
 	memcpy(frameGeneral.puntero + desplazamiento, contenido, tamano);
+	}
+	else{
+
+		int32_t colision = buscarEnOverflow(unFrame,pid,pagina);
+		agregarSiguienteEnOverflow(unFrame, colision);
+		int32_t desplazamiento = colision * t_archivoConfig->MARCOS_SIZE +offset;
+		memcpy(frameGeneral.puntero + desplazamiento, contenido, tamano);
+
+	}
+
 }
 void almacenarFrameEnCache(int32_t pid, int32_t tamanioBuffer, char* buffer, int32_t pagina){
 
@@ -545,7 +705,7 @@ void almacenarFrameEnCache(int32_t pid, int32_t tamanioBuffer, char* buffer, int
 			else
 				{
 
-					printf("proceso no ingreso a cache por maximo de entradas\n");
+					printf("proceso no ingreso completo a cache por maximo de entradas\n");
 				}
 		}
 		else
@@ -740,5 +900,12 @@ void borrarDeOverflow(int posicion, int frame) {
 
 /* A implementar por el alumno. Devuelve 1 a fin de cumplir con la condición requerida en la llamada a la función */
 int esPaginaCorrecta(int pos_candidata, int pid, int pagina) {
-	return 1;
+	if((punteroMemoria+pos_candidata)->pid == pid
+			&& (punteroMemoria+pos_candidata)->numeroPagina == pagina){
+		return 1;
+	}
+	else{
+		return 0;
+	}
+
 }
