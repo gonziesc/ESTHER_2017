@@ -21,6 +21,7 @@ sem_t semSentenciaCompleta;
 sem_t semHayScript;
 sem_t semEscribirVariable;
 sem_t semDereferenciar;
+sem_t semDestruirPCB;
 int noInteresa;
 int valorDerenferenciado;
 int algoritmo;
@@ -55,6 +56,7 @@ void Configuracion(char* dir) {
 	sem_init(&semHayScript, 0, 0);
 	sem_init(&semEscribirVariable, 0, 0);
 	sem_init(&semDereferenciar, 0, 0);
+	sem_init(&semDestruirPCB, 0, 1);
 }
 
 int32_t conectarConMemoria() {
@@ -145,6 +147,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case PCB: {
+		sem_wait(&semDestruirPCB);
 		unPcb = deserializarPCB(paquete);
 		printf("unPcb id: %d\n", unPcb->programId);
 		//sleep(1000000);
@@ -160,7 +163,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("quatum slep: %d\n", quantumSleep);
 		printf("stack: %d\n", stackSize);
 		printf("algoritmo: %d\n", algoritmo);
-		sleep(30);
 	}
 	}
 
@@ -181,9 +183,9 @@ void procesarScript() {
 			crearEstructuraParaMemoria(unPcb, tamanoPag, datos_para_memoria);
 			char* sentencia = leerSentencia(datos_para_memoria->pag,
 					datos_para_memoria->off, datos_para_memoria->size, 0);
+			sem_wait(&semSentenciaCompleta);
 			char* barra_cero = "\0";
 			memcpy(sentencia + (datos_para_memoria->size - 1), barra_cero, 1);
-			sem_wait(&semSentenciaCompleta);
 			printf("[procesarScript]Sentencia: %s de pid %d \n", sentencia, pid);
 			analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
 			unPcb->programCounter++;
@@ -197,6 +199,7 @@ void procesarScript() {
 
 			serializarPCB(unPcb, cliente, FINDEQUATUM);
 			destruirPCB(unPcb);
+			sem_post(&semDestruirPCB);
 		}
 		//Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
 	}
@@ -316,7 +319,7 @@ void armarDireccionPrimeraPagina(posicionMemoria *direccionReal) {
 }
 
 int primeraPagina() {
-	return unPcb->cantidadDePaginas;
+	return unPcb->cantidadDePaginas + 1;
 }
 
 void armarProximaDireccion(posicionMemoria* direccionReal) {

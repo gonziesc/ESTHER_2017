@@ -495,7 +495,7 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo,
 			int offsetaux = 0;
 			void* envioPagina = malloc(MARCOS_SIZE + 4*sizeof(int));
 			char * sobras = "0000000000000000000000";
-			memcpy(envioPagina + MARCOS_SIZE, &processID, sizeof(processID));
+			memcpy(envioPagina , &processID, sizeof(processID));
 			memcpy(envioPagina + 4, &i , sizeof(int));
 			memcpy(envioPagina + 8, &MARCOS_SIZE , sizeof(int));
 			memcpy(envioPagina + 12, &offsetaux , sizeof(int));

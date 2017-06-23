@@ -327,7 +327,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(&offset, paquete+12, sizeof(int));
 		memcpy(codigoPagina, paquete+16, t_archivoConfig->MARCOS_SIZE);
 		almacenarFrameEnCache(pid,tamano,codigoPagina,numeroPagina);
-		escribirEnPagina(pid,numeroPagina,offset,tamanoPaquete,codigoPagina);
+		escribirEnPagina(pid,numeroPagina,offset,tamano,codigoPagina);
 
 		//printf("pagina: %s\n", pagina);
 		//printf("pid: %d\n", pid);
