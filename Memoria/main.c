@@ -326,7 +326,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(&tamano, paquete+8, sizeof(int));
 		memcpy(&offset, paquete+12, sizeof(int));
 		memcpy(codigoPagina, paquete+16, t_archivoConfig->MARCOS_SIZE);
+		almacenarFrameEnCache(pid,tamano,codigoPagina,numeroPagina);
 		escribirEnPagina(pid,numeroPagina,offset,tamanoPaquete,codigoPagina);
+
 		//printf("pagina: %s\n", pagina);
 		//printf("pid: %d\n", pid);
 		Serializar(PAGINAENVIADA, 4, &noIMporta, socket);
@@ -409,6 +411,7 @@ void crearCache(){
 	cache1.tamanioDisponible = cache1.tamanio;
 	cache1.puntero = malloc(cache1.tamanio);
 	cache1.punteroDisponible = cache1.puntero;
+	cache1.framesLibres = cantidadEntradas;
 }
 void inicializarMemoria(){
 	int32_t i;
@@ -462,7 +465,7 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas){
 		if(libre==1){
 
 
-			nodoTablaMemoria.numeroPagina = i+1;
+			nodoTablaMemoria.numeroPagina = i;
 			nodoTablaMemoria.pid = pid;
 			punteroMemoria[frame] = nodoTablaMemoria;
 			frameGeneral.framesLibres--;
@@ -479,6 +482,8 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas){
 		}
 	}
 }
+
+
 
 int32_t estaLibre(int32_t unFrame){
 	if((punteroMemoria+unFrame)->pid ==0 && (punteroMemoria+unFrame)->numeroPagina ==0)
@@ -656,6 +661,42 @@ void escribirEnPagina(int32_t pid, int32_t pagina, int32_t offset,
 	}
 
 }
+
+/*void inicializarProgramaCache(int32_t pid,int32_t cantPaginas){
+	int32_t i;
+	if(cantPaginas > t_archivoConfig->ENTRADAS_CACHE){
+		for(i=0;i<= t_archivoConfig->ENTRADAS_CACHE-1;i++){
+			nodoCache.pid = pid;
+			nodoCache.numeroPagina=i+1;
+			nodoCache.inicioContenido = t_archivoConfig->MARCOS_SIZE * indiceCache;
+			nodoUso.pid = pid;
+			nodoUso.pagina = i+1;
+			nodoUso.uso = 0;
+			punteroCache[indiceCache] = nodoCache;
+			punteroUsos[indiceCache] = nodoUso;
+			indiceCache++;
+		}
+	}
+	else{
+		for(i=0;i<=cantPaginas-1;i++){
+			nodoCache.pid = pid;
+			nodoCache.numeroPagina;
+			nodoCache.inicioContenido = t_archivoConfig->MARCOS_SIZE * indiceCache;
+			nodoUso.pid = pid;
+			nodoUso.pagina = i+1;
+			nodoUso.uso = 0;
+			punteroCache[indiceCache] = nodoCache;
+			punteroUsos[indiceCache] = nodoUso;
+			indiceCache++;
+
+		}
+	}
+}
+
+
+*/
+
+
 void almacenarFrameEnCache(int32_t pid, int32_t tamanioBuffer, char* buffer, int32_t pagina){
 
 	nodoCache.pid = pid;
@@ -845,7 +886,7 @@ unsigned int calcularPosicion(int pid, int num_pagina) {
 void inicializarOverflow(int cantidad_de_marcos) {
 	overflow = malloc(sizeof(t_list*) * cantidad_de_marcos);
 	int i;
-	for (i = 0; i < CANTIDAD_DE_MARCOS; ++i) { /* Una lista por frame */
+	for (i = 0; i < cantidad_de_marcos; ++i) { /* Una lista por frame */
 		overflow[i] = list_create();
 	}
 }

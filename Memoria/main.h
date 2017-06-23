@@ -38,6 +38,7 @@ typedef struct {
 typedef struct{
 	int32_t tamanio;
 	int32_t tamanioDisponible;
+	int32_t framesLibres;
 	char* puntero;
 	char*punteroDisponible;
 }cache;
