@@ -23,6 +23,7 @@ typedef struct {
 	int32_t tamanio;
 	int32_t tamanioDisponible;
 	int32_t tamanioOcupado;
+	int32_t framesLibres;
 	char* puntero;
 	char * punteroDisponible;
 } frame;
@@ -86,7 +87,7 @@ void inicializarMemoria();
 int32_t estaLibre(int32_t);
 int32_t buscarUltimaPag(int32_t);
 int32_t buscarFrameLibre();
-int32_t cantidadFramesLibres();
+
 
 t_list** overflow;
 int CANTIDAD_DE_MARCOS;

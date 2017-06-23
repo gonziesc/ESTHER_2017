@@ -128,6 +128,7 @@ void leerComando() {
 		}
 		case 3: {
 			matarTodosLosProcesos();
+			Serializar(DESCONECTARCONSOLA, 4, &noInteresa, cliente);
 			close(cliente);
 			pthread_cancel(idHiloConectarseConKernel);
 			break;

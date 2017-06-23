@@ -293,9 +293,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			int32_t paginasNegativas = -paginas;
 			sem_init(&semPaginas, 0, &paginasNegativas);
 			int i;
-
+			if(paginas*t_archivoConfig->MARCOS_SIZE > frameGeneral.tamanioDisponible){
+				Serializar(NOENTROPROCESO, 4, &noIMporta, socket);
+			}
+			else{
 			Serializar(ENTRAPROCESO, 4, &noIMporta, socket);
-
+			}
 			//}
 		}
 		break;
@@ -317,7 +320,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		printf("%s\n", paquete);
 
 
-
 		//pagina[t_archivoConfiheaderg->MARCOS_SIZE] = '\0';
 		memcpy(&pid, paquete, sizeof(int));
 		memcpy(&numeroPagina, paquete+4, sizeof(int));
@@ -332,27 +334,23 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 
 		//almacernarPaginaEnFrame(pid, tamanoPaquete, paquete);
-		sem_post(&semPaginas);
 		break;
 	}
-	case VARIABLELEER: {
-		sem_wait(&semPaginas);
+	case LEERSENTENCIA: {
 		memcpy(&numero_pagina, paquete, sizeof(int));
 		memcpy(&offset, paquete + sizeof(int), sizeof(int));
 		memcpy(&tamanio, paquete + sizeof(int) * 2, sizeof(int));
-		printf("Quiero leer en la direccion: %d %d %d y le voy a enviar a socket: %d\n",
+		printf("[LEERSENTENCIA]Quiero leer en la direccion: %d %d %d y le voy a enviar a socket: %d\n",
 							numero_pagina, offset,
 							offset, socket);
 		char * contenido = leerDePagina(1, numero_pagina, offset, tamanio);
 		//TODO HARCODEADO PIDDDDDDDD
 		//printf("lei: %s\n", contenido);
-		Serializar(VARIABLELEER, tamanio, contenido, socket);
+		Serializar(LEERSENTENCIA, tamanio, contenido, socket);
 		//ojo pid actual
-		sem_post(&semPaginas);
 		break;
 	}
 	case DEREFERENCIAR: {
-			sem_wait(&semPaginas);
 			memcpy(&numero_pagina, paquete, sizeof(int));
 			memcpy(&offset, paquete + sizeof(int), sizeof(int));
 			memcpy(&tamanio, paquete + sizeof(int) * 2, sizeof(int));
@@ -364,11 +362,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			//printf("lei: %s\n", contenido);
 			Serializar(DEREFERENCIAR, tamanio, contenido, socket);
 			//ojo pid actual
-			sem_post(&semPaginas);
 			break;
 		}
-	case VARIABLEESCRIBIR: {
-		sem_wait(&semPaginas);
+	case ESCRIBIRVARIABLE: {
 		memcpy(&numero_pagina, paquete, sizeof(int));
 		memcpy(&offset, paquete + sizeof(int), sizeof(int));
 		memcpy(&tamanio, paquete + sizeof(int) * 2, sizeof(int));
@@ -380,7 +376,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		escribirEnPagina(1, numero_pagina, offset, tamanio, buffer);
 
 
-		Serializar(VARIABLEESCRIBIR, sizeof(int), &noIMporta, socket);
+		Serializar(ESCRIBIRVARIABLE, sizeof(int), &noIMporta, socket);
 		sem_post(&semPaginas);
 		free(buffer);
 		break;
@@ -401,6 +397,7 @@ void crearFrameGeneral() {
 	frameGeneral.tamanioOcupado = 0;
 	frameGeneral.puntero = malloc(cantidadMarcos * tamanioMarcos);
 	frameGeneral.punteroDisponible = frameGeneral.puntero;
+	frameGeneral.framesLibres = cantidadMarcos;
 
 }
 void crearCache(){
@@ -465,9 +462,10 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas){
 		if(libre==1){
 
 
-			nodoTablaMemoria.numeroPagina = i;
+			nodoTablaMemoria.numeroPagina = i+1;
 			nodoTablaMemoria.pid = pid;
 			punteroMemoria[frame] = nodoTablaMemoria;
+			frameGeneral.framesLibres--;
 
 		}
 		else{
@@ -477,7 +475,7 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas){
 			nodoTablaMemoria.numeroPagina = i;
 			nodoTablaMemoria.pid = pid;
 			punteroMemoria[frameLibre] = nodoTablaMemoria;
-
+			frameGeneral.framesLibres--;
 		}
 	}
 }
@@ -514,7 +512,7 @@ void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas){
 
 
 	int32_t i;
-	int32_t cantFL = cantidadFramesLibres();
+	int32_t cantFL = frameGeneral.framesLibres;
 	//int32_t frameLibre;
 	if(cantPaginas > cantFL){
 		printf("no se podran asignar todas las paginas requeridas");
@@ -550,26 +548,11 @@ void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas){
 }
 
 int32_t buscarFrameLibre(){
-	int32_t i;
-	for(i=0; i<=t_archivoConfig->MARCOS;i++){
-		if((punteroMemoria+i)->pid == 0 && (punteroMemoria+i)->numeroPagina == 0){
-			return i;
-		}
 
-	}
-	return 0;
+	int32_t frameLibre  = calcularPosicion(0,0);
+	return frameLibre;
 }
-int32_t cantidadFramesLibres(){
-	int32_t cantFL=0;
-	int32_t i;
-	for(i=0;i <= t_archivoConfig->MARCOS; i++)
-	{
-		if((punteroMemoria+i)->pid==0 && (punteroMemoria+i)->numeroPagina==0){
-			cantFL++;
-		}
-	}
-	return cantFL;
-}
+
 
 
 void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {

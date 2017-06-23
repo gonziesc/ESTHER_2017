@@ -32,9 +32,9 @@ t_queue* colaNew;
 t_queue* colaCodigosAMemoria;
 t_queue* colaReady;
 t_queue* colaExec;
-t_queue* colaBlock;
 t_queue* colaExit;
 t_queue* colaCpu;
+t_queue* colaProcesosConsola;
 t_queue** colas_semaforos;
 sem_t gradoMultiprogramacion;
 sem_t semUnScript;
@@ -48,12 +48,12 @@ sem_t semPaginaEnviada;
 sem_t semPunteroPaginaHeap;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaExit;
-pthread_mutex_t mutexColaBlock;
 pthread_mutex_t mutexColaEx;
 pthread_mutex_t mutexColaReady;
 pthread_mutex_t mutexProcesar;
 pthread_mutex_t mutexProcesarPaquetes;
 pthread_mutex_t mutexColaCpu;
+pthread_mutex_t mutexProcesarScript;
 pthread_t hiloPlanificadorLargoPlazo;
 pthread_t hiloEnviarProceso;
 pthread_t hiloPlanificadorCortoPlazo;
@@ -100,9 +100,9 @@ void configuracion(char*dir) {
 	colaNew = queue_create();
 	colaExec = queue_create();
 	colaReady = queue_create();
-	colaBlock = queue_create();
 	colaExit = queue_create();
 	colaCpu = queue_create();
+	colaProcesosConsola = queue_create();
 	colaCodigosAMemoria = queue_create();
 	colas_semaforos = malloc(
 			strlen((char*) t_archivoConfig->SEM_INIT) * sizeof(char*));
@@ -204,6 +204,7 @@ int32_t levantarServidor() {
 						if (logitudIO > 0) {
 							int codigoOperacion = (int) (*codigoKernel) - 48;
 							printf("Got data on stdin: %d\n", codigoOperacion);
+							procesarEntrada(codigoOperacion);
 							free(codigoKernel);
 						} else {
 							// fd closed
@@ -239,9 +240,36 @@ int32_t levantarServidor() {
 	}
 }
 
+void procesarEntrada(int codigoOperacion) {
+	switch (codigoOperacion) {
+	case 1: {
+
+		break;
+	}
+	case 2: {
+		int pidAMatar;
+		printf("Ingrese pid a finalizar\n");
+		scanf("%d", &pidAMatar);
+		//TODO avisar a consola
+		abortarProgramaPorConsola(pidAMatar, -35);
+		//TODO cambiar codigo
+		break;
+	}
+	case 3: {
+
+		break;
+	}
+	case 4: {
+
+		break;
+	}
+	}
+}
+
 void procesarScript() {
 	while (1) {
 		sem_wait(&semUnScript);
+		pthread_mutex_lock(&mutexProcesarScript);
 		int cantidadDePaginas = ceil(
 				(double) unScript->tamano / (double) MARCOS_SIZE);
 		int cantidadDePaginasToales = cantidadDePaginas
@@ -251,13 +279,19 @@ void procesarScript() {
 		if (header == OK) {
 			proceso* unProceso = malloc(sizeof(proceso));
 			programControlBlock* unPcb = malloc(sizeof(programControlBlock));
+			procesoConsola* unaConsola = malloc(sizeof(procesoConsola));
+
 			unPcb->cantidadDePaginas = cantidadDePaginas;
 			crearPCB(unScript->codigo, unPcb);
+			unaConsola->pid = processID;
+			unaConsola->consola = unScript->socket;
+			//TODO semaforo?
+			queue_push(colaProcesosConsola, unaConsola);
 			unProceso->pcb = unPcb;
 			unProceso->socketCONSOLA = unScript->socket;
 			char * enviocantidadDePaginas = malloc(2*sizeof(int));
 			memcpy(enviocantidadDePaginas, &processID, sizeof(int));
-			memcpy(enviocantidadDePaginas + 4, &cantidadDePaginas, sizeof(int));
+			memcpy(enviocantidadDePaginas + 4, &cantidadDePaginasToales, sizeof(int));
 			Serializar(INICIALIZARPROCESO, 8, enviocantidadDePaginas, clienteMEM);
 			Serializar(PID, 4, &processID, unScript->socket);
 			enviarProcesoAMemoria(unPcb->cantidadDePaginas, unScript->codigo,
@@ -269,6 +303,7 @@ void procesarScript() {
 			sem_post(&semNew);
 			free(unScript->codigo);
 		}
+		pthread_mutex_unlock(&mutexProcesarScript);
 	}
 
 }
@@ -293,6 +328,17 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	}
 
 	case CPU: {
+		datosKernelACpu enviar;
+		enviar.quantum = t_archivoConfig->QUANTUM;
+		enviar.quantumSleep = t_archivoConfig->QUANTUM_SLEEP;
+		enviar.stack = t_archivoConfig->STACK_SIZE;
+		printf("%s\n", t_archivoConfig->ALGORITMO);
+		if (!(strcmp(t_archivoConfig->ALGORITMO, "RR"))) {
+			enviar.algoritmo = 1;
+		} else {
+			enviar.algoritmo = 0;
+		}
+		Serializar(DATOSKERNELCPU, sizeof(datosKernelACpu), &enviar, socket);
 		pthread_mutex_lock(&mutexColaCpu);
 		queue_push(colaCpu, socket);
 		pthread_mutex_unlock(&mutexColaCpu);
@@ -350,16 +396,53 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		int pid;
 		char* fechaFIn = temporal_get_string_time();
 		memcpy(&pid, paquete, sizeof(int));
-		abortarProgramaPorConsola(pid);
+		abortarProgramaPorConsola(pid, codeFinalizarPrograma);
+		break;
 	}
-	/*case NOENTROPROCESO:{
-		//TODO
-
-	}*/
+	case NOENTROPROCESO:{
+		//TODO abortar
+		break;
+	}
 		//procesar pid muerto
 		//semaforear los procesar
+	case DESCONECTARCONSOLA: {
+		abortarTodosLosProgramasDeConsola(socket);
+		break;
 	}
-	return;
+	case FINDEQUATUM: {
+		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
+				pcbRecibido->programId);
+		destruirPCB(unProceso->pcb);
+		unProceso->pcb = pcbRecibido;
+		pthread_mutex_lock(&mutexColaReady);
+		queue_push(colaReady, unProceso);
+		pthread_mutex_unlock(&mutexColaReady);
+		sem_post(&semReady);
+		pthread_mutex_lock(&mutexColaCpu);
+		queue_push(colaCpu, socket);
+		pthread_mutex_unlock(&mutexColaCpu);
+		sem_post(&semCpu);
+		break;
+	}
+		return;
+	}
+}
+
+void abortarTodosLosProgramasDeConsola(int socket) {
+	procesoConsola* unProceso;
+	bool esMiSocket(void * entrada) {
+		procesoConsola * unproceso = (procesoConsola *) entrada;
+		return unproceso->consola == socket;
+	}
+	unProceso = (procesoConsola*) list_remove_by_condition(
+			colaProcesosConsola->elements, esMiSocket);
+	while (unProceso != NULL) {
+		abortarProgramaPorConsola(unProceso->pid, codeDesconexionConsola);
+		unProceso = (procesoConsola*) list_remove_by_condition(
+				colaProcesosConsola->elements, esMiSocket);
+
+	}
 }
 
 void crearPCB(char* codigo, programControlBlock *unPcb) {
@@ -482,7 +565,7 @@ void ejecutar(proceso* procesoAEjecutar, int socket) {
 	pthread_mutex_lock(&mutexColaEx);
 	queue_push(colaExec, procesoAEjecutar);
 	pthread_mutex_unlock(&mutexColaEx);
-	serializarPCB(procesoAEjecutar->pcb, socket);
+	serializarPCB(procesoAEjecutar->pcb, socket, PCB);
 }
 
 proceso* sacarProcesoDeEjecucion(int sock) {
@@ -490,6 +573,19 @@ proceso* sacarProcesoDeEjecucion(int sock) {
 	proceso *procesoABuscar;
 	while (procesoABuscar = (proceso*) list_get(colaExec->elements, a)) {
 		if (procesoABuscar->socketCPU == sock)
+			return (proceso*) list_remove(colaExec->elements, a);
+		a++;
+	}
+	printf("NO HAY PROCESO\n");
+	exit(0);
+	return NULL;
+}
+
+proceso* sacarProcesoDeEjecucionPorPid(int pid) {
+	int a = 0, t;
+	proceso *procesoABuscar;
+	while (procesoABuscar = (proceso*) list_get(colaExec->elements, a)) {
+		if (procesoABuscar->pcb->programId == pid)
 			return (proceso*) list_remove(colaExec->elements, a);
 		a++;
 	}
@@ -809,7 +905,7 @@ void abortar(proceso *proceso, int exitCode) {
 	//TODO : liberar recursos de memoria
 }
 
-void abortarProgramaPorConsola(int pid) {
+void abortarProgramaPorConsola(int pid, int codigo) {
 	proceso* unProceso;
 	bool esMiPid(void * entrada) {
 		proceso * unproceso = (proceso *) entrada;
@@ -821,9 +917,11 @@ void abortarProgramaPorConsola(int pid) {
 	pthread_mutex_unlock(&mutexColaReady);
 	if (unProceso != NULL) {
 		log_info(logger, "NUCLEO: Abortado x consola, en ready. Pre wait");
-		sem_post(&semCpu);
+		printf("aborte pid: %d con codigo %d\n", unProceso->pcb->programId,
+				codigo);
+		//sem_post(&semCpu);
 		log_info(logger, "NUCLEO: post wait");
-		abortar(unProceso, codeFinalizarPrograma);
+		abortar(unProceso, codigo);
 	} else {
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = (proceso*) list_find(colaExec->elements, esMiPid);
@@ -834,7 +932,9 @@ void abortarProgramaPorConsola(int pid) {
 			unProceso = (proceso*) list_remove_by_condition(colaExec->elements,
 					esMiPid);
 			pthread_mutex_unlock(&mutexColaEx);
-			abortar(unProceso, codeFinalizarPrograma);
+			printf("aborte pid: %d con codigo %d\n", unProceso->pcb->programId,
+					codigo);
+			abortar(unProceso, codigo);
 			//TODO esperar a que termine
 			log_info(logger,
 					"NUCLEO: Abortado x consola, en exec, espero que termine de trabajar");
@@ -852,56 +952,33 @@ void abortarProgramaPorConsola(int pid) {
 
 			}
 			if (unProceso != NULL) {
+				printf("aborte pid: %d con codigo %d\n",
+						unProceso->pcb->programId, codigo);
 				log_info(logger, "NUCLEO: Abortado x consola, en semaforo");
-				abortar(unProceso, codeFinalizarPrograma);
+				abortar(unProceso, codigo);
 
+			} else {
+				//no hay en exec, lo busco en semaforos
+				int i;
+				for (i = 0;
+						i
+								< strlen((char*) t_archivoConfig->SEM_IDS)
+										/ sizeof(char*); i++) {
+
+					unProceso = (proceso*) list_remove_by_condition(
+							colas_semaforos[i]->elements, esMiPid);
+					if (unProceso != NULL)
+						break;
+
+				}
+				if (unProceso != NULL) {
+					printf("aborte pid: %d con codigo %d\n",
+							unProceso->pcb->programId, codigo);
+					log_info(logger, "NUCLEO: Abortado x consola, en semaforo");
+					abortar(unProceso, codigo);
+				}
 			}
 		}
 	}
 }
 
-void destruirCONTEXTO(programControlBlock *pcb) {
-
-	indiceDeStack *stackADestruir;
-	while (pcb->tamanoIndiceStack != 0) {
-		stackADestruir = list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1);
-
-		while (stackADestruir->tamanoVars != 0) {
-
-			posicionMemoria*temp = (((variable*) list_get(stackADestruir->vars,
-					stackADestruir->tamanoVars - 1))->direccion);
-			free(temp);
-			free(
-					list_get(stackADestruir->vars,
-							stackADestruir->tamanoVars - 1));
-			stackADestruir->tamanoVars--;
-		}
-		while (stackADestruir->tamanoArgs != 0) {
-			free(
-					(posicionMemoria*) list_get(stackADestruir->args,
-							stackADestruir->tamanoArgs - 1));
-			stackADestruir->tamanoArgs--;
-		}
-		list_destroy(stackADestruir->vars);
-
-		list_destroy(stackADestruir->args);
-
-		free(list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1));
-
-		pcb->tamanoIndiceStack--;
-	}
-	list_destroy(pcb->indiceStack);
-
-	free(pcb->indiceCodigo);
-
-	free(pcb->indiceEtiquetas);
-
-}
-
-
-void destruirPCB(programControlBlock *pcb) {
-
-destruirCONTEXTO(pcb);
-free(pcb);
-
-}

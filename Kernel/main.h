@@ -28,8 +28,6 @@ typedef struct {
   int socketCONSOLA;
   programControlBlock *pcb;
   bool abortado;
-
-
 } proceso;
 
 typedef struct {
@@ -46,9 +44,21 @@ typedef struct {
 } datosHeap;
 
 typedef struct {
+  int quantum;
+  int quantumSleep;
+  int algoritmo;
+  int stack;
+} datosKernelACpu;
+
+typedef struct {
 int size;
 bool isFree;
 }HeapMetaData;
+
+typedef struct {
+int pid;
+int consola;
+}procesoConsola;
 
 
 void configuracion(char*);
@@ -67,7 +77,9 @@ void guardarPaginaEnTabla(int, int, int);
 int actualizarPaginaEnMemoria(char*, int, int, int);
 int crearPaginaEnMemoria( int, int, int);
 void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int, int) ;
-void abortarProgramaPorConsola(int);
+void abortarProgramaPorConsola(int, int);
+proceso* sacarProcesoDeEjecucionPorPid(int );
+void abortarTodosLosProgramasDeConsola(int);
 
 
 #endif

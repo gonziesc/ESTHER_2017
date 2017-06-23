@@ -44,7 +44,7 @@ paquete* Deserializar(int32_t socket) {
 
 }
 
-void serializarPCB(programControlBlock *unPcb,int socket) {
+void serializarPCB(programControlBlock *unPcb,int socket, int codigo) {
 	int size = 0;
 	char *pcbEntero, *pcbConCodigo;
 	//char *pcbConEtiquetas;
@@ -108,7 +108,7 @@ void serializarPCB(programControlBlock *unPcb,int socket) {
 		}
 
 	}
-	Serializar(PCB, unPcb->tamanoTotal, pcbEntero, socket);
+	Serializar(codigo, unPcb->tamanoTotal, pcbEntero, socket);
 }
 
 programControlBlock *deserializarPCB(char *paquete) {
@@ -155,5 +155,50 @@ programControlBlock *deserializarPCB(char *paquete) {
 		list_add(pcb->indiceStack, stack);
 	}
 	return pcb;
+
+}
+
+void destruirCONTEXTO(programControlBlock *pcb) {
+
+	indiceDeStack *stackADestruir;
+	while (pcb->tamanoIndiceStack != 0) {
+		stackADestruir = list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1);
+
+		while (stackADestruir->tamanoVars != 0) {
+
+			posicionMemoria*temp = (((variable*) list_get(stackADestruir->vars,
+					stackADestruir->tamanoVars - 1))->direccion);
+			free(temp);
+			free(
+					list_get(stackADestruir->vars,
+							stackADestruir->tamanoVars - 1));
+			stackADestruir->tamanoVars--;
+		}
+		while (stackADestruir->tamanoArgs != 0) {
+			free(
+					(posicionMemoria*) list_get(stackADestruir->args,
+							stackADestruir->tamanoArgs - 1));
+			stackADestruir->tamanoArgs--;
+		}
+		list_destroy(stackADestruir->vars);
+
+		list_destroy(stackADestruir->args);
+
+		free(list_get(pcb->indiceStack, pcb->tamanoIndiceStack - 1));
+
+		pcb->tamanoIndiceStack--;
+	}
+	list_destroy(pcb->indiceStack);
+
+	free(pcb->indiceCodigo);
+
+	free(pcb->indiceEtiquetas);
+
+}
+
+void destruirPCB(programControlBlock *pcb) {
+
+	destruirCONTEXTO(pcb);
+	free(pcb);
 
 }
