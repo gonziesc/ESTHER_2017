@@ -280,10 +280,11 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 
 void finalizar(void) {
 	printf("Finalizar\n");
+	programaFinalizado = 1;
 }
 
 bool terminoElPrograma(void) {
-	return false;
+	return programaFinalizado;
 }
 
 t_valor_variable dereferenciar(t_puntero puntero) {
