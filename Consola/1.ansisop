@@ -1,0 +1,9 @@
+#!/usr/bin/ansisop
+begin
+	f
+end
+
+function f
+	variables a
+	a=1
+end
