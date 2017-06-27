@@ -34,12 +34,10 @@ char * instruccionLeida;
 AnSISOP_funciones primitivas = { .AnSISOP_definirVariable = definirVariable,
 		.AnSISOP_obtenerPosicionVariable = obtenerPosicionVariable,
 		.AnSISOP_dereferenciar = dereferenciar, .AnSISOP_asignar = asignar,
-		.AnSISOP_finalizar = finalizar, .AnSISOP_obtenerValorCompartida = obtenerValorCompartida,
-		.AnSISOP_asignarValorCompartida = asignarValorCompartida
-};
-AnSISOP_kernel privilegiadas = {
-		.AnSISOP_escribir = escribir
-};
+		.AnSISOP_finalizar = finalizar, .AnSISOP_obtenerValorCompartida =
+				obtenerValorCompartida, .AnSISOP_asignarValorCompartida =
+				asignarValorCompartida };
+AnSISOP_kernel privilegiadas = { .AnSISOP_escribir = escribir };
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
@@ -197,8 +195,10 @@ void procesarScript() {
 			sem_wait(&semSentenciaCompleta);
 			char* barra_cero = "\0";
 			memcpy(sentencia + (datos_para_memoria->size - 1), barra_cero, 1);
-			printf("[procesarScript]Sentencia: %s de pid %d \n", sentencia, pid);
-			analizadorLinea(depurarSentencia(sentencia), &primitivas, &privilegiadas);
+			printf("[procesarScript]Sentencia: %s de pid %d \n", sentencia,
+					pid);
+			analizadorLinea(depurarSentencia(sentencia), &primitivas,
+					&privilegiadas);
 			unPcb->programCounter++;
 			quantum_aux--;
 			free(datos_para_memoria);
@@ -250,7 +250,8 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 	}
 	int valor = 0;
 	int direccionRetorno = convertirDireccionAPuntero(direccionVariable);
-	printf("[definirVariable]Defino %c ubicada en %d\n", nombreVariable, direccionRetorno);
+	printf("[definirVariable]Defino %c ubicada en %d\n", nombreVariable,
+			direccionRetorno);
 	enviarDirecParaEscribirMemoria(direccionVariable, valor);
 	return (direccionRetorno);
 
@@ -481,29 +482,38 @@ char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
 	return lecturaMemoria;
 }
 
-t_valor_variable obtenerValorCompartida(t_nombre_compartida variable)
-{	char * variable_compartida= malloc(strlen(variable)+1);
-	char* barra_cero="\0";
+t_valor_variable obtenerValorCompartida(t_nombre_compartida variable) {
+	char * variable_compartida = malloc(strlen(variable) + 1);
+	char* barra_cero = "\0";
 	memcpy(variable_compartida, variable, strlen(variable));
-	memcpy(variable_compartida+(strlen(variable)), barra_cero, 1);
-	Serializar(cliente, VALORVARIABLECOMPARTIDA, strlen(variable)+1, variable_compartida);
+	memcpy(variable_compartida + (strlen(variable)), barra_cero, 1);
+	Serializar(VALORVARIABLECOMPARTIDA, strlen(variable) + 1,
+			variable_compartida, cliente);
 	sem_wait(&semVariableCompartidaValor);
 	free(variable_compartida);
 	return valorVaribleCompartida;
 }
 
-t_valor_variable asignarValorCompartida(t_nombre_compartida variable,t_valor_variable valor)
-{	char *variable_compartida= malloc(5+strlen(variable));
-	char* barra_cero="\0";
+t_valor_variable asignarValorCompartida(t_nombre_compartida variable,
+		t_valor_variable valor) {
+	char *variable_compartida = malloc(5 + strlen(variable));
+	char* barra_cero = "\0";
 	memcpy(variable_compartida, &valor, 4);
-	memcpy(variable_compartida+4, variable, strlen(variable));
-	memcpy(variable_compartida+strlen(variable)+4, barra_cero, 1);
-	log_info(log,"Variable %s le asigno %d\n", variable_compartida+4, (int*)variable_compartida[0]);
-	Serializar(cliente, ASIGNOVALORVARIABLECOMPARTIDA, 5+strlen(variable), variable_compartida);
+	memcpy(variable_compartida + 4, variable, strlen(variable));
+	memcpy(variable_compartida + strlen(variable) + 4, barra_cero, 1);
+	log_info(log, "Variable %s le asigno %d\n", variable_compartida + 4,
+			(int*) variable_compartida[0]);
+	Serializar(ASIGNOVALORVARIABLECOMPARTIDA, 5 + strlen(variable),
+			variable_compartida, cliente);
 	free(variable_compartida);
 	return valor;
 }
 
-void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
-	printf("hola;");
+void escribir(t_descriptor_archivo descriptor_archivo, void* informacion,
+		t_valor_variable tamanio) {
+	char* envio = malloc(tamanio + 4);
+	memcpy(envio, informacion, tamanio);
+	memcpy(envio + tamanio, &descriptor_archivo, 4);
+	Serializar(IMPRIMIRPROCESO, tamanio + 4, envio, cliente);
+	free(envio);
 }

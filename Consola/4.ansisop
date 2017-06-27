@@ -1,9 +1,10 @@
 #!/usr/bin/ansisop
 
 begin
+	variables a
+	a = 3
+	prints n 3 + a
 	prints n 3
 	prints n 3
-	prints n 3
-	prints n 3
-	prints n 3
+	prints l hola
 end

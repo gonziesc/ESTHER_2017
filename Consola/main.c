@@ -63,11 +63,11 @@ int32_t ConectarseConKernel(int noIMporta) {
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	switch (id) {
 	case IMPRESIONPORCONSOLA: {
-		int pid;
-		imprimioProceso(pid);
-		memcpy(&pid, paquete, sizeof(int));
 		char * impresion = malloc(tamanoPaquete - 4 + 1);
-		memcpy(impresion, paquete + 4, tamanoPaquete);
+		memcpy(impresion, paquete, tamanoPaquete - 4);
+		int pid;
+		memcpy(&pid, paquete + tamanoPaquete -4, sizeof(int));
+		imprimioProceso(pid);
 		impresion[tamanoPaquete] = '\0';
 		printf("el pid %d imprimio: %s \n", pid, impresion);
 		break;
@@ -148,11 +148,10 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 	int tamano = abrirYLeerArchivo(nombreArchivo, contenidoDelArchivo);
 	Serializar(ARCHIVO, tamano, contenidoDelArchivo, cliente);
 	sem_wait(&semPidListo);
-		procesosActuales[procesosActualesPosicion].PID = pidActual;
-		procesosActuales[procesosActualesPosicion].horaInicio =
-				temporal_get_string_time();
-		printf("process id: %d\n", pidActual);
-
+	procesosActuales[procesosActualesPosicion].PID = pidActual;
+	procesosActuales[procesosActualesPosicion].horaInicio =
+			temporal_get_string_time();
+	printf("process id: %d\n", pidActual);
 
 }
 
@@ -181,8 +180,10 @@ void matarTodosLosProcesos() {
 			char* fechaFIn = temporal_get_string_time();
 			printf("el pid %d comenzo a las %s \n", procesosActuales[i].PID,
 					procesosActuales[i].horaInicio);
-			printf("el pid %d finalizo a las %s \n", procesosActuales[i].PID, fechaFIn);
-			printf("el pid %d imprimio la cantidad de : %d \n", procesosActuales[i].PID,
+			printf("el pid %d finalizo a las %s \n", procesosActuales[i].PID,
+					fechaFIn);
+			printf("el pid %d imprimio la cantidad de : %d \n",
+					procesosActuales[i].PID,
 					procesosActuales[i].cantidadDeImpresiones);
 		}
 	}

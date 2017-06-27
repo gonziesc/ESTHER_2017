@@ -289,10 +289,12 @@ void procesarScript() {
 			queue_push(colaProcesosConsola, unaConsola);
 			unProceso->pcb = unPcb;
 			unProceso->socketCONSOLA = unScript->socket;
-			char * enviocantidadDePaginas = malloc(2*sizeof(int));
+			char * enviocantidadDePaginas = malloc(2 * sizeof(int));
 			memcpy(enviocantidadDePaginas, &processID, sizeof(int));
-			memcpy(enviocantidadDePaginas + 4, &cantidadDePaginasToales, sizeof(int));
-			Serializar(INICIALIZARPROCESO, 8, enviocantidadDePaginas, clienteMEM);
+			memcpy(enviocantidadDePaginas + 4, &cantidadDePaginasToales,
+					sizeof(int));
+			Serializar(INICIALIZARPROCESO, 8, enviocantidadDePaginas,
+					clienteMEM);
 			Serializar(PID, 4, &processID, unScript->socket);
 			enviarProcesoAMemoria(unPcb->cantidadDePaginas, unScript->codigo,
 					unScript->tamano);
@@ -399,7 +401,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		abortarProgramaPorConsola(pid, codeFinalizarPrograma);
 		break;
 	}
-	case NOENTROPROCESO:{
+	case NOENTROPROCESO: {
 		//TODO abortar
 		break;
 	}
@@ -423,6 +425,46 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCpu, socket);
 		pthread_mutex_unlock(&mutexColaCpu);
 		sem_post(&semCpu);
+		break;
+	}
+	/*case 350: {//Escribe variable
+		pthread_mutex_lock(&mcola_exec);
+		proceso = sacarProcesoDeEjecucion(cola_exec, *(int*) socket);
+		queue_push(cola_exec, proceso);
+		pthread_mutex_unlock(&mcola_exec);
+		pthread_mutex_lock(&mutex_config);
+		escribeVariable(elPaquete->data);
+		pthread_mutex_unlock(&mutex_config);
+		break;}
+
+	case 351: {//Pide variable
+		pthread_mutex_lock(&mcola_exec);
+		proceso = sacarProcesoDeEjecucion(cola_exec, *(int*) socket);
+		queue_push(cola_exec, proceso);
+		pthread_mutex_unlock(&mcola_exec);
+		pthread_mutex_lock(&mutex_config);
+		enviar(*(int*) socket, 352, sizeof(int), pideVariable(elPaquete->data));
+		pthread_mutex_unlock(&mutex_config);
+		break;}*/
+
+	case IMPRIMIRPROCESO: {//imprimir
+		proceso* unProceso;
+		int tamanioAEnviar;
+		int descriptor;
+		//TODO descriptor para escribir archivos
+		int tamanioTexto = tamanoPaquete - 4;
+		printf("asdasdasd");
+		char *impresion = malloc(tamanioTexto + 4);
+		memcpy(impresion, paquete, tamanioTexto);
+		memcpy(&descriptor, paquete + tamanioTexto, 4);
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso);
+		pthread_mutex_unlock(&mutexColaEx);
+		memcpy(impresion + tamanioTexto, &(unProceso->pcb->programId), 4);
+			Serializar(IMPRESIONPORCONSOLA,
+					tamanioTexto + 4, impresion, unProceso->socketCONSOLA);
+		free(impresion);
 		break;
 	}
 		return;
@@ -493,29 +535,29 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo,
 	for (i = 1; i <= cantidadDePaginas; i++) {
 		if (i == cantidadDePaginas) {
 			int offsetaux = 0;
-			void* envioPagina = malloc(MARCOS_SIZE + 4*sizeof(int));
+			void* envioPagina = malloc(MARCOS_SIZE + 4 * sizeof(int));
 			char * sobras = "0000000000000000000000";
-			memcpy(envioPagina , &processID, sizeof(processID));
-			memcpy(envioPagina + 4, &i , sizeof(int));
-			memcpy(envioPagina + 8, &MARCOS_SIZE , sizeof(int));
-			memcpy(envioPagina + 12, &offsetaux , sizeof(int));
-			memcpy(envioPagina +16, codigo + offset, sobra);
+			memcpy(envioPagina, &processID, sizeof(processID));
+			memcpy(envioPagina + 4, &i, sizeof(int));
+			memcpy(envioPagina + 8, &MARCOS_SIZE, sizeof(int));
+			memcpy(envioPagina + 12, &offsetaux, sizeof(int));
+			memcpy(envioPagina + 16, codigo + offset, sobra);
 			memcpy(envioPagina + sobra + 16, sobras, MARCOS_SIZE - sobra);
-			Serializar(PAGINA, MARCOS_SIZE + 4*sizeof(int), envioPagina,
+			Serializar(PAGINA, MARCOS_SIZE + 4 * sizeof(int), envioPagina,
 					clienteMEM);
 			printf("envio pagina %s\n", envioPagina);
 			sem_wait(&semPaginaEnviada);
 			free(envioPagina);
 		} else {
 			int offsetaux = 0;
-			void* envioPagina = malloc(MARCOS_SIZE + 4*sizeof(int));
+			void* envioPagina = malloc(MARCOS_SIZE + 4 * sizeof(int));
 			memcpy(envioPagina, &processID, sizeof(processID));
-			memcpy(envioPagina + 4, &i , sizeof(int));
-			memcpy(envioPagina + 8, &MARCOS_SIZE , sizeof(int));
-			memcpy(envioPagina + 12, &offsetaux , sizeof(int));
+			memcpy(envioPagina + 4, &i, sizeof(int));
+			memcpy(envioPagina + 8, &MARCOS_SIZE, sizeof(int));
+			memcpy(envioPagina + 12, &offsetaux, sizeof(int));
 			memcpy(envioPagina + 16, codigo + offset, MARCOS_SIZE);
 			offset = offset + MARCOS_SIZE;
-			Serializar(PAGINA, MARCOS_SIZE + 4*sizeof(int), envioPagina,
+			Serializar(PAGINA, MARCOS_SIZE + 4 * sizeof(int), envioPagina,
 					clienteMEM);
 			printf("envio pagina %s\n", envioPagina);
 			sem_wait(&semPaginaEnviada);
