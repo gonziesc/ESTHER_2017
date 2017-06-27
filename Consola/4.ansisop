@@ -1,0 +1,9 @@
+#!/usr/bin/ansisop
+
+begin
+	prints n 3
+	prints n 3
+	prints n 3
+	prints n 3
+	prints n 3
+end

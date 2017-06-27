@@ -45,6 +45,9 @@ void convertirPunteroADireccion(int , posicionMemoria* );
 int convertirDireccionAPuntero(posicionMemoria* );
 bool terminoElPrograma(void);
 void procesarScript();
+void escribir(t_descriptor_archivo , void* , t_valor_variable );
+t_valor_variable asignarValorCompartida(t_nombre_compartida ,t_valor_variable );
+t_valor_variable obtenerValorCompartida(t_nombre_compartida );
 
 
 #endif

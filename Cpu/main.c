@@ -5,6 +5,7 @@ t_config *config;
 struct sockaddr_in direccionKernel;
 int32_t cliente;
 char* buffer;
+int valorVaribleCompartida;
 struct sockaddr_in direccionMem;
 int32_t clienteMEM;
 int32_t bytesRecibidos;
@@ -22,6 +23,7 @@ sem_t semHayScript;
 sem_t semEscribirVariable;
 sem_t semDereferenciar;
 sem_t semDestruirPCB;
+sem_t semVariableCompartidaValor;
 int noInteresa;
 int valorDerenferenciado;
 int algoritmo;
@@ -32,8 +34,11 @@ char * instruccionLeida;
 AnSISOP_funciones primitivas = { .AnSISOP_definirVariable = definirVariable,
 		.AnSISOP_obtenerPosicionVariable = obtenerPosicionVariable,
 		.AnSISOP_dereferenciar = dereferenciar, .AnSISOP_asignar = asignar,
-		.AnSISOP_finalizar = finalizar,
-
+		.AnSISOP_finalizar = finalizar, .AnSISOP_obtenerValorCompartida = obtenerValorCompartida,
+		.AnSISOP_asignarValorCompartida = asignarValorCompartida
+};
+AnSISOP_kernel privilegiadas = {
+		.AnSISOP_escribir = escribir
 };
 
 int32_t main(int argc, char**argv) {
@@ -57,6 +62,7 @@ void Configuracion(char* dir) {
 	sem_init(&semEscribirVariable, 0, 0);
 	sem_init(&semDereferenciar, 0, 0);
 	sem_init(&semDestruirPCB, 0, 1);
+	sem_init(&semVariableCompartidaValor, 0, 0);
 }
 
 int32_t conectarConMemoria() {
@@ -126,6 +132,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("Se conecto Consola");
 		break;
 	}
+	case VALORVARIABLECOMPARTIDA: {
+		memcpy(&valorVaribleCompartida, paquete, 4);
+		sem_post(&semVariableCompartidaValor);
+		break;
+	}
 	case MEMORIA: {
 		memcpy(&tamanoPag, (paquete), sizeof(int));
 		printf("Se conecto Memoria\n");
@@ -187,7 +198,7 @@ void procesarScript() {
 			char* barra_cero = "\0";
 			memcpy(sentencia + (datos_para_memoria->size - 1), barra_cero, 1);
 			printf("[procesarScript]Sentencia: %s de pid %d \n", sentencia, pid);
-			analizadorLinea(depurarSentencia(sentencia), &primitivas, NULL);
+			analizadorLinea(depurarSentencia(sentencia), &primitivas, &privilegiadas);
 			unPcb->programCounter++;
 			quantum_aux--;
 			free(datos_para_memoria);
@@ -470,6 +481,29 @@ char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
 	return lecturaMemoria;
 }
 
-char* procesarSentencia() {
+t_valor_variable obtenerValorCompartida(t_nombre_compartida variable)
+{	char * variable_compartida= malloc(strlen(variable)+1);
+	char* barra_cero="\0";
+	memcpy(variable_compartida, variable, strlen(variable));
+	memcpy(variable_compartida+(strlen(variable)), barra_cero, 1);
+	Serializar(cliente, VALORVARIABLECOMPARTIDA, strlen(variable)+1, variable_compartida);
+	sem_wait(&semVariableCompartidaValor);
+	free(variable_compartida);
+	return valorVaribleCompartida;
+}
 
+t_valor_variable asignarValorCompartida(t_nombre_compartida variable,t_valor_variable valor)
+{	char *variable_compartida= malloc(5+strlen(variable));
+	char* barra_cero="\0";
+	memcpy(variable_compartida, &valor, 4);
+	memcpy(variable_compartida+4, variable, strlen(variable));
+	memcpy(variable_compartida+strlen(variable)+4, barra_cero, 1);
+	log_info(log,"Variable %s le asigno %d\n", variable_compartida+4, (int*)variable_compartida[0]);
+	Serializar(cliente, ASIGNOVALORVARIABLECOMPARTIDA, 5+strlen(variable), variable_compartida);
+	free(variable_compartida);
+	return valor;
+}
+
+void escribir(t_descriptor_archivo descriptor_archivo, void* informacion, t_valor_variable tamanio){
+	printf("hola;");
 }
