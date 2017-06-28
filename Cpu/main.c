@@ -199,10 +199,10 @@ void procesarScript() {
 					pid);
 			analizadorLinea(depurarSentencia(sentencia), &primitivas,
 					&privilegiadas);
-			unPcb->programCounter++;
-			quantum_aux--;
 			free(datos_para_memoria);
 			free(sentencia);
+			unPcb->programCounter++;
+			quantum_aux--;
 			usleep(quantumSleep * 1000);
 		}
 		if ((quantum_aux == 0) && !programaFinalizado && !programaBloqueado
@@ -291,11 +291,43 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 }
 
 void finalizar(void) {
-	printf("Finalizar\n");
+	indiceDeStack *contexto_a_finalizar;
+	contexto_a_finalizar = list_get(unPcb->indiceStack,
+			unPcb->tamanoIndiceStack - 1);
+
+	while (contexto_a_finalizar->tamanoVars != 0) {
+		variable * variable_borrar = (variable *) list_get(
+				contexto_a_finalizar->vars,
+				contexto_a_finalizar->tamanoVars - 1);
+		free(
+				(posicionMemoria *) ((variable *) list_get(
+						contexto_a_finalizar->vars,
+						contexto_a_finalizar->tamanoVars - 1))->direccion);
+		free(
+				list_get(contexto_a_finalizar->vars,
+						contexto_a_finalizar->tamanoVars - 1));
+		contexto_a_finalizar->tamanoVars--;
+	}
+	list_destroy(contexto_a_finalizar->vars);
+
+	while (contexto_a_finalizar->tamanoArgs != 0) {
+		free(
+				(posicionMemoria*) list_get(contexto_a_finalizar->args,
+						contexto_a_finalizar->tamanoArgs - 1));
+		contexto_a_finalizar->tamanoArgs--;
+	}
+	list_destroy(contexto_a_finalizar->args);
+	free(contexto_a_finalizar);
+	unPcb->tamanoIndiceStack--;
+
 	programaFinalizado = 1;
+
+	Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
+	destruirPCB(unPcb);
 }
 
 bool terminoElPrograma(void) {
+
 	return programaFinalizado;
 }
 

@@ -72,7 +72,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("el pid %d imprimio: %s \n", pid, impresion);
 		break;
 	}
-	case FINALIZOPROGRAMA: {
+	case FINALIZOPROGRAMA: case PROGRAMATERMINADO: {
 		int pid;
 		char* fechaFIn = temporal_get_string_time();
 		memcpy(&pid, paquete, sizeof(int));

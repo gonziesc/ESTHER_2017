@@ -384,6 +384,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexColaCpu);
 		queue_push(colaCpu, socket);
 		pthread_mutex_unlock(&mutexColaCpu);
+		//TODO liberar paginas procesos memoria
+		Serializar(PROGRAMATERMINADO, 4, &procesoTerminado->pcb->programId, procesoTerminado->socketCONSOLA);
 		sem_post(&semCpu);
 		break;
 	}
@@ -453,7 +455,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		int descriptor;
 		//TODO descriptor para escribir archivos
 		int tamanioTexto = tamanoPaquete - 4;
-		printf("asdasdasd");
 		char *impresion = malloc(tamanioTexto + 4);
 		memcpy(impresion, paquete, tamanioTexto);
 		memcpy(&descriptor, paquete + tamanioTexto, 4);
@@ -545,7 +546,6 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo,
 			memcpy(envioPagina + sobra + 16, sobras, MARCOS_SIZE - sobra);
 			Serializar(PAGINA, MARCOS_SIZE + 4 * sizeof(int), envioPagina,
 					clienteMEM);
-			printf("envio pagina %s\n", envioPagina);
 			sem_wait(&semPaginaEnviada);
 			free(envioPagina);
 		} else {
