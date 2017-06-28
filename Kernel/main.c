@@ -729,11 +729,13 @@ int pideVariable(char *variable) {
 
 void escribeVariable(char *variable, int valor) {
 	int i;
+	char str[15];
+	sprintf(str, "%d", valor);
 	for (i = 0;
 			i < strlen((char*) t_archivoConfig->SHARED_VARS) / sizeof(char*);
 			i++) {
 		if (strcmp((char*) t_archivoConfig->SHARED_VARS[i], variable) == 0) {
-			memcpy(&(t_archivoConfig->SHARED_VARS_INIT[i]), &valor, sizeof(int));
+			memcpy((t_archivoConfig->SHARED_VARS_INIT[i]), str, sizeof(int));
 			return;
 		}
 	}
