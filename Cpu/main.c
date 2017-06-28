@@ -493,16 +493,17 @@ void proximaDireccion(int posStack, int posUltVar,
 }
 
 void enviarDirecParaEscribirMemoria(posicionMemoria* direccion, int valor) {
-	char* variableAEnviar = malloc(16);
+	char* variableAEnviar = malloc(20);
 	memcpy(variableAEnviar, &direccion->pag, 4);
 	memcpy(variableAEnviar + 4, &direccion->off, 4);
 	memcpy(variableAEnviar + 8, &direccion->size, 4);
 	memcpy(variableAEnviar + 12, &valor, 4);
+	memcpy(variableAEnviar + 16, &unPcb->programId, 4);
 	printf(
 			"[enviarDirecParaEscribirMemoria]Quiero escribir en la direccion %d %d %d el valor: %d\n",
 			((int*) (variableAEnviar))[0], ((int*) (variableAEnviar))[1],
 			((int*) (variableAEnviar))[2], ((int*) (variableAEnviar))[3]);
-	Serializar(ESCRIBIRVARIABLE, 16, variableAEnviar, clienteMEM);
+	Serializar(ESCRIBIRVARIABLE, 20, variableAEnviar, clienteMEM);
 	sem_wait(&semEscribirVariable);
 	free(variableAEnviar);
 	//paquete * paquetin;
@@ -512,15 +513,16 @@ void enviarDirecParaEscribirMemoria(posicionMemoria* direccion, int valor) {
 }
 
 void enviarDirecParaLeerMemoria(posicionMemoria* direccion, int header) {
-	char * variableALeer = malloc(12);
+	char * variableALeer = malloc(16);
 	memcpy(variableALeer, &direccion->pag, 4);
 	memcpy(variableALeer + 4, &direccion->off, 4);
 	memcpy(variableALeer + 8, &direccion->size, 4);
+	memcpy(variableALeer + 12, &unPcb->programId, 4);
 	printf(
 			"[enviarDirecParaLeerMemoria]Quiero leer en la direccion: %d %d %d\n",
 			((int*) (variableALeer))[0], ((int*) (variableALeer))[1],
 			((int*) (variableALeer))[2]);
-	Serializar(header, 12, variableALeer, clienteMEM);
+	Serializar(header, 16, variableALeer, clienteMEM);
 	free(variableALeer);
 
 }
