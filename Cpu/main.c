@@ -132,6 +132,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	case VALORVARIABLECOMPARTIDA: {
 		memcpy(&valorVaribleCompartida, paquete, 4);
+		printf("compartida en procesar %d", valorVaribleCompartida);
 		sem_post(&semVariableCompartidaValor);
 		break;
 	}
@@ -522,6 +523,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable) {
 	Serializar(VALORVARIABLECOMPARTIDA, strlen(variable) + 1,
 			variable_compartida, cliente);
 	sem_wait(&semVariableCompartidaValor);
+	printf("compartida en procesar %d", valorVaribleCompartida);
 	free(variable_compartida);
 	return valorVaribleCompartida;
 }

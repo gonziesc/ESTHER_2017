@@ -54,6 +54,7 @@ pthread_mutex_t mutexProcesar;
 pthread_mutex_t mutexProcesarPaquetes;
 pthread_mutex_t mutexColaCpu;
 pthread_mutex_t mutexProcesarScript;
+pthread_mutex_t mutexConfig;
 pthread_t hiloPlanificadorLargoPlazo;
 pthread_t hiloEnviarProceso;
 pthread_t hiloPlanificadorCortoPlazo;
@@ -385,7 +386,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCpu, socket);
 		pthread_mutex_unlock(&mutexColaCpu);
 		//TODO liberar paginas procesos memoria
-		Serializar(PROGRAMATERMINADO, 4, &procesoTerminado->pcb->programId, procesoTerminado->socketCONSOLA);
+		Serializar(PROGRAMATERMINADO, 4, &procesoTerminado->pcb->programId,
+				procesoTerminado->socketCONSOLA);
 		sem_post(&semCpu);
 		break;
 	}
@@ -429,27 +431,39 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semCpu);
 		break;
 	}
-	/*case 350: {//Escribe variable
-		pthread_mutex_lock(&mcola_exec);
-		proceso = sacarProcesoDeEjecucion(cola_exec, *(int*) socket);
-		queue_push(cola_exec, proceso);
-		pthread_mutex_unlock(&mcola_exec);
-		pthread_mutex_lock(&mutex_config);
-		escribeVariable(elPaquete->data);
-		pthread_mutex_unlock(&mutex_config);
-		break;}
+	case ASIGNOVALORVARIABLECOMPARTIDA: {
+		proceso* unProceso;
+		int valor;
+		memcpy(&valor, paquete, 4);
+		char * variable = malloc(tamanoPaquete - 4);
+		memcpy(variable, paquete + 4, tamanoPaquete);
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso);
+		pthread_mutex_unlock(&mutexColaEx);
+		pthread_mutex_lock(&mutexConfig);
+		escribeVariable(variable, valor);
+		pthread_mutex_unlock(&mutexConfig);
+		break;
+	}
 
-	case 351: {//Pide variable
-		pthread_mutex_lock(&mcola_exec);
-		proceso = sacarProcesoDeEjecucion(cola_exec, *(int*) socket);
-		queue_push(cola_exec, proceso);
-		pthread_mutex_unlock(&mcola_exec);
-		pthread_mutex_lock(&mutex_config);
-		enviar(*(int*) socket, 352, sizeof(int), pideVariable(elPaquete->data));
-		pthread_mutex_unlock(&mutex_config);
-		break;}*/
+	case VALORVARIABLECOMPARTIDA: {
+		proceso* unProceso;
+		char * variable = malloc(tamanoPaquete);
+		memcpy(variable, paquete, tamanoPaquete);
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso);
+		pthread_mutex_unlock(&mutexColaEx);
+		pthread_mutex_lock(&mutexConfig);
+		int envio = pideVariable(variable);
+		Serializar(VALORVARIABLECOMPARTIDA, sizeof(int), &envio, socket);
+		pthread_mutex_unlock(&mutexConfig);
+		free(variable);
+		break;
+	}
 
-	case IMPRIMIRPROCESO: {//imprimir
+	case IMPRIMIRPROCESO: {		//imprimir
 		proceso* unProceso;
 		int tamanioAEnviar;
 		int descriptor;
@@ -463,8 +477,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		memcpy(impresion + tamanioTexto, &(unProceso->pcb->programId), 4);
-			Serializar(IMPRESIONPORCONSOLA,
-					tamanioTexto + 4, impresion, unProceso->socketCONSOLA);
+		Serializar(IMPRESIONPORCONSOLA, tamanioTexto + 4, impresion,
+				unProceso->socketCONSOLA);
 		free(impresion);
 		break;
 	}
@@ -697,7 +711,7 @@ void escribeSemaforo(char *semaforo, int valor) {
 	exit(0);
 }
 
-int *pideVariable(char *variable) {
+int pideVariable(char *variable) {
 	int i;
 	log_info(logger, "NUCLEO: pide variable %s", variable);
 	for (i = 0;
@@ -705,28 +719,27 @@ int *pideVariable(char *variable) {
 			i++) {
 		//TODO: mutex confignucleo
 		if (strcmp((char*) t_archivoConfig->SHARED_VARS[i], variable) == 0) {
-			return &t_archivoConfig->SHARED_VARS_INIT[i];
+			return atoi(t_archivoConfig->SHARED_VARS_INIT[i]);
+			//AAAAAAAACA REVISAR
 		}
 	}
 	printf("No encontre variable %s %d id, exit\n", variable, strlen(variable));
-	exit(0);
+	//TODO abortar
 }
 
-void escribeVariable(char *variable) {
-	int *valor = (int*) variable;
-	variable += 4;
+void escribeVariable(char *variable, int valor) {
 	int i;
 	for (i = 0;
 			i < strlen((char*) t_archivoConfig->SHARED_VARS) / sizeof(char*);
 			i++) {
 		if (strcmp((char*) t_archivoConfig->SHARED_VARS[i], variable) == 0) {
-			//printf("ASIGNO%d\n",*valor);
-			memcpy(&t_archivoConfig->SHARED_VARS_INIT[i], valor, sizeof(int));
+			memcpy(&(t_archivoConfig->SHARED_VARS_INIT[i]), &valor, sizeof(int));
 			return;
 		}
 	}
 	printf("No encontre VAR %s id, exit\n", variable);
-	exit(0);
+	free(variable);
+	//TODO abortar
 
 }
 

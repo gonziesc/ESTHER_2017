@@ -60,7 +60,8 @@ int pid;
 int consola;
 }procesoConsola;
 
-
+int pideVariable(char*);
+void escribeVariable(char*, int);
 void configuracion(char*);
 void planificadorLargoPlazo();
 int32_t conectarConMemoria();

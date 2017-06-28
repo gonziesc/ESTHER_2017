@@ -7,4 +7,12 @@ begin
 	prints n 3
 	prints n 3
 	prints l hola
+	prints n !Global
+	prints n !UnaVar
+	prints n !UnaVar
+	prints n !tiempo3
+	!Global = 3
+	prints n !Global
+	!UnaVar = a + a
+	prints n !UnaVar
 end
