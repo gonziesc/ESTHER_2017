@@ -710,6 +710,7 @@ void ejecutar(proceso* procesoAEjecutar, int socket) {
 	queue_push(colaExec, procesoAEjecutar);
 	pthread_mutex_unlock(&mutexColaEx);
 	serializarPCB(procesoAEjecutar->pcb, socket, PCB);
+	//el problema esta aca
 }
 
 proceso* sacarProcesoDeEjecucion(int sock) {

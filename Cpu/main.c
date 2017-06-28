@@ -338,6 +338,7 @@ void finalizar(void) {
 
 	Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
 	destruirPCB(unPcb);
+	sem_post(&semDestruirPCB);
 }
 
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero punteroRetorno) {
