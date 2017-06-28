@@ -60,6 +60,11 @@ int pid;
 int consola;
 }procesoConsola;
 
+typedef struct {
+int pid;
+char* semaforo;
+}procesoBloqueado;
+
 int pideVariable(char*);
 void escribeVariable(char*, int);
 void configuracion(char*);
@@ -81,6 +86,7 @@ void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int, int) ;
 void abortarProgramaPorConsola(int, int);
 proceso* sacarProcesoDeEjecucionPorPid(int );
 void abortarTodosLosProgramasDeConsola(int);
+char* conseguirSemaforoDeBloqueado(int);
 
 
 #endif

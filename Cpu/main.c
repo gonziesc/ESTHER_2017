@@ -24,6 +24,7 @@ sem_t semEscribirVariable;
 sem_t semDereferenciar;
 sem_t semDestruirPCB;
 sem_t semVariableCompartidaValor;
+sem_t semProcesoBloqueado;
 int noInteresa;
 int valorDerenferenciado;
 int algoritmo;
@@ -31,19 +32,16 @@ int quantum;
 int quantumSleep;
 int stackSize;
 char * instruccionLeida;
-AnSISOP_funciones primitivas = {
-		.AnSISOP_definirVariable = definirVariable,
+AnSISOP_funciones primitivas = { .AnSISOP_definirVariable = definirVariable,
 		.AnSISOP_obtenerPosicionVariable = obtenerPosicionVariable,
-		.AnSISOP_dereferenciar = dereferenciar,
-		.AnSISOP_asignar = asignar,
-		.AnSISOP_finalizar = finalizar,
-		.AnSISOP_obtenerValorCompartida = obtenerValorCompartida,
-		.AnSISOP_asignarValorCompartida = asignarValorCompartida,
-		.AnSISOP_irAlLabel = irAlLabel,
-		.AnSISOP_retornar = retornar,
-		.AnSISOP_llamarConRetorno = llamarConRetorno
-};
-AnSISOP_kernel privilegiadas = { .AnSISOP_escribir = escribir };
+		.AnSISOP_dereferenciar = dereferenciar, .AnSISOP_asignar = asignar,
+		.AnSISOP_finalizar = finalizar, .AnSISOP_obtenerValorCompartida =
+				obtenerValorCompartida, .AnSISOP_asignarValorCompartida =
+				asignarValorCompartida, .AnSISOP_irAlLabel = irAlLabel,
+		.AnSISOP_retornar = retornar, .AnSISOP_llamarConRetorno =
+				llamarConRetorno };
+AnSISOP_kernel privilegiadas = { .AnSISOP_escribir = escribir, .AnSISOP_wait =
+		wait_kernel, .AnSISOP_signal = signal_kernel };
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
@@ -67,6 +65,7 @@ void Configuracion(char* dir) {
 	sem_init(&semDereferenciar, 0, 0);
 	sem_init(&semDestruirPCB, 0, 1);
 	sem_init(&semVariableCompartidaValor, 0, 0);
+	sem_init(&semProcesoBloqueado, 0, 0);
 }
 
 int32_t conectarConMemoria() {
@@ -162,6 +161,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		sem_post(&semDereferenciar);
 		break;
 	}
+	case PROCESOWAIT: {
+		memcpy(&programaBloqueado, paquete, 4);
+		sem_post(&semProcesoBloqueado);
+		break;
+	}
 	case PCB: {
 		sem_wait(&semDestruirPCB);
 		unPcb = deserializarPCB(paquete);
@@ -211,6 +215,10 @@ void procesarScript() {
 			unPcb->programCounter++;
 			quantum_aux--;
 			usleep(quantumSleep * 1000);
+		}
+		if (programaBloqueado) {
+			serializarPCB(unPcb, cliente, SEBLOQUEOELPROCESO);
+			destruirPCB(unPcb);
 		}
 		if ((quantum_aux == 0) && !programaFinalizado && !programaBloqueado
 				&& !programaAbortado) {
@@ -271,7 +279,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 	variable *variableNueva;
 	int posMax =
 			(((indiceDeStack*) (list_get(unPcb->indiceStack, posicionStack)))->tamanoVars)
-			- 1;
+					- 1;
 	while (posMax >= 0) {
 		variableNueva =
 				((variable*) (list_get(
@@ -285,7 +293,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 							((variable*) (list_get(
 									((indiceDeStack*) (list_get(
 											unPcb->indiceStack, posicionStack)))->vars,
-											posMax)))->direccion);
+									posMax)))->direccion);
 			printf("[obtenerPosicionVariable]Obtengo valor de %c: %d %d %d\n",
 					variableNueva->etiqueta, variableNueva->direccion->pag,
 					variableNueva->direccion->off,
@@ -304,8 +312,7 @@ void finalizar(void) {
 
 	while (contextoAFinalizar->tamanoVars != 0) {
 		variable * variableABorrar = (variable *) list_get(
-				contextoAFinalizar->vars,
-				contextoAFinalizar->tamanoVars - 1);
+				contextoAFinalizar->vars, contextoAFinalizar->tamanoVars - 1);
 		free(
 				(posicionMemoria *) ((variable *) list_get(
 						contextoAFinalizar->vars,
@@ -333,63 +340,74 @@ void finalizar(void) {
 	destruirPCB(unPcb);
 }
 
-void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero punteroRetorno)
-{
-	posicionMemoria *direccionRetorno= malloc(sizeof(posicionMemoria));
+void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero punteroRetorno) {
+	posicionMemoria *direccionRetorno = malloc(sizeof(posicionMemoria));
 	convertirPunteroADireccion(punteroRetorno, direccionRetorno);
 	int posicionStack = unPcb->tamanoIndiceStack;
-	printf("[llamarConRetorno]Tamanio contexto actual %d\n", unPcb->tamanoIndiceStack);
-	indiceDeStack *nuevoContexto=malloc(sizeof(indiceDeStack));
-	nuevoContexto->pos=posicionStack;
-	nuevoContexto->args=list_create();
-	nuevoContexto->vars=list_create();
-	nuevoContexto->tamanoArgs=0;
-	nuevoContexto->tamanoVars=0;
+	printf("[llamarConRetorno]Tamanio contexto actual %d\n",
+			unPcb->tamanoIndiceStack);
+	indiceDeStack *nuevoContexto = malloc(sizeof(indiceDeStack));
+	nuevoContexto->pos = posicionStack;
+	nuevoContexto->args = list_create();
+	nuevoContexto->vars = list_create();
+	nuevoContexto->tamanoArgs = 0;
+	nuevoContexto->tamanoVars = 0;
 	memcpy(&nuevoContexto->retPos, &unPcb->programCounter, 4);
 	memcpy(&nuevoContexto->retVar, direccionRetorno, sizeof(posicionMemoria));
-	printf("[llamarConRetorno]Creo nuevo contexto con pos: %d que debe volver en la sentencia %d y retorno en la variable de pos %d %d\n", nuevoContexto->pos, nuevoContexto->retPos, nuevoContexto->retVar.pag, nuevoContexto->retVar.off);
+	printf(
+			"[llamarConRetorno]Creo nuevo contexto con pos: %d que debe volver en la sentencia %d y retorno en la variable de pos %d %d\n",
+			nuevoContexto->pos, nuevoContexto->retPos,
+			nuevoContexto->retVar.pag, nuevoContexto->retVar.off);
 	list_add(unPcb->indiceStack, nuevoContexto);
 	unPcb->tamanoIndiceStack++;
 	irAlLabel(etiqueta);
 }
 
-void irAlLabel(t_nombre_etiqueta etiqueta)
-{
+void irAlLabel(t_nombre_etiqueta etiqueta) {
 	t_puntero_instruccion instruccion;
-	printf("[irAlLabel]Busco etiqueta: %s y mide: %d\n", etiqueta, strlen(etiqueta));
-	instruccion = metadata_buscar_etiqueta(etiqueta, unPcb->indiceEtiquetas, unPcb->tamanoindiceEtiquetas);
+	printf("[irAlLabel]Busco etiqueta: %s y mide: %d\n", etiqueta,
+			strlen(etiqueta));
+	instruccion = metadata_buscar_etiqueta(etiqueta, unPcb->indiceEtiquetas,
+			unPcb->tamanoindiceEtiquetas);
 	printf("[irAlLabel]Ir a instruccion %d\n", instruccion);
-	unPcb->programCounter=instruccion-1;
+	unPcb->programCounter = instruccion - 1;
 	printf("[irAlLabel]Saliendo de label\n");
 	return;
 }
 
-void retornar(t_valor_variable valorRetorno)
-{
-	int posConextoActual= unPcb->tamanoIndiceStack-1;
+void retornar(t_valor_variable valorRetorno) {
+	int posConextoActual = unPcb->tamanoIndiceStack - 1;
 	int direccionRetorno;
-	indiceDeStack *contextoAFinalizar= list_get(unPcb->indiceStack, posConextoActual);
-	direccionRetorno=convertirDireccionAPuntero(&(contextoAFinalizar->retVar));
+	indiceDeStack *contextoAFinalizar = list_get(unPcb->indiceStack,
+			posConextoActual);
+	direccionRetorno = convertirDireccionAPuntero(
+			&(contextoAFinalizar->retVar));
 	asignar(direccionRetorno, valorRetorno);
 	printf("[retornar]Retornando %d en %d\n", valorRetorno, direccionRetorno);
 
-	unPcb->programCounter=contextoAFinalizar->retPos;
+	unPcb->programCounter = contextoAFinalizar->retPos;
 
-	while(contextoAFinalizar->tamanoVars!=0){
-		free(((variable*)list_get(contextoAFinalizar->vars, contextoAFinalizar->tamanoVars-1))->direccion);
-		free(list_get(contextoAFinalizar->vars, contextoAFinalizar->tamanoVars-1));
+	while (contextoAFinalizar->tamanoVars != 0) {
+		free(
+				((variable*) list_get(contextoAFinalizar->vars,
+						contextoAFinalizar->tamanoVars - 1))->direccion);
+		free(
+				list_get(contextoAFinalizar->vars,
+						contextoAFinalizar->tamanoVars - 1));
 		contextoAFinalizar->tamanoVars--;
 	}
 	list_destroy(contextoAFinalizar->vars);
 	printf("[retornar]Destrui vars de funcion\n");
 
-	while(contextoAFinalizar->tamanoArgs!=0){
-		free((posicionMemoria*)list_get(contextoAFinalizar->args, contextoAFinalizar->tamanoArgs-1));
+	while (contextoAFinalizar->tamanoArgs != 0) {
+		free(
+				(posicionMemoria*) list_get(contextoAFinalizar->args,
+						contextoAFinalizar->tamanoArgs - 1));
 		contextoAFinalizar->tamanoArgs--;
 	}
 	list_destroy(contextoAFinalizar->args);
 	printf("[retornar]Destrui args de funcion\n");
-	free(list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack-1));
+	free(list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack - 1));
 	printf("[retornar]Contexto Finalizado\n");
 	unPcb->tamanoIndiceStack--;
 }
@@ -455,7 +473,7 @@ void proximaDireccion(int posStack, int posUltVar,
 				((variable*) (list_get(
 						((indiceDeStack*) (list_get(unPcb->indiceStack,
 								posStack)))->vars, posUltVar)))->direccion->pag
-								+ 1;
+						+ 1;
 		direccion->off = 0;
 		direccion->size = 4;
 		memcpy(direccionReal, direccion, sizeof(posicionMemoria));
@@ -535,7 +553,7 @@ void crearEstructuraParaMemoria(programControlBlock* unPcb, int tamPag,
 	posicionMemoria* info = malloc(sizeof(posicionMemoria));
 	info->pag = ceil(
 			(double) unPcb->indiceCodigo[(unPcb->programCounter) * 2]
-										 / (double) tamPag);
+					/ (double) tamPag);
 	//printf("[crearEstructuraParaMemoria]Voy a leer la pagina: %d\n", info->pag);
 	info->off = (unPcb->indiceCodigo[((unPcb->programCounter) * 2)] % tamPag);
 	//printf("[crearEstructuraParaMemoria]Voy a leer con offswet: %d\n", info->off);
@@ -590,7 +608,8 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable) {
 	Serializar(VALORVARIABLECOMPARTIDA, strlen(variable) + 1,
 			variable_compartida, cliente);
 	sem_wait(&semVariableCompartidaValor);
-	printf("[obtenerValorCompartida]compartida en procesar %d", valorVaribleCompartida);
+	printf("[obtenerValorCompartida]compartida en procesar %d",
+			valorVaribleCompartida);
 	free(variable_compartida);
 	return valorVaribleCompartida;
 }
@@ -602,8 +621,8 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable,
 	memcpy(variableCompartida, &valor, 4);
 	memcpy(variableCompartida + 4, variable, strlen(variable));
 	memcpy(variableCompartida + strlen(variable) + 4, barra_cero, 1);
-	printf("[asignarValorCompartida]Variable %s le asigno %d\n", variableCompartida + 4,
-			(int*) variableCompartida[0]);
+	printf("[asignarValorCompartida]Variable %s le asigno %d\n",
+			variableCompartida + 4, (int*) variableCompartida[0]);
 	Serializar(ASIGNOVALORVARIABLECOMPARTIDA, 5 + strlen(variable),
 			variableCompartida, cliente);
 	free(variableCompartida);
@@ -617,4 +636,30 @@ void escribir(t_descriptor_archivo descriptorArchivo, void* informacion,
 	memcpy(envio + tamano, &descriptorArchivo, 4);
 	Serializar(IMPRIMIRPROCESO, tamano + 4, envio, cliente);
 	free(envio);
+}
+
+void wait_kernel(t_nombre_semaforo identificador_semaforo) {
+	char* nombre_semaforo = malloc(strlen(identificador_semaforo) + 1);
+	char* barra_cero = "\0";
+	memcpy(nombre_semaforo, identificador_semaforo,
+			strlen(identificador_semaforo));
+	memcpy(nombre_semaforo + strlen(identificador_semaforo), barra_cero, 1);
+	Serializar(PROCESOWAIT, strlen(nombre_semaforo) + 1, nombre_semaforo,
+			cliente);
+	sem_wait(&semProcesoBloqueado);
+	//devuelve 0 si no se bloquea, 1 si se bloquea
+	free(nombre_semaforo);
+	return;
+}
+
+void signal_kernel(t_nombre_semaforo identificador_semaforo) {
+	char* nombre_semaforo = malloc(strlen(identificador_semaforo) + 1);
+	char* barra_cero = "\0";
+	memcpy(nombre_semaforo, identificador_semaforo,
+			strlen(identificador_semaforo));
+	memcpy(nombre_semaforo + strlen(identificador_semaforo), barra_cero, 1);
+	Serializar(PROCESOSIGNAL, strlen(nombre_semaforo) + 1, nombre_semaforo,
+			cliente);
+	free(nombre_semaforo);
+	return;
 }

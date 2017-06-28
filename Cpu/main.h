@@ -26,6 +26,11 @@ void Configuracion(char *);
 int32_t ConectarConKernel();
 int32_t conectarConMemoria();
 
+
+void wait_kernel(t_nombre_semaforo );
+void signal_kernel(t_nombre_semaforo );
+
+
 t_puntero definirVariable(t_nombre_variable );
 t_puntero obtenerPosicionVariable(t_nombre_variable );
 t_valor_variable dereferenciar(t_puntero );

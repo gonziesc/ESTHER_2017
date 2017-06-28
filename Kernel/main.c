@@ -35,6 +35,7 @@ t_queue* colaExec;
 t_queue* colaExit;
 t_queue* colaCpu;
 t_queue* colaProcesosConsola;
+t_queue* colaProcesosBloqueados;
 t_queue** colas_semaforos;
 sem_t gradoMultiprogramacion;
 sem_t semUnScript;
@@ -55,6 +56,7 @@ pthread_mutex_t mutexProcesarPaquetes;
 pthread_mutex_t mutexColaCpu;
 pthread_mutex_t mutexProcesarScript;
 pthread_mutex_t mutexConfig;
+pthread_mutex_t mutexProcesosBloqueados;
 pthread_t hiloPlanificadorLargoPlazo;
 pthread_t hiloEnviarProceso;
 pthread_t hiloPlanificadorCortoPlazo;
@@ -482,8 +484,94 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		free(impresion);
 		break;
 	}
+	case PROCESOWAIT: {
+		char* semaforo = malloc(tamanoPaquete);
+		memcpy(semaforo, paquete, tamanoPaquete);
+		proceso* unProceso;
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		pthread_mutex_unlock(&mutexColaEx);
+		pthread_mutex_lock(&mutexConfig);
+		int valorSemaforo = pideSemaforo(semaforo);
+		int mandar;
+		if (valorSemaforo <= 0) {
+			mandar = 1;
+			Serializar(PROCESOWAIT, sizeof(int), &mandar, socket);
+			procesoBloqueado *unProcesoBloqueado = malloc(
+					sizeof(procesoBloqueado));
+			unProcesoBloqueado->pid = unProceso->pcb->programId;
+			unProcesoBloqueado->semaforo = semaforo;
+			pthread_mutex_lock(&mutexProcesosBloqueados);
+			queue_push(colaProcesosBloqueados, unProcesoBloqueado);
+			pthread_mutex_unlock(&mutexProcesosBloqueados);
+			queue_push(colaCpu, socket);
+			sem_post(&semCpu);
+
+		} else {
+			escribeSemaforo(semaforo, pideSemaforo(semaforo) - 1);
+			mandar = 0;
+			Serializar(PROCESOWAIT, sizeof(int), &mandar, socket);
+			pthread_mutex_lock(&mutexColaEx);
+			queue_push(colaExec, unProceso);
+			pthread_mutex_unlock(&mutexColaEx);
+		}
+
+		pthread_mutex_unlock(&mutexConfig);
+		free(semaforo);
+		break;
+	}
+	case PROCESOSIGNAL: {
+		proceso* unProceso;
+		char* semaforo = malloc(tamanoPaquete);
+		memcpy(semaforo, paquete, tamanoPaquete);
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso);
+		pthread_mutex_unlock(&mutexColaEx);
+		pthread_mutex_lock(&mutexConfig);
+		liberaSemaforo(semaforo);
+		pthread_mutex_unlock(&mutexConfig);
+		free(semaforo);
+		break;
+	}
+	case SEBLOQUEOELPROCESO: {
+		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
+				pcbRecibido->programId);
+		destruirPCB(unProceso->pcb);
+		char* semaforo = conseguirSemaforoDeBloqueado(pcbRecibido->programId);
+		unProceso->pcb = pcbRecibido;
+		bloqueoSemaforo(unProceso,semaforo);
+		queue_push(colaCpu, socket);
+		sem_post(&semCpu);
+		break;
+
+	}
 		return;
 	}
+}
+
+char* conseguirSemaforoDeBloqueado(int pid) {
+	char* semaforo;
+	int a = 0, t;
+	procesoBloqueado * unProceso;
+	while (unProceso = (procesoBloqueado*) list_get(colaProcesosBloqueados->elements, a)) {
+			if (unProceso->pid == pid)
+				return unProceso->semaforo;
+			// TODO: REVISAR ESOTOOOO
+			a++;
+		}
+}
+
+void sacarSemaforosDesbloqueados(char* semaforo) {
+	int a = 0, t;
+	procesoBloqueado * unProceso;
+	while (unProceso = (procesoBloqueado*) list_get(colaProcesosBloqueados->elements, a)) {
+			if (strcmp((char*) unProceso->semaforo, semaforo) == 0)
+				list_remove(colaProcesosBloqueados->elements, a);
+			// TODO: REVISAR ESOTOOOO
+			a++;
+		}
 }
 
 void abortarTodosLosProgramasDeConsola(int socket) {
@@ -677,54 +765,18 @@ void modificarCantidadDePaginas(int pid) {
 	exit(0);
 }
 
-int *pideSemaforo(char *semaforo) {
-	int i;
-	//printf("NUCLEO: pide sem %s\n", semaforo);
-
-	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
-			i++) {
-		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
-
-			//if (config_nucleo->VALOR_SEM[i] == -1) {return &config_nucleo->VALOR_SEM[i];}
-			//config_nucleo->VALOR_SEM[i]--;
-			return (&t_archivoConfig->SEM_INIT[i]);
-		}
-	}
-	printf("No encontre SEM id, exit\n");
-	exit(0);
-}
-
-void escribeSemaforo(char *semaforo, int valor) {
-	int i;
-	//printf("NUCLEO: pide sem %s\n", semaforo);
-
-	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
-			i++) {
-		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
-
-			//if (config_nucleo->VALOR_SEM[i] == -1) {return &config_nucleo->VALOR_SEM[i];}
-			t_archivoConfig->SEM_INIT[i] = valor;
-			return;
-		}
-	}
-	printf("No encontre SEM id, exit\n");
-	exit(0);
-}
-
 int pideVariable(char *variable) {
 	int i;
-	log_info(logger, "NUCLEO: pide variable %s", variable);
 	for (i = 0;
 			i < strlen((char*) t_archivoConfig->SHARED_VARS) / sizeof(char*);
 			i++) {
 		//TODO: mutex confignucleo
 		if (strcmp((char*) t_archivoConfig->SHARED_VARS[i], variable) == 0) {
 			return atoi(t_archivoConfig->SHARED_VARS_INIT[i]);
-			//AAAAAAAACA REVISAR
 		}
 	}
 	printf("No encontre variable %s %d id, exit\n", variable, strlen(variable));
-	//TODO abortar
+//TODO abortar
 }
 
 void escribeVariable(char *variable, int valor) {
@@ -741,8 +793,44 @@ void escribeVariable(char *variable, int valor) {
 	}
 	printf("No encontre VAR %s id, exit\n", variable);
 	free(variable);
-	//TODO abortar
+//TODO abortar
 
+}
+
+int pideSemaforo(char *semaforo) {
+	int i;
+//printf("NUCLEO: pide sem %s\n", semaforo);
+
+	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
+			i++) {
+		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
+
+			//if (config_nucleo->VALOR_SEM[i] == -1) {return &config_nucleo->VALOR_SEM[i];}
+			//config_nucleo->VALOR_SEM[i]--;
+			return atoi(t_archivoConfig->SEM_INIT[i]);
+		}
+	}
+	printf("No encontre SEM id, exit\n");
+	exit(0);
+}
+
+void escribeSemaforo(char *semaforo, int valor) {
+	int i;
+	char str[15];
+	sprintf(str, "%d", valor);
+//printf("NUCLEO: pide sem %s\n", semaforo);
+
+	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
+			i++) {
+		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
+
+			//if (config_nucleo->VALOR_SEM[i] == -1) {return &config_nucleo->VALOR_SEM[i];}
+			memcpy((t_archivoConfig->SEM_INIT[i]), str, sizeof(int));
+			return;
+		}
+	}
+	printf("No encontre SEM id, exit\n");
+	exit(0);
 }
 
 void liberaSemaforo(char *semaforo) {
@@ -754,27 +842,21 @@ void liberaSemaforo(char *semaforo) {
 		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
 
 			if (list_size(colas_semaforos[i]->elements)) {
+				sacarSemaforosDesbloqueados(semaforo);
 				proceso = queue_pop(colas_semaforos[i]);
 				pthread_mutex_lock(&mutexColaReady);
 				queue_push(colaReady, proceso);
 				pthread_mutex_unlock(&mutexColaReady);
 				sem_post(&semReady);
 			} else {
-
-				t_archivoConfig->SEM_INIT[i]++;
+				//esto deberia sumar 1
+				int valor = 1 + atoi(t_archivoConfig->SEM_INIT[i]);
+				char str[15];
+				sprintf(str, "%d", valor);
+				memcpy((t_archivoConfig->SEM_INIT[i]), str, sizeof(int));
 			}
 
 			return;
-			/*
-			 config_nucleo->VALOR_SEM[i]++;
-			 printf("VALRO SEM %d\n",config_nucleo->VALOR_SEM[i]);
-			 if (proceso = queue_pop(colas_semaforos[i])) {
-			 //config_nucleo->VALOR_SEM[i]--;
-			 queue_push(cola_ready, proceso);
-			 sem_post(&sem_ready);
-			 }
-			 return;
-			 */
 		}
 	}
 	printf("No encontre SEM id, exit\n");
@@ -885,7 +967,7 @@ int crearPaginaEnMemoria(int pid, int pagina, int tamano) {
 	memcpy(estructuraAEscribir2, &tamano, sizeof(int));
 	memcpy(estructuraAEscribir2, &tamanoAEnviar, sizeof(int));
 	memcpy(estructuraAEscribir2, datosAEnviar->size, sizeof(int));
-	//OJO CHEQUEAR SI ESTO SE HACE BIEN
+//OJO CHEQUEAR SI ESTO SE HACE BIEN
 	memcpy(estructuraAEscribir2, &datosAEnviar->isFree, sizeof(_Bool));
 	printf("estoy haciendo bien las cosas?, %d", &datosAEnviar->isFree);
 	Serializar(ESCRITURAPAGINA, sizeof(int) * 4 + sizeof(HeapMetaData),
@@ -947,10 +1029,10 @@ int actualizarPaginaEnMemoria(char* pagina, int pid, int numeroPagina,
 }
 
 void liberarMemoria(int pid, t_puntero unaDireccion) {
-	//ANTES: GUARDAR PUNTERO y posicion real (offset en la pagina) EN DATOS HEAP como lista
-	//traerme esa pagina
-	//buscar en donde est'a ese puntero
-	//defragmentar..
+//ANTES: GUARDAR PUNTERO y posicion real (offset en la pagina) EN DATOS HEAP como lista
+//traerme esa pagina
+//buscar en donde est'a ese puntero
+//defragmentar..
 }
 
 void abortar(proceso *proceso, int exitCode) {
@@ -959,7 +1041,7 @@ void abortar(proceso *proceso, int exitCode) {
 	destruirCONTEXTO(proceso->pcb);
 	queue_push(colaExit, proceso);
 	pthread_mutex_unlock(&mutexColaExit);
-	//TODO : liberar recursos de memoria
+//TODO : liberar recursos de memoria
 }
 
 void abortarProgramaPorConsola(int pid, int codigo) {
