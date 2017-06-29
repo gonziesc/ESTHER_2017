@@ -1,0 +1,8 @@
+#!/usr/bin/ansisop
+
+begin
+	wait SEM3
+	prints n 4
+	prints n 4
+	signal SEM2
+end
