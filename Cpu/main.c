@@ -37,9 +37,9 @@ AnSISOP_funciones primitivas = { .AnSISOP_definirVariable = definirVariable,
 		.AnSISOP_dereferenciar = dereferenciar, .AnSISOP_asignar = asignar,
 		.AnSISOP_finalizar = finalizar, .AnSISOP_obtenerValorCompartida =
 				obtenerValorCompartida, .AnSISOP_asignarValorCompartida =
-				asignarValorCompartida, .AnSISOP_irAlLabel = irAlLabel,
-		.AnSISOP_retornar = retornar, .AnSISOP_llamarConRetorno =
-				llamarConRetorno };
+						asignarValorCompartida, .AnSISOP_irAlLabel = irAlLabel,
+						.AnSISOP_retornar = retornar, .AnSISOP_llamarConRetorno =
+								llamarConRetorno };
 AnSISOP_kernel privilegiadas = { .AnSISOP_escribir = escribir, .AnSISOP_wait =
 		wait_kernel, .AnSISOP_signal = signal_kernel };
 
@@ -280,7 +280,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 	variable *variableNueva;
 	int posMax =
 			(((indiceDeStack*) (list_get(unPcb->indiceStack, posicionStack)))->tamanoVars)
-					- 1;
+			- 1;
 	while (posMax >= 0) {
 		variableNueva =
 				((variable*) (list_get(
@@ -294,7 +294,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 							((variable*) (list_get(
 									((indiceDeStack*) (list_get(
 											unPcb->indiceStack, posicionStack)))->vars,
-									posMax)))->direccion);
+											posMax)))->direccion);
 			printf("[obtenerPosicionVariable]Obtengo valor de %c: %d %d (tamaño: %d)\n",
 					variableNueva->etiqueta, variableNueva->direccion->pag,
 					variableNueva->direccion->off,
@@ -306,7 +306,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 	printf("No debería llegar aca\n");
 }
 
-void finalizar(void) {
+void destruirContextoActual(void){
 	indiceDeStack *contextoAFinalizar;
 	contextoAFinalizar = list_get(unPcb->indiceStack,
 			unPcb->tamanoIndiceStack - 1);
@@ -334,12 +334,21 @@ void finalizar(void) {
 	list_destroy(contextoAFinalizar->args);
 	free(contextoAFinalizar);
 	unPcb->tamanoIndiceStack--;
-	printf("[finalizar]Programa Finalizado / Contexto Destruido\n");
-	programaFinalizado = 1;
+	printf("[destruirContextoActual]Contexto destruido\n");
 
-	Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
-	destruirPCB(unPcb);
-	sem_post(&semDestruirPCB);
+}
+
+void finalizar(void) {
+	printf("[finalizar]Finalizar funcion\n");
+	destruirContextoActual();
+
+	if(unPcb->tamanoIndiceStack == 0){
+		printf("[finalizar]Programa Finalizado\n");
+		programaFinalizado = 1;
+		Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
+		destruirPCB(unPcb);
+		sem_post(&semDestruirPCB);
+	}
 }
 
 void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero punteroRetorno) {
@@ -378,40 +387,16 @@ void irAlLabel(t_nombre_etiqueta etiqueta) {
 }
 
 void retornar(t_valor_variable valorRetorno) {
-	int posConextoActual = unPcb->tamanoIndiceStack - 1;
-	int direccionRetorno;
+
 	indiceDeStack *contextoAFinalizar = list_get(unPcb->indiceStack,
-			posConextoActual);
-	direccionRetorno = convertirDireccionAPuntero(
+			unPcb->tamanoIndiceStack - 1);
+	int direccionRetorno = convertirDireccionAPuntero(
 			&(contextoAFinalizar->retVar));
 	asignar(direccionRetorno, valorRetorno);
 	printf("[retornar]Retornando %d en %d\n", valorRetorno, direccionRetorno);
 
 	unPcb->programCounter = contextoAFinalizar->retPos;
-
-	while (contextoAFinalizar->tamanoVars != 0) {
-		free(
-				((variable*) list_get(contextoAFinalizar->vars,
-						contextoAFinalizar->tamanoVars - 1))->direccion);
-		free(
-				list_get(contextoAFinalizar->vars,
-						contextoAFinalizar->tamanoVars - 1));
-		contextoAFinalizar->tamanoVars--;
-	}
-	list_destroy(contextoAFinalizar->vars);
-	printf("[retornar]Destrui vars de funcion\n");
-
-	while (contextoAFinalizar->tamanoArgs != 0) {
-		free(
-				(posicionMemoria*) list_get(contextoAFinalizar->args,
-						contextoAFinalizar->tamanoArgs - 1));
-		contextoAFinalizar->tamanoArgs--;
-	}
-	list_destroy(contextoAFinalizar->args);
-	printf("[retornar]Destrui args de funcion\n");
-	free(list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack - 1));
-	printf("[retornar]Contexto Finalizado\n");
-	unPcb->tamanoIndiceStack--;
+	destruirContextoActual();
 }
 
 bool terminoElPrograma(void) {
@@ -434,7 +419,6 @@ void asignar(t_puntero punteroAVariable, t_valor_variable valor) {
 	printf("[asignar]Asignando en %d el valor %d\n", punteroAVariable, valor);
 	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
 	convertirPunteroADireccion(punteroAVariable, direccion);
-	//ARREGLAR INAKI
 	enviarDirecParaEscribirMemoria(direccion, valor);
 	free(direccion);
 	return;
@@ -475,7 +459,7 @@ void proximaDireccion(int posStack, int posUltVar,
 				((variable*) (list_get(
 						((indiceDeStack*) (list_get(unPcb->indiceStack,
 								posStack)))->vars, posUltVar)))->direccion->pag
-						+ 1;
+								+ 1;
 		direccion->off = 0;
 		direccion->size = 4;
 		memcpy(direccionReal, direccion, sizeof(posicionMemoria));
@@ -557,7 +541,7 @@ void crearEstructuraParaMemoria(programControlBlock* unPcb, int tamPag,
 	posicionMemoria* info = malloc(sizeof(posicionMemoria));
 	info->pag = ceil(
 			(double) unPcb->indiceCodigo[(unPcb->programCounter) * 2]
-					/ (double) tamPag);
+										 / (double) tamPag);
 	//printf("[crearEstructuraParaMemoria]Voy a leer la pagina: %d\n", info->pag);
 	info->off = (unPcb->indiceCodigo[((unPcb->programCounter) * 2)] % tamPag);
 	//printf("[crearEstructuraParaMemoria]Voy a leer con offswet: %d\n", info->off);
