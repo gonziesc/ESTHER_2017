@@ -29,7 +29,8 @@ int32_t conectarConMemoria();
 
 void wait_kernel(t_nombre_semaforo );
 void signal_kernel(t_nombre_semaforo );
-
+void liberar(t_puntero ) ;
+t_puntero reservar(t_valor_variable );
 
 t_puntero definirVariable(t_nombre_variable );
 t_puntero obtenerPosicionVariable(t_nombre_variable );
