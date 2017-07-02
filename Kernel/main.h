@@ -41,7 +41,13 @@ typedef struct {
   int pid;
   int numeroPagina;
   int cantidadDeAlocaciones;
-} datosHeap;
+} datosAdminHeap;
+
+typedef struct {
+  int pid;
+  int cantidad;
+  int socket;
+} hiloHeap;
 
 typedef struct {
   int quantum;
@@ -52,8 +58,13 @@ typedef struct {
 
 typedef struct {
 int size;
-bool isFree;
+int isFree;
 }HeapMetaData;
+
+typedef struct {
+	int pagina;
+	int offset;
+}datosHeap;
 
 typedef struct {
 int pid;
@@ -65,6 +76,9 @@ int pid;
 char* semaforo;
 }procesoBloqueado;
 
+void procesarHeap();
+void procesoLiberaHeap(int, int, int);
+datosHeap* procesoPideHeap(int , int );
 int pideVariable(char*);
 void escribeVariable(char*, int);
 void configuracion(char*);

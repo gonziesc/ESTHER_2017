@@ -705,7 +705,7 @@ void crearEstructuraParaMemoria(programControlBlock* unPcb, int tamPag,
 }
 
 char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
-	if ((tamanio + offset) <= 20) {
+	if ((tamanio + offset) <= tamanoPag) {
 		posicionMemoria *datos_para_memoria = malloc(sizeof(posicionMemoria));
 		datos_para_memoria->off = offset;
 		datos_para_memoria->pag = pagina;
@@ -728,9 +728,9 @@ char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
 		if (lectura2 == NULL)
 			return NULL;
 
-		char* nuevo = malloc((20 - offset) + tamanio - (20 - offset));
-		memcpy(nuevo, lectura1, (20 - offset));
-		memcpy(nuevo + (20 - offset), lectura2, tamanio - (20 - offset));
+		char* nuevo = malloc((tamanoPag - offset) + tamanio - (tamanoPag - offset));
+		memcpy(nuevo, lectura1, (tamanoPag - offset));
+		memcpy(nuevo + (tamanoPag - offset), lectura2, tamanio - (tamanoPag - offset));
 		free(lectura1);
 		free(lectura2);
 		sem_post(&semSentenciaCompleta);
@@ -807,7 +807,7 @@ void signal_kernel(t_nombre_semaforo identificador_semaforo) {
 t_puntero reservar(t_valor_variable espacio) {
 	int resultadoEjecucion;
 	int pid = unPcb->programId;
-	char* envio = malloc(8);
+	void* envio = malloc(8);
 	memcpy(envio, &pid, sizeof(int));
 	memcpy(envio + 4, &espacio, sizeof(int));
 	Serializar(PROCESOPIDEHEAP, 8, envio, cliente);
@@ -833,7 +833,7 @@ void liberar(t_puntero puntero) {
 	int num_paginaHeap = punteroHeapDeMemoria / tamanoPag;
 	int offsetHeap = punteroHeapDeMemoria - (num_paginaHeap * tamanoPag);
 
-	char* envio = malloc(8 + tamanio);
+	void* envio = malloc(8 + tamanio);
 	memcpy(envio, &pid, sizeof(int));
 	memcpy(envio + 4, &num_paginaHeap, sizeof(int));
 	memcpy(envio + 8, &offsetHeap, tamanio);

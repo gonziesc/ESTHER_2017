@@ -20,6 +20,7 @@ int32_t frameCache = 0;
 frame frameGeneral;
 int32_t tamanoFrame;
 cacheLru nodoUso;
+int32_t ultimaPaginaPid[100];
 //infoTablaMemoria tablaMemoria[500];
 infoTablaMemoria* punteroMemoria;
 int32_t indiceTabla = 0;
@@ -325,7 +326,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(codigoPagina, paquete + 16, t_archivoConfig->MARCOS_SIZE);
 		almacenarFrameEnCache(pid, tamano, codigoPagina, numeroPagina);
 		escribirEnPagina(pid, numeroPagina, offset, tamano, codigoPagina);
-
+		ultimaPaginaPid[pid] = numeroPagina;
 		//printf("pagina: %s\n", pagina);
 		//printf("pid: %d\n", pid);
 		Serializar(PAGINAENVIADA, 4, &noIMporta, socket);
@@ -334,7 +335,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		//almacernarPaginaEnFrame(pid, tamanoPaquete, paquete);
 		break;
 	}
-	case LEERSENTENCIA: {
+	case LEERSENTENCIA: case METADATALEIDA: case PROCESOLIBERAHEAP: {
 		int pid;
 		memcpy(&numero_pagina, paquete, sizeof(int));
 		memcpy(&offset, paquete + sizeof(int), sizeof(int));
@@ -345,7 +346,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 				numero_pagina, offset, offset, socket);
 		char * contenido = leerDePagina(pid, numero_pagina, offset, tamanio);
 		//printf("lei: %s\n", contenido);
-		Serializar(LEERSENTENCIA, tamanio, contenido, socket);
+		Serializar(id, tamanio, contenido, socket);
 		//ojo pid actual
 		break;
 	}
@@ -383,6 +384,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semPaginas);
 		free(buffer);
 		break;
+	}
+	case PROCESOPIDEHEAP: {
+		int pid;
+		memcpy(&pid, paquete, sizeof(int));
+		asignarPaginasAProceso(pid, 1);
+		Serializar(MEMORIARESERVOHEAP, sizeof(int), &noIMporta, socket);
 	}
 	}
 
@@ -483,6 +490,31 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas) {
 	}
 }
 
+void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas) {
+	int32_t i = ultimaPaginaPid[pid] + 1;
+
+		int32_t frame = calcularPosicion(pid, i);
+		int32_t libre;
+		libre = estaLibre(frame);
+		if (libre == 1) {
+
+			nodoTablaMemoria.numeroPagina = i;
+			nodoTablaMemoria.pid = pid;
+			punteroMemoria[frame] = nodoTablaMemoria;
+			frameGeneral.framesLibres--;
+
+		} else {
+			int32_t frameLibre;
+			frameLibre = buscarFrameLibre();
+			agregarSiguienteEnOverflow(frame, frameLibre);
+			nodoTablaMemoria.numeroPagina = i;
+			nodoTablaMemoria.pid = pid;
+			punteroMemoria[frameLibre] = nodoTablaMemoria;
+			frameGeneral.framesLibres--;
+
+	}
+}
+
 int32_t estaLibre(int32_t unFrame) {
 	if ((punteroMemoria + unFrame)->pid == 0
 			&& (punteroMemoria + unFrame)->numeroPagina == 0) {
@@ -501,47 +533,6 @@ int32_t buscarUltimaPag(int32_t pid) {
 		}
 	}
 	return ultimaPagina;
-}
-
-void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas) {
-	//TODO corregir
-	int32_t ultimaPag = buscarUltimaPag(pid);
-	if (ultimaPag == 0) {
-		printf("el proceso todavia no fue iniciado");
-		// TODO no entra el proceso porque todavia no se inicioserializar(NOENTROPROCESO, );
-		return;
-	}
-
-	int32_t i;
-	int32_t cantFL = frameGeneral.framesLibres;
-	//int32_t frameLibre;
-	if (cantPaginas > cantFL) {
-		printf("no se podran asignar todas las paginas requeridas");
-		return;
-	} else {
-		for (i = 0; i <= cantPaginas - 1; i++) {
-
-			int32_t frame = calcularPosicion(pid, i);
-			int32_t libre;
-			libre = estaLibre(frame);
-			if (libre == 1) {
-
-				nodoTablaMemoria.numeroPagina = i + ultimaPag;
-				nodoTablaMemoria.pid = pid;
-				punteroMemoria[frame] = nodoTablaMemoria;
-
-			} else {
-				int32_t frameLibre;
-				frameLibre = buscarFrameLibre();
-				agregarSiguienteEnOverflow(frame, frameLibre);
-				nodoTablaMemoria.numeroPagina = i + ultimaPag;
-				nodoTablaMemoria.pid = pid;
-				punteroMemoria[frameLibre] = nodoTablaMemoria;
-
-			}
-		}
-
-	}
 }
 
 int32_t buscarFrameLibre() {

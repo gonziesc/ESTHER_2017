@@ -1,0 +1,8 @@
+#!/usr/bin/ansisop
+
+begin
+	variables a
+	alocar a 10
+	*a = 20
+	prints n *a
+end
