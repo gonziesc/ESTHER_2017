@@ -201,11 +201,8 @@ void leerComando() {
 			scanf("%d", &offset);
 			printf("ingresar tamano\n");
 			scanf("%d", &tamano);
-			char* conten = leerDeCache(pid, pagina, offset, tamano);
-			if (conten == '\0') {
-				conten = leerDePagina(pid, pagina, offset, tamano);
-				escribirEnCache(pid, pagina, offset, tamano, conten);
-			}
+			char *conten = leerDePagina(pid, pagina, offset, tamano);
+
 			/*else {
 			 conten = leerDeCache(pid, pagina, offset, tamano);
 			 }*/
@@ -307,6 +304,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		int cantidadDePaginas;
 		memcpy(&pid, paquete, 4);
 		memcpy(&cantidadDePaginas, paquete + 4, 4);
+		ultimaPaginaPid[pid] = cantidadDePaginas;
 		inicializarPrograma(pid, cantidadDePaginas);
 		break;
 	}
@@ -315,18 +313,16 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		int32_t numeroPagina;
 		int32_t offset;
 		int32_t tamano;
-		char *codigoPagina = malloc(t_archivoConfig->MARCOS_SIZE);
-		printf("%s\n", paquete);
 
 		//pagina[t_archivoConfiheaderg->MARCOS_SIZE] = '\0';
 		memcpy(&pid, paquete, sizeof(int));
 		memcpy(&numeroPagina, paquete + 4, sizeof(int));
 		memcpy(&tamano, paquete + 8, sizeof(int));
+		char *codigoPagina = malloc(tamano);
 		memcpy(&offset, paquete + 12, sizeof(int));
-		memcpy(codigoPagina, paquete + 16, t_archivoConfig->MARCOS_SIZE);
+		memcpy(codigoPagina, paquete + 16, tamano);
 		almacenarFrameEnCache(pid, tamano, codigoPagina, numeroPagina);
 		escribirEnPagina(pid, numeroPagina, offset, tamano, codigoPagina);
-		ultimaPaginaPid[pid] = numeroPagina;
 		//printf("pagina: %s\n", pagina);
 		//printf("pid: %d\n", pid);
 		Serializar(PAGINAENVIADA, 4, &noIMporta, socket);
@@ -343,7 +339,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(&pid, paquete + sizeof(int) * 3, sizeof(int));
 		printf(
 				"[LEERSENTENCIA]Quiero leer en la direccion: %d %d %d y le voy a enviar a socket: %d\n",
-				numero_pagina, offset, offset, socket);
+				numero_pagina, offset, tamanio, socket);
 		char * contenido = leerDePagina(pid, numero_pagina, offset, tamanio);
 		//printf("lei: %s\n", contenido);
 		Serializar(id, tamanio, contenido, socket);

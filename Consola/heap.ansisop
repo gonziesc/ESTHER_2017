@@ -1,8 +1,8 @@
 #!/usr/bin/ansisop
 
 begin
-	variables a
-	alocar a 10
+	variables a,b
+	alocar a 4
 	*a = 20
 	prints n *a
 end
