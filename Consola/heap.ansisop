@@ -1,8 +1,32 @@
 #!/usr/bin/ansisop
 
 begin
-	variables a,b
-	alocar a 4
+	variables a,b,c,d
+	alocar a 200
+	alocar c 20
+	alocar d 200
 	*a = 20
+	b = a + 4
+	*b = 15 
+	prints n *b
+	b = b +4
+	*b = 357
+	prints n *b
+	b = b +4
+	*b = 532
+	prints n *b
+	b = b +4
+	*b = 964
+	prints n *b
+	b = b +4
+	*b = 999
+	prints n *b
 	prints n *a
+	*c = 1500
+	prints n *c
+	*d = 2154
+	prints n *d
+	liberar a
+	liberar c
+	liberar d
 end

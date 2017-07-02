@@ -822,20 +822,20 @@ void liberar(t_puntero puntero) {
 	posicionMemoria *datos_para_memoria = malloc(sizeof(posicionMemoria));
 	int num_paginaDelStack = puntero / tamanoPag;
 	int offsetDelStack = puntero - (num_paginaDelStack * tamanoPag);
-	datos_para_memoria->off = offsetDelStack;
-	datos_para_memoria->pag = num_paginaDelStack;
-	datos_para_memoria->size = 4;
-	enviarDirecParaLeerMemoria(datos_para_memoria,PROCESOLIBERAHEAP);
-	sem_wait(&semProcesoLiberaHeap);
+	//datos_para_memoria->off = offsetDelStack;
+	//datos_para_memoria->pag = num_paginaDelStack;
+	//datos_para_memoria->size = 4;
+	//enviarDirecParaLeerMemoria(datos_para_memoria,PROCESOLIBERAHEAP);
+	//sem_wait(&semProcesoLiberaHeap);
 	int pid = unPcb->programId;
 	int tamanio = sizeof(t_puntero);
 
-	int num_paginaHeap = punteroHeapDeMemoria / tamanoPag;
-	int offsetHeap = punteroHeapDeMemoria - (num_paginaHeap * tamanoPag);
-
+	//int num_paginaHeap = (punteroHeapDeMemoria) / tamanoPag + unPcb->cantidadDePaginas + stackSize;
+	//int offsetHeap = punteroHeapDeMemoria - (num_paginaHeap * tamanoPag);
+	int offsetHeap = offsetDelStack - 8;
 	void* envio = malloc(8 + tamanio);
 	memcpy(envio, &pid, sizeof(int));
-	memcpy(envio + 4, &num_paginaHeap, sizeof(int));
+	memcpy(envio + 4, &num_paginaDelStack, sizeof(int));
 	memcpy(envio + 8, &offsetHeap, tamanio);
 	Serializar(PROCESOLIBERAHEAP, 8 + tamanio, envio, cliente);
 	sem_wait(&semProcesoTerminaLiberaHeap);

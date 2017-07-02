@@ -59,12 +59,19 @@ typedef struct {
 typedef struct {
 int size;
 int isFree;
-}HeapMetaData;
+}__attribute__((packed)) HeapMetaData;
 
 typedef struct {
 	int pagina;
 	int offset;
 }datosHeap;
+
+typedef struct {
+	int pagina;
+	int offset;
+	int pid;
+	int socket;
+}liberaDatosHeap;
 
 typedef struct {
 int pid;
@@ -76,6 +83,9 @@ int pid;
 char* semaforo;
 }procesoBloqueado;
 
+
+
+void liberarHeap();
 void procesarHeap();
 void procesoLiberaHeap(int, int, int);
 datosHeap* procesoPideHeap(int , int );
