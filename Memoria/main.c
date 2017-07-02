@@ -487,8 +487,8 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas) {
 }
 
 void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas) {
-	int32_t i = ultimaPaginaPid[pid] + 1;
-
+		int32_t i = ultimaPaginaPid[pid] + 1;
+		ultimaPaginaPid[pid] += 1;
 		int32_t frame = calcularPosicion(pid, i);
 		int32_t libre;
 		libre = estaLibre(frame);
