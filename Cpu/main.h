@@ -26,6 +26,13 @@ void Configuracion(char *);
 int32_t ConectarConKernel();
 int32_t conectarConMemoria();
 
+t_descriptor_archivo abrir(t_direccion_archivo , t_banderas );
+void borrar (t_descriptor_archivo );
+void cerrar(t_descriptor_archivo );
+void leer(t_descriptor_archivo , t_puntero , t_valor_variable );
+void moverCursor (t_descriptor_archivo , t_valor_variable );
+
+
 
 void wait_kernel(t_nombre_semaforo );
 void signal_kernel(t_nombre_semaforo );

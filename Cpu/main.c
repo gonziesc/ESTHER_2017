@@ -5,6 +5,7 @@ t_config *config;
 struct sockaddr_in direccionKernel;
 int32_t cliente;
 char* buffer;
+char* infoLeida;
 int valorVaribleCompartida;
 struct sockaddr_in direccionMem;
 int32_t clienteMEM;
@@ -17,6 +18,7 @@ pthread_t hiloKernel;
 pthread_t hiloMemoria;
 pthread_t hiloProcesarScript;
 pthread_mutex_t mutexProcesar;
+t_descriptor_archivo descriptorArchivoAbierto;
 sem_t semProcesar;
 sem_t semInstruccion;
 sem_t semSentenciaCompleta;
@@ -29,6 +31,12 @@ sem_t semProcesoBloqueado;
 sem_t semProcesoPideHeap;
 sem_t semProcesoLiberaHeap;
 sem_t semProcesoTerminaLiberaHeap;
+sem_t semAbrirArchivo;
+sem_t semCerrarArchivo;
+sem_t semBorrarArchivo;
+sem_t semLeerArchivo;
+sem_t semEscribirArchivo;
+sem_t semMoverCursor;
 int noInteresa;
 int valorDerenferenciado;
 int algoritmo;
@@ -46,7 +54,9 @@ AnSISOP_funciones primitivas = { .AnSISOP_definirVariable = definirVariable,
 				llamarConRetorno, .AnSISOP_llamarSinRetorno = llamarSinRetorno };
 AnSISOP_kernel privilegiadas = { .AnSISOP_escribir = escribir, .AnSISOP_wait =
 		wait_kernel, .AnSISOP_signal = signal_kernel, .AnSISOP_reservar =
-		reservar, .AnSISOP_liberar = liberar };
+		reservar, .AnSISOP_liberar = liberar, .AnSISOP_abrir = abrir,
+		.AnSISOP_borrar = borrar, .AnSISOP_cerrar = cerrar,
+		.AnSISOP_leer = leer, .AnSISOP_moverCursor = moverCursor };
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
@@ -74,6 +84,12 @@ void Configuracion(char* dir) {
 	sem_init(&semProcesoPideHeap, 0, 0);
 	sem_init(&semProcesoLiberaHeap, 0, 0);
 	sem_init(&semProcesoTerminaLiberaHeap, 0, 0);
+	sem_init(&semAbrirArchivo, 0, 0);
+	sem_init(&semCerrarArchivo, 0, 0);
+	sem_init(&semBorrarArchivo, 0, 0);
+	sem_init(&semEscribirArchivo, 0, 0);
+	sem_init(&semLeerArchivo, 0, 0);
+	sem_init(&semMoverCursor, 0, 0);
 }
 
 int32_t conectarConMemoria() {
@@ -204,6 +220,32 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	case PROCESOTERMINALIBERAHEAP: {
 		sem_post(&semProcesoTerminaLiberaHeap);
+		break;
+	}
+	case ABRIRARCHIVO: {
+		memcpy(&descriptorArchivoAbierto, paquete, 4);
+		sem_post(&semAbrirArchivo);
+		break;
+	}
+	case CERRARARCHIVO: {
+		sem_post(&semCerrarArchivo);
+		break;
+	}
+	case LEERARCHIVO: {
+		int tamanoLeido;
+		memcpy(&tamanoLeido, paquete, 4);
+		infoLeida = malloc(tamanoLeido);
+		memcpy(infoLeida, paquete, tamanoLeido);
+
+		sem_post(&semLeerArchivo);
+		break;
+	}
+	case ESCRIBIRARCHIVO: {
+		sem_post(&semEscribirArchivo);
+		break;
+	}
+	case MOVERCURSOR: {
+		sem_post(&semMoverCursor);
 		break;
 	}
 	}
@@ -728,9 +770,11 @@ char* leerSentencia(int pagina, int offset, int tamanio, int flag) {
 		if (lectura2 == NULL)
 			return NULL;
 
-		char* nuevo = malloc((tamanoPag - offset) + tamanio - (tamanoPag - offset));
+		char* nuevo = malloc(
+				(tamanoPag - offset) + tamanio - (tamanoPag - offset));
 		memcpy(nuevo, lectura1, (tamanoPag - offset));
-		memcpy(nuevo + (tamanoPag - offset), lectura2, tamanio - (tamanoPag - offset));
+		memcpy(nuevo + (tamanoPag - offset), lectura2,
+				tamanio - (tamanoPag - offset));
 		free(lectura1);
 		free(lectura2);
 		sem_post(&semSentenciaCompleta);
@@ -774,8 +818,16 @@ void escribir(t_descriptor_archivo descriptorArchivo, void* informacion,
 	char* envio = malloc(tamano + 4);
 	memcpy(envio, informacion, tamano);
 	memcpy(envio + tamano, &descriptorArchivo, 4);
-	Serializar(IMPRIMIRPROCESO, tamano + 4, envio, cliente);
+	if (descriptorArchivo == 0 || descriptorArchivo == 1
+			|| descriptorArchivo == 2) {
+		Serializar(IMPRIMIRPROCESO, tamano + 4, envio, cliente);
+		free(envio);
+		return;
+	}
+	Serializar(ESCRIBIRARCHIVO, tamano + 4, envio, cliente);
+	sem_wait(&semEscribirArchivo);
 	free(envio);
+	return;
 }
 
 void wait_kernel(t_nombre_semaforo identificador_semaforo) {
@@ -843,3 +895,72 @@ void liberar(t_puntero puntero) {
 	free(datos_para_memoria);
 
 }
+
+t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
+
+	int descriptor;
+	char *flagsAConcatenar = string_new();
+	if (flags.creacion == true) {
+		printf("Tiene permiso de creacion\n");
+		string_append(&flagsAConcatenar, "c");
+	}
+	if (flags.lectura == true) {
+		printf("Tiene permiso de lectura\n");
+		string_append(&flagsAConcatenar, "r");
+	}
+	if (flags.escritura == true) {
+		printf("Tiene permiso de escritura\n");
+		string_append(&flagsAConcatenar, "w");
+	}
+	int tamanoFlags = sizeof(char) * strlen(flagsAConcatenar);
+	int tamanoDireccion = sizeof(char) * strlen(direccion);
+	void *envio = malloc(8 + tamanoFlags + tamanoDireccion);
+	memcpy(envio, &tamanoDireccion, 4);
+	memcpy(envio + 4, &tamanoFlags, 4);
+	memcpy(envio + 8, flagsAConcatenar, tamanoFlags);
+	memcpy(envio + 8 + tamanoFlags, direccion, tamanoDireccion);
+	Serializar(ABRIRARCHIVO, 8 + tamanoFlags + tamanoDireccion, envio, cliente);
+	sem_wait(&semAbrirArchivo);
+	free(envio);
+	return descriptorArchivoAbierto;
+}
+void borrar(t_descriptor_archivo descriptor) {
+	void * envio = malloc(4);
+	memcpy(envio, &descriptor, 4);
+	Serializar(BORRARARCHIVO, 4, envio, cliente);
+	sem_wait(&semBorrarArchivo);
+	free(envio);
+}
+void cerrar(t_descriptor_archivo descriptor) {
+	void * envio = malloc(4);
+	memcpy(envio, &descriptor, 4);
+	Serializar(CERRARARCHIVO, 4, envio, cliente);
+	sem_wait(&semBorrarArchivo);
+	free(envio);
+}
+
+void leer(t_descriptor_archivo descriptor, t_puntero puntero,
+		t_valor_variable tamano) {
+	void * envio = malloc(12);
+	memcpy(envio, &descriptor, 4);
+	memcpy(envio + 4, &puntero, 4);
+	memcpy(envio + 8, &tamano, 4);
+	Serializar(LEERARCHIVO, 12, envio, cliente);
+	sem_wait(&semLeerArchivo);
+	char *infoLeidaChar = string_new();
+	string_append(&infoLeidaChar, infoLeida);
+	printf("info leida %s", infoLeidaChar);
+	free(infoLeida);
+	free(envio);
+}
+
+void moverCursor(t_descriptor_archivo descriptor,
+		t_valor_variable posicion) {
+	void * envio = malloc(8);
+	memcpy(envio, &descriptor, 4);
+	memcpy(envio + 4, &posicion, 4);
+	Serializar(MOVERCURSOR, 8, envio, cliente);
+	sem_wait(&semMoverCursor);
+	free(envio);
+}
+
