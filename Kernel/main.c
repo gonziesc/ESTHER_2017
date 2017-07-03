@@ -1183,7 +1183,7 @@ void reservarBloqueHeap(int pid, int size, datosHeap* puntero) {
 	memcpy(envioPagina, &pid, sizeof(processID));
 	memcpy(envioPagina + 4, &puntero->pagina, sizeof(int));
 	memcpy(envioPagina + 8, &tamanoAUx, sizeof(int));
-	memcpy(envioPagina + 12, &puntero->offset, sizeof(int));
+	memcpy(envioPagina + 12, &otroOffset, sizeof(int));
 	memcpy(envioPagina + 16, metaDataLeida, sizeof(HeapMetaData));
 	Serializar(PAGINA, sizeof(HeapMetaData) + 4 * sizeof(int), envioPagina,
 			clienteMEM);
@@ -1192,7 +1192,7 @@ void reservarBloqueHeap(int pid, int size, datosHeap* puntero) {
 	auxBloque.isFree = -1;
 	auxBloque.size = sizeLibreViejo - size - sizeof(HeapMetaData);
 	tamanoAUx = sizeof(HeapMetaData);
-	int nuevoOffset = puntero->offset + sizeof(HeapMetaData) + size;
+	int nuevoOffset = otroOffset + sizeof(HeapMetaData) + size;
 	memcpy(metaDataLeida, &auxBloque, sizeof(HeapMetaData));
 	void* envioPagina2 = malloc(sizeof(HeapMetaData) + 4 * sizeof(int));
 	memcpy(envioPagina2, &pid, sizeof(processID));
