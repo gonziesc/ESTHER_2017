@@ -1,2 +1,2 @@
 PUERTO_KERNEL=5003
-PUERTO_MONTAJE=/mnt/SADICA_FS/
+PUERTO_MONTAJE=/home/utnso/git/tp-2017-1c-el-grupo-numero/FIleSystem/

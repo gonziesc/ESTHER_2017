@@ -44,7 +44,7 @@ int32_t levantarConexion() {
 	while (1) {
 		paquete* paqueteRecibido = Deserializar(cliente);
 		if (paqueteRecibido->header < 0) {
-			perror("Kernel se desconectó");
+			perror("Kernel se desconectó\n");
 			return 1;
 		}
 
@@ -55,32 +55,128 @@ int32_t levantarConexion() {
 
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	switch (id) {
-	case ARCHIVO: {
-		printf("%s", paquete);
-		break;
-	}
-	case FILESYSTEM: {
-		printf("Se conecto FS");
-		break;
-	}
 	case KERNEL: {
-		printf("Se conecto Kernel");
+		printf("Se conecto Kernel\n");
 		break;
 	}
-	case CPU: {
-		printf("Se conecto CPU");
-		break;
-	}
-	case CONSOLA: {
-		printf("Se conecto Consola");
-		break;
-	}
-	case MEMORIA: {
-		printf("Se conecto memoria");
-		break;
-	}
-	case CODIGO: {
+	case VALIDARARCHIVO: {
+		int tamanoArchivo;
+		int validado;
 
+		memcpy(&tamanoArchivo, paquete, sizeof(int));
+		char* nombreArchivo = malloc(
+				tamanoArchivo * sizeof(char) + sizeof(char));
+		memcpy(nombreArchivo, paquete + 4, tamanoArchivo);
+		strcpy(nombreArchivo + tamanoArchivo, "\0");
+
+		char *nombreArchivoRecibido = string_new();
+		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
+		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, nombreArchivo);
+		printf("%s\n", nombreArchivoRecibido);
+		if (access(nombreArchivoRecibido, F_OK) != -1) {
+			// file exists
+			validado = 1;
+			Serializar(VALIDARARCHIVO, 4, &validado, cliente);
+		} else {
+			// file doesn't exist
+			validado = 0;
+			Serializar(VALIDARARCHIVO, 4, &validado, cliente);
+		}
+		break;
 	}
+	case CREARARCHIVO: {
+		FILE *fp;
+
+		int tamanoArchivo;
+		int validado;
+
+		memcpy(&tamanoArchivo, paquete, sizeof(int));
+		char* nombreArchivo = malloc(
+				tamanoArchivo * sizeof(char) + sizeof(char));
+		memcpy(nombreArchivo, paquete + 4, tamanoArchivo);
+		strcpy(nombreArchivo + tamanoArchivo, "\0");
+
+		char *nombreArchivoRecibido = string_new();
+		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
+		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, nombreArchivo);
+		break;
+	}
+	case GUARDARDATOS: {
+		FILE *fp;
+
+		int tamanoNombreArchivo;
+		int validado;
+		int puntero;
+		int tamanoBuffer;
+
+		memcpy(&tamanoNombreArchivo, paquete, sizeof(int));
+		printf("Tamano nombre archivo:%d\n", tamanoNombreArchivo);
+		char* nombreArchivo = malloc(tamanoNombreArchivo);
+
+		memcpy(&puntero, paquete + 4, sizeof(int));
+		printf("Puntero:%d\n", puntero);
+
+		memcpy(&tamanoBuffer, paquete + 8, sizeof(int));
+		printf("Tamano de la data:%d\n", tamanoBuffer);
+		char* buffer = malloc(tamanoBuffer);
+
+		memcpy(buffer, paquete + 12, tamanoBuffer);
+		strcpy(buffer + tamanoBuffer, "\0");
+		printf("Data :%s\n", buffer);
+
+		memcpy(nombreArchivo, paquete + 12 + tamanoBuffer, tamanoNombreArchivo);
+		strcpy(nombreArchivo + tamanoNombreArchivo, "\0");
+		printf("Nombre archivo:%s\n", nombreArchivo);
+		char *nombreArchivoRecibido = string_new();
+		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
+		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, nombreArchivo);
+
+		printf("Toda la ruta :%s\n", nombreArchivoRecibido);
+		break;
+	}
+	case OBTENERDATOS: {
+		FILE *fp;
+
+		int tamanoArchivo;
+		int validado;
+		int offset;
+		int size;
+
+		memcpy(&tamanoArchivo, paquete, sizeof(int));
+		memcpy(&size, paquete + 4, sizeof(int));
+		memcpy(&offset, paquete + 8, sizeof(int));
+		char* nombreArchivo = malloc(
+				tamanoArchivo * sizeof(char) + sizeof(char));
+		memcpy(nombreArchivo, paquete + 12, tamanoArchivo);
+		strcpy(nombreArchivo + tamanoArchivo, "\0");
+
+		char *nombreArchivoRecibido = string_new();
+		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
+		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, nombreArchivo);
+		break;
+	}
+	case BORRARARCHIVO: {
+		FILE *fp;
+
+		int tamanoArchivo;
+		int validado;
+
+		memcpy(&tamanoArchivo, paquete, sizeof(int));
+		char* nombreArchivo = malloc(
+				tamanoArchivo * sizeof(char) + sizeof(char));
+		memcpy(nombreArchivo, paquete + 4, tamanoArchivo);
+		strcpy(nombreArchivo + tamanoArchivo, "\0");
+
+		char *nombreArchivoRecibido = string_new();
+		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
+		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, nombreArchivo);
+		break;
+	}
+
 	}
 }
