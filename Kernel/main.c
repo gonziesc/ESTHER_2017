@@ -1094,7 +1094,7 @@ int paginaHeapBloqueSuficiente(int posicionPaginaHeap, int pagina, int pid,
 				&& auxBloque.isFree == -1) {
 			printf("Pagina Heap Bloque Suficiente\n");
 			free(buffer);
-			return i;
+			return i + 8;
 		}
 
 		else {
@@ -1159,12 +1159,9 @@ void reservarBloqueHeap(int pid, int size, datosHeap* puntero) {
 	}
 	pthread_mutex_unlock(&mutexListaAdminHeap);
 	int tamanoLectura = sizeof(HeapMetaData);
-	int otroOffset;
-	if(puntero->offset ==8){
-		otroOffset = 0;
-	} else {
-		otroOffset = puntero->offset; // TODO: FIJARSE SI NO ES +8
-	}
+
+	int otroOffset = puntero->offset - 8; // TODO: FIJARSE SI NO ES +8
+
 	void* lecturaPagina = malloc(sizeof(HeapMetaData) + 3 * sizeof(int));
 	memcpy(lecturaPagina, &puntero->pagina, sizeof(processID));
 	memcpy(lecturaPagina + 4, &otroOffset, sizeof(int));
