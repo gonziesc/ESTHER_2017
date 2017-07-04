@@ -88,6 +88,7 @@ typedef enum {
 	codeFinalizarPrograma = -7,
 	codeMasMemoriaQuePaginas = -8,
 	codeNoSePuedeAsignarMasPaginas = -9,
+	codeStackOverflow = -10,
 	codeDesconocido = -20
 
 }exitCode;

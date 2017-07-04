@@ -302,7 +302,7 @@ void procesarScript() {
 		int cantidadDePaginas = ceil(
 				(double) unScript->tamano / (double) MARCOS_SIZE);
 		int cantidadDePaginasToales = cantidadDePaginas
-				+ t_archivoConfig->STACK_SIZE;
+				+ t_archivoConfig->STACK_SIZE + 1;
 
 		pthread_mutex_lock(&mutexMemoria);
 		Serializar(TAMANO, sizeof(int), &cantidadDePaginasToales, clienteMEM);
@@ -451,6 +451,15 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	}
 	case NOENTROPROCESO: {
 		//TODO abortar
+		break;
+	}
+	case ABORTOSTACKOVERFLOW: {
+		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
+				pcbRecibido->programId);
+		destruirPCB(unProceso->pcb);
+		unProceso->pcb = pcbRecibido;
+		abortar(unProceso, codeStackOverflow);
 		break;
 	}
 		//procesar pid muerto
@@ -735,6 +744,7 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo,
 			Serializar(PAGINA, MARCOS_SIZE + 4 * sizeof(int), envioPagina,
 					clienteMEM);
 			pthread_mutex_unlock(&mutexMemoria);
+			printf("num pagina %d\n", i);
 			sem_wait(&semPaginaEnviada);
 			free(envioPagina);
 		} else {
@@ -750,7 +760,7 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo,
 			Serializar(PAGINA, MARCOS_SIZE + 4 * sizeof(int), envioPagina,
 					clienteMEM);
 			pthread_mutex_unlock(&mutexMemoria);
-			printf("envio pagina %s\n", envioPagina);
+			printf("num pagina %d\n", i);
 			sem_wait(&semPaginaEnviada);
 			free(envioPagina);
 		}
@@ -1318,12 +1328,22 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 	pthread_mutex_unlock(&mutexListaAdminHeap);
 }
 
-void abortar(proceso *proceso, int exitCode) {
+void abortar(proceso * proceso, int exitCode) {
+	pthread_mutex_lock(&mutexColaCpu);
+	queue_push(colaCpu, proceso->socketCPU);
+	pthread_mutex_unlock(&mutexColaCpu);
 	proceso->pcb->exitCode = exitCode;
+	sem_post(&semCpu);
+	//TODO revisar semcpu y semgradomulti
+	void* envio = malloc(8);
+	memcpy(envio, &proceso->pcb->programId, 4);
+	memcpy(envio + 4, &exitCode, 4);
+	Serializar(ABORTOSTACKOVERFLOW, 8, envio, proceso->socketCONSOLA);
 	pthread_mutex_lock(&mutexColaExit);
 	destruirCONTEXTO(proceso->pcb);
 	queue_push(colaExit, proceso);
 	pthread_mutex_unlock(&mutexColaExit);
+	free(envio);
 //TODO : liberar recursos de memoria
 }
 

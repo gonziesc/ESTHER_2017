@@ -66,13 +66,14 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		char * impresion = malloc(tamanoPaquete - 4 + 1);
 		memcpy(impresion, paquete, tamanoPaquete - 4);
 		int pid;
-		memcpy(&pid, paquete + tamanoPaquete -4, sizeof(int));
+		memcpy(&pid, paquete + tamanoPaquete - 4, sizeof(int));
 		imprimioProceso(pid);
 		impresion[tamanoPaquete] = '\0';
 		printf("el pid %d imprimio: %s \n", pid, impresion);
 		break;
 	}
-	case FINALIZOPROGRAMA: case PROGRAMATERMINADO: {
+	case FINALIZOPROGRAMA:
+	case PROGRAMATERMINADO: {
 		int pid;
 		char* fechaFIn = temporal_get_string_time();
 		memcpy(&pid, paquete, sizeof(int));
@@ -87,6 +88,22 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	case PID: {
 		memcpy(&pidActual, paquete, sizeof(int));
 		sem_post(&semPidListo);
+		break;
+	}
+	case ABORTOSTACKOVERFLOW: {
+		int pid;
+		int codigoError;
+		char* fechaFIn = temporal_get_string_time();
+		memcpy(&pid, paquete, sizeof(int));
+		memcpy(&codigoError, paquete + 4, sizeof(int));
+		ProcesosActuales procesoTerminado = buscarProceso(pid);
+		printf("el pid %d comenzo a las %s \n", pid,
+				procesoTerminado.horaInicio);
+		printf("el pid %d finalizo a las %s \n", pid, fechaFIn);
+		printf("el pid %d imprimio la cantidad de : %d \n", pid,
+				procesoTerminado.cantidadDeImpresiones);
+		printf("el pid %d fue abortado por %d \n", pid, codigoError);
+		break;
 	}
 	}
 }

@@ -8,6 +8,7 @@ char* buffer;
 char* infoLeida;
 int valorVaribleCompartida;
 struct sockaddr_in direccionMem;
+int32_t codigoAborto;
 int32_t clienteMEM;
 int32_t bytesRecibidos;
 int32_t header;
@@ -285,6 +286,11 @@ void procesarScript() {
 			destruirPCB(unPcb);
 			sem_post(&semDestruirPCB);
 		}
+		if (programaAbortado) {
+			serializarPCB(unPcb, cliente, codigoAborto);
+			destruirPCB(unPcb);
+			sem_post(&semDestruirPCB);
+		}
 		if ((quantum_aux == 0) && !programaFinalizado && !programaBloqueado
 				&& !programaAbortado) {
 
@@ -351,12 +357,15 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 		list_add(indiceStack->vars, unaVariable);
 		indiceStack->tamanoVars++;
 	}
+	if(programaAbortado == 0){
 	int valor = 0;
 	int direccionRetorno = convertirDireccionAPuntero(direccionVariable);
 	printf("[definirVariable]Defino %c ubicada en %d\n", nombreVariable,
 			direccionRetorno);
 	enviarDirecParaEscribirMemoria(direccionVariable, valor);
 	return (direccionRetorno);
+	}
+	else return 0;
 
 }
 
@@ -401,6 +410,13 @@ void proximaDireccionArg(int posStack, int posUltVar,
 				((posicionMemoria*) (list_get(
 						((indiceDeStack*) (list_get(unPcb->indiceStack,
 								posStack)))->args, posUltVar)))->pag + 1;
+		if (direccion->pag > unPcb->cantidadDePaginas + stackSize) {
+			//TODO: ABORTAR PROCESO POR STACKOVERFLOW
+			programaAbortado = 1;
+			codigoAborto = ABORTOSTACKOVERFLOW;
+			return;
+		}
+
 		direccion->off = 0;
 		direccion->size = 4;
 		memcpy(direccionReal, direccion, sizeof(posicionMemoria));
@@ -651,8 +667,11 @@ void proximaDireccion(int posStack, int posUltVar,
 						((indiceDeStack*) (list_get(unPcb->indiceStack,
 								posStack)))->vars, posUltVar)))->direccion->pag
 						+ 1;
-		if (direccion->pag > unPcb->cantidadDePaginas + 1 + stackSize) {
+		if (direccion->pag > unPcb->cantidadDePaginas + stackSize) {
 			//TODO: ABORTAR PROCESO POR STACKOVERFLOW
+			programaAbortado = 1;
+			codigoAborto = ABORTOSTACKOVERFLOW;
+			return;
 		}
 		direccion->off = 0;
 		direccion->size = 4;
@@ -954,8 +973,7 @@ void leer(t_descriptor_archivo descriptor, t_puntero puntero,
 	free(envio);
 }
 
-void moverCursor(t_descriptor_archivo descriptor,
-		t_valor_variable posicion) {
+void moverCursor(t_descriptor_archivo descriptor, t_valor_variable posicion) {
 	void * envio = malloc(8);
 	memcpy(envio, &descriptor, 4);
 	memcpy(envio + 4, &posicion, 4);
