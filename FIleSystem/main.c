@@ -71,7 +71,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, "Archivos/");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 		printf("%s\n", nombreArchivoRecibido);
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
@@ -99,7 +99,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, "Archivos/");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 		break;
 	}
@@ -131,7 +131,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("Nombre archivo:%s\n", nombreArchivo);
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, "Archivos/");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 
 		printf("Toda la ruta :%s\n", nombreArchivoRecibido);
@@ -155,7 +155,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, "Archivos/");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 		break;
 	}
@@ -173,7 +173,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Sadica/");
+		string_append(&nombreArchivoRecibido, "Archivos/");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 		break;
 	}
