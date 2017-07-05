@@ -138,12 +138,15 @@ typedef struct{
 typedef struct{
 	char *PUERTO_MONTAJE;
 	int32_t PUERTO_KERNEL;
+	char *MAGIC_NUMBER;
+	int32_t TAMANIO_BLOQUES;
+	int32_t CANTIDAD_BLOQUES;
 }archivoConfigFS;
 
 void configuracionMemoria(archivoConfigMemoria *, t_config* , char *);
 void configuracionKernel(archivoConfigKernel *, t_config* , char *);
 void configuracionConsola(archivoConfigConsola *, t_config* , char *);
-void configuracionFS(archivoConfigFS *, t_config* , char *);
+void configuracionFS(archivoConfigFS *, t_config* , char *, char* );
 void configuracionCpu(archivoConfigCPU *, t_config* , char *);
 
 #endif

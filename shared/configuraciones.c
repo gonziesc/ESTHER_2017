@@ -17,12 +17,8 @@ void configuracionMemoria(archivoConfigMemoria *unArchivo, t_config* config,
 	unArchivo->ENTRADAS_CACHE = config_get_int_value(config, "ENTRADAS_CACHE");
 	printf("ENTRADAS_CACHE: %d\n", unArchivo->ENTRADAS_CACHE);
 
-		unArchivo->CACHE_X_PROC = config_get_int_value(config, "CACHE_X_PROC");
-		printf("CACHE_X_PROC: %d\n", unArchivo->CACHE_X_PROC);
-
-
-
-
+	unArchivo->CACHE_X_PROC = config_get_int_value(config, "CACHE_X_PROC");
+	printf("CACHE_X_PROC: %d\n", unArchivo->CACHE_X_PROC);
 
 	unArchivo->REEMPLAZO_CACHE = config_get_string_value(config,
 			"REEMPLAZO_CACHE");
@@ -31,7 +27,7 @@ void configuracionMemoria(archivoConfigMemoria *unArchivo, t_config* config,
 	unArchivo->RETARDO_MEMORIA = config_get_int_value(config,
 			"RETARDO_MEMORIA");
 	printf("RETARDO_MEMORIA: %d\n", unArchivo->RETARDO_MEMORIA);
-
+	config_destroy(config);
 }
 
 void configuracionKernel(archivoConfigKernel *unArchivo, t_config* config,
@@ -64,7 +60,8 @@ void configuracionKernel(archivoConfigKernel *unArchivo, t_config* config,
 	unArchivo->SEM_IDS = config_get_array_value(config, "SEM_IDS");
 	unArchivo->SEM_INIT = config_get_array_value(config, "SEM_INIT");
 	unArchivo->SHARED_VARS = config_get_array_value(config, "SHARED_VARS");
-	unArchivo->SHARED_VARS_INIT = config_get_array_value(config, "SHARED_VARS_INIT");
+	unArchivo->SHARED_VARS_INIT = config_get_array_value(config,
+			"SHARED_VARS_INIT");
 	while (unArchivo->SEM_IDS[i] != NULL) {
 		printf("SEM_IDS:%s\n", unArchivo->SEM_IDS[i]);
 		i++;
@@ -84,6 +81,7 @@ void configuracionKernel(archivoConfigKernel *unArchivo, t_config* config,
 		printf("SHARED_VARS_INIT:%s\n", unArchivo->SHARED_VARS_INIT[i]);
 		i++;
 	}
+	config_destroy(config);
 }
 
 void configuracionCpu(archivoConfigCPU *unArchivo, t_config* config, char *dir) {
@@ -101,6 +99,7 @@ void configuracionCpu(archivoConfigCPU *unArchivo, t_config* config, char *dir) 
 
 	unArchivo->PUERTO_MEMORIA = config_get_int_value(config, "PUERTO_MEMORIA");
 	printf("PUERTO_MEMORIA: %d\n", unArchivo->PUERTO_MEMORIA);
+	config_destroy(config);
 }
 
 void configuracionConsola(archivoConfigConsola *unArchivo, t_config* config,
@@ -113,12 +112,14 @@ void configuracionConsola(archivoConfigConsola *unArchivo, t_config* config,
 
 	unArchivo->PUERTO_KERNEL = config_get_int_value(config, "PUERTO_KERNEL");
 	printf("PUERTO_KERNEL: %d\n", unArchivo->PUERTO_KERNEL);
-
+	config_destroy(config);
 }
 
-void configuracionFS(archivoConfigFS *unArchivo, t_config* config, char* dir) {
+void configuracionFS(archivoConfigFS *unArchivo, t_config* config, char* dir,
+		char* dir2) {
 
 	config = config_create(dir);
+	t_config* config2 = config_create(dir2);
 
 	unArchivo->PUERTO_KERNEL = config_get_int_value(config, "PUERTO_KERNEL");
 	printf("PUERTO_KERNEL: %d\n", unArchivo->PUERTO_KERNEL);
@@ -126,5 +127,19 @@ void configuracionFS(archivoConfigFS *unArchivo, t_config* config, char* dir) {
 	unArchivo->PUERTO_MONTAJE = config_get_string_value(config,
 			"PUERTO_MONTAJE");
 	printf("PUERTO_MONTAJE: %s\n", unArchivo->PUERTO_MONTAJE);
+
+	unArchivo->MAGIC_NUMBER = config_get_string_value(config2, "MAGIC_NUMBER");
+	printf("MAGIC_NUMBER: %s\n", unArchivo->MAGIC_NUMBER);
+
+	unArchivo->CANTIDAD_BLOQUES = config_get_int_value(config2,
+			"CANTIDAD_BLOQUES");
+	printf("CANTIDAD_BLOQUES: %d\n", unArchivo->CANTIDAD_BLOQUES);
+
+	unArchivo->TAMANIO_BLOQUES = config_get_int_value(config2,
+			"TAMANIO_BLOQUES");
+	printf("TAMANIO_BLOQUES: %d\n", unArchivo->TAMANIO_BLOQUES);
+
+	config_destroy(config2);
+	config_destroy(config);
 
 }
