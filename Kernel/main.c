@@ -63,6 +63,7 @@ sem_t semCrearArchivo;
 sem_t semBorrarArchivo;
 sem_t semObtenerDatos;
 sem_t semGuardarDatos;
+sem_t semTerminoDataHeap;
 int validarExisteArchivo;
 int validarCrearArchivo;
 int validarBorrarArchivo;
@@ -142,6 +143,7 @@ void configuracion(char*dir) {
 	sem_init(&semMetaDataLeida, 0, 0);
 	sem_init(&semProcesoAHeap, 0, 0);
 	sem_init(&semLiberarHeap, 0, 0);
+	sem_init(&semTerminoDataHeap, 0, 0);
 	//ojo con este semaforo
 	sem_init(&gradoMultiprogramacion, 0, t_archivoConfig->GRADO_MULTIPROG);
 	colaNew = queue_create();
@@ -676,6 +678,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		int tamanoFlags;
 		memcpy(&tamanoDireccion, paquete, 4);
 		p->path = malloc(tamanoDireccion);
+		p->tamano = tamanoDireccion;
 		memcpy(&tamanoFlags, paquete + 4, 4);
 		p->permisos = malloc(tamanoFlags);
 		memcpy(p->path, paquete + 8, tamanoDireccion);
@@ -799,7 +802,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	case OBTENERDATOS: {
 		int tamano;
 		memcpy(&tamano, paquete, 4);
-		if(tamano == -1){
+		if (tamano == -1) {
 			validarObtenerDatos = 0;
 		} else {
 			pthread_mutex_lock(&mutexDatosDeFs);
@@ -821,7 +824,7 @@ void procesarCapaFs() {
 	while (1) {
 		sem_wait(&semCapaFs);
 		pthread_mutex_lock(&mutexColaCapaFs);
-		unProceso = queue_pop(unProceso);
+		unProceso = queue_pop(colaCapaFs);
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		switch (unProceso->codigoOperacion) {
 		case 0: {
@@ -854,172 +857,179 @@ void procesarCapaFs() {
 
 }
 
-
-int actualizarTablaDelProceso(int pid,char* flags,int indiceEnTablaGlobal){
+int actualizarTablaDelProceso(int pid, char* flags, int indiceEnTablaGlobal) {
 	int tablaProcesoExiste;
 
-	_Bool verificaPid(indiceTablaProceso* entrada){
+	_Bool verificaPid(indiceTablaProceso* entrada) {
 		return entrada->pid == pid;
 	}
 
-	if(list_any_satisfy(listaTablasProcesos,(void*)verificaPid)) tablaProcesoExiste = 1;
-	else tablaProcesoExiste = 0;
+	if (list_any_satisfy(listaTablasProcesos, (void*) verificaPid))
+		tablaProcesoExiste = 1;
+	else
+		tablaProcesoExiste = 0;
 
+	if (!tablaProcesoExiste) {
+		printf("La tabla no existe\n");
+		indiceTablaProceso* entradaNuevaTabla = malloc(
+				sizeof(indiceTablaProceso));
+		entradaNuevaTabla->pid = pid;
+		entradaNuevaTabla->tablaProceso = list_create();
 
-	 if(!tablaProcesoExiste){
-		 printf("La tabla no existe\n");
-		 indiceTablaProceso* entradaNuevaTabla = malloc(sizeof(indiceTablaProceso));
-		 entradaNuevaTabla->pid = pid;
-		 entradaNuevaTabla->tablaProceso = list_create();
+		entradaTablaProceso* entrada = malloc(sizeof(entradaTablaProceso));
+		entrada->fd = 3;
+		entrada->flags = flags;
+		entrada->globalFd = indiceEnTablaGlobal;
+		entrada->puntero = 0;
 
-		 entradaTablaProceso* entrada=malloc(sizeof(entradaTablaProceso));
-		 entrada->fd = 3;
-		 entrada->flags = flags;
-		 entrada->globalFd = indiceEnTablaGlobal;
-		 entrada->puntero=0;
+		list_add(entradaNuevaTabla->tablaProceso, entrada);
 
-		 list_add(entradaNuevaTabla->tablaProceso,entrada);
+		list_add(listaTablasProcesos, entradaNuevaTabla);
+		return entrada->fd;
+	} else {
+		printf("La tabla ya existe\n");
 
-		 list_add(listaTablasProcesos,entradaNuevaTabla);
-			return entrada->fd;
-		}
-	 else{
-		 printf("La tabla ya existe\n");
+		indiceTablaProceso* entradaTablaExistente = list_remove_by_condition(
+				listaTablasProcesos, (void*) verificaPid); //la remuevo para actualizarlo
+		entradaTablaProceso* entrada = malloc(sizeof(entradaTablaProceso));
+		entrada->fd = entradaTablaExistente->tablaProceso->elements_count + 3;
+		entrada->flags = flags;
+		entrada->globalFd = indiceEnTablaGlobal;
+		printf("Agrego el indice :%d\n", entrada->globalFd);
+		list_add(entradaTablaExistente->tablaProceso, entrada);
+		list_add(listaTablasProcesos, entradaTablaExistente); //la vuelvo a agregar a la lista
 
-		 indiceTablaProceso* entradaTablaExistente = list_remove_by_condition(listaTablasProcesos,(void*)verificaPid);//la remuevo para actualizarlo
-		 entradaTablaProceso* entrada = malloc(sizeof(entradaTablaProceso));
-		 entrada->fd = entradaTablaExistente->tablaProceso->elements_count + 3;
-		 entrada->flags = flags;
-		 entrada->globalFd = indiceEnTablaGlobal;
-		 printf("Agrego el indice :%d\n",entrada->globalFd);
-		 list_add(entradaTablaExistente->tablaProceso,entrada);
-		 list_add(listaTablasProcesos,entradaTablaExistente);//la vuelvo a agregar a la lista
-
-		 return entrada->fd;
-	 }
+		return entrada->fd;
+	}
 }
 
-int borrarEntradaTablaProceso(int pid,int fd){
+int borrarEntradaTablaProceso(int pid, int fd) {
 	int globalFd;
-	_Bool verificaPid(indiceTablaProceso* entrada){
-							return entrada->pid == pid;
-						}
-	_Bool verificaFd(entradaTablaProceso* entrada){
-			return entrada->fd == fd;
-		}
-	indiceTablaProceso* entradaTablaProceso2 = list_remove_by_condition(listaTablasProcesos,(void*)verificaPid);
+	_Bool verificaPid(indiceTablaProceso* entrada) {
+		return entrada->pid == pid;
+	}
+	_Bool verificaFd(entradaTablaProceso* entrada) {
+		return entrada->fd == fd;
+	}
+	indiceTablaProceso* entradaTablaProceso2 = list_remove_by_condition(
+			listaTablasProcesos, (void*) verificaPid);
 	entradaTablaProceso* entrada2;
-	entrada2= list_remove_by_condition(entradaTablaProceso2->tablaProceso,(void*)verificaFd);
+	entrada2 = list_remove_by_condition(entradaTablaProceso2->tablaProceso,
+			(void*) verificaFd);
 	globalFd = entrada2->globalFd;
 	free(entrada2);
-	list_add(listaTablasProcesos,entradaTablaProceso2);
+	list_add(listaTablasProcesos, entradaTablaProceso2);
 	return globalFd;
 }
 
-
-int agregarEntradaEnTablaGlobal(char* direccion,int tamanioDireccion){
+int agregarEntradaEnTablaGlobal(char* direccion, int tamanioDireccion) {
 	entradaTablaGlobal* entrada = malloc(sizeof(entradaTablaGlobal));
 	entrada->open = 0;
 	entrada->path = malloc(tamanioDireccion);
-	entrada->path=direccion;
+	entrada->path = direccion;
 
-	list_add(tablaArchivosGlobal,entrada);
+	list_add(tablaArchivosGlobal, entrada);
 
-	return tablaArchivosGlobal->elements_count - 1 ;
+	return tablaArchivosGlobal->elements_count - 1;
 }
 
-int verificarEntradaEnTablaGlobal(char* direccion){ /*TODO: Mutex tablaGlobal*/
+int verificarEntradaEnTablaGlobal(char* direccion) { /*TODO: Mutex tablaGlobal*/
 
-	_Bool verificaDireccion(entradaTablaGlobal* entrada){
-		return !strcmp(entrada->path,direccion);
+	_Bool verificaDireccion(entradaTablaGlobal* entrada) {
+		return !strcmp(entrada->path, direccion);
 	}
 
-	if(list_is_empty(tablaArchivosGlobal)) return 0;
+	if (list_is_empty(tablaArchivosGlobal))
+		return 0;
 	printf("La tabla global no esta vacia\n");
 
-	if(list_any_satisfy(tablaArchivosGlobal,(void*)verificaDireccion)) return 1;
+	if (list_any_satisfy(tablaArchivosGlobal, (void*) verificaDireccion))
+		return 1;
 	return 0;
 
 }
 
-void actualizarIndicesGlobalesEnTablasProcesos(int indiceTablaGlobal){
+void actualizarIndicesGlobalesEnTablasProcesos(int indiceTablaGlobal) {
 	int i;
 	int j;
 	indiceTablaProceso* indiceTabla;
 	entradaTablaProceso* entrada;
-	for(i=0;listaTablasProcesos->elements_count;i++){
-		indiceTabla = list_get(listaTablasProcesos,i);
+	for (i = 0; listaTablasProcesos->elements_count; i++) {
+		indiceTabla = list_get(listaTablasProcesos, i);
 
-		for(j=0;j<indiceTabla->tablaProceso->elements_count;j++){
-			entrada = list_get(indiceTabla->tablaProceso,j);
-			if(entrada->globalFd > indiceTablaGlobal) entrada->globalFd--; /*TODO: No pregunto si es igual porque se supone que no existe mas en esa tabla. Corroborarlo*/
+		for (j = 0; j < indiceTabla->tablaProceso->elements_count; j++) {
+			entrada = list_get(indiceTabla->tablaProceso, j);
+			if (entrada->globalFd > indiceTablaGlobal)
+				entrada->globalFd--; /*TODO: No pregunto si es igual porque se supone que no existe mas en esa tabla. Corroborarlo*/
 		}
 	}
 }
 
-void aumentarOpenEnTablaGlobal(char* direccion){/*TODO: Mutex tablaGlobal*/
-	_Bool verificaDireccion(entradaTablaGlobal* entrada){
-			if(!strcmp(entrada->path,direccion)) return 1;
-			return 0;
-		}
+void aumentarOpenEnTablaGlobal(char* direccion) {/*TODO: Mutex tablaGlobal*/
+	_Bool verificaDireccion(entradaTablaGlobal* entrada) {
+		if (!strcmp(entrada->path, direccion))
+			return 1;
+		return 0;
+	}
 
-	entradaTablaGlobal* entrada=list_remove_by_condition(tablaArchivosGlobal,(void*)verificaDireccion);
-	entrada->open ++;
-	list_add(tablaArchivosGlobal,entrada);
+	entradaTablaGlobal* entrada = list_remove_by_condition(tablaArchivosGlobal,
+			(void*) verificaDireccion);
+	entrada->open++;
+	list_add(tablaArchivosGlobal, entrada);
 }
 
-void disminuirOpenYVerificarExistenciaEntradaGlobal(int indiceTablaGlobal){
-	entradaTablaGlobal* entrada = list_get(tablaArchivosGlobal,indiceTablaGlobal);
-	entrada->open --;
+void disminuirOpenYVerificarExistenciaEntradaGlobal(int indiceTablaGlobal) {
+	entradaTablaGlobal* entrada = list_get(tablaArchivosGlobal,
+			indiceTablaGlobal);
+	entrada->open--;
 
-	if(entrada->open==0){
-		list_remove(tablaArchivosGlobal,indiceTablaGlobal);
+	if (entrada->open == 0) {
+		list_remove(tablaArchivosGlobal, indiceTablaGlobal);
 		actualizarIndicesGlobalesEnTablasProcesos(indiceTablaGlobal);
 		free(entrada);
 	}
 }
 
-
-
-int buscarIndiceEnTablaGlobal(char* direccion){
+int buscarIndiceEnTablaGlobal(char* direccion) {
 	int i;
-	int indice=0;
+	int indice = 0;
 	entradaTablaGlobal* entrada;
 
-	for(i=0;i<tablaArchivosGlobal->elements_count;i++){
-		entrada = list_get(tablaArchivosGlobal,i);
-		if(!strcmp(entrada->path,direccion)) indice = i;
+	for (i = 0; i < tablaArchivosGlobal->elements_count; i++) {
+		entrada = list_get(tablaArchivosGlobal, i);
+		if (!strcmp(entrada->path, direccion))
+			indice = i;
 	}
 
 	return indice;
 }
 
-char* buscarDireccionEnTablaGlobal(int indice){
-	entradaTablaGlobal* entrada = list_get(tablaArchivosGlobal,indice);
+char* buscarDireccionEnTablaGlobal(int indice) {
+	entradaTablaGlobal* entrada = list_get(tablaArchivosGlobal, indice);
 
 	return entrada->path;
 }
 
-void inicializarTablaProceso(int pid){
-	 indiceTablaProceso* indiceNuevaTabla = malloc(sizeof(indiceTablaProceso));
-	 indiceNuevaTabla->pid = pid;
-	 indiceNuevaTabla->tablaProceso = list_create();
+void inicializarTablaProceso(int pid) {
+	indiceTablaProceso* indiceNuevaTabla = malloc(sizeof(indiceTablaProceso));
+	indiceNuevaTabla->pid = pid;
+	indiceNuevaTabla->tablaProceso = list_create();
 
-	 entradaTablaProceso* entrada=malloc(sizeof(entradaTablaProceso));
-	 entrada->fd = 0;
-	 entrada->flags = "rwc";
-	 entrada->globalFd = 0;
-	 entrada->puntero=0;
+	entradaTablaProceso* entrada = malloc(sizeof(entradaTablaProceso));
+	entrada->fd = 0;
+	entrada->flags = "rwc";
+	entrada->globalFd = 0;
+	entrada->puntero = 0;
 
-	 list_add(indiceNuevaTabla->tablaProceso,entrada);
+	list_add(indiceNuevaTabla->tablaProceso, entrada);
 
-	 list_add(listaTablasProcesos,indiceNuevaTabla);
+	list_add(listaTablasProcesos, indiceNuevaTabla);
 }
 
 int validarArchivo(char* ruta) {
 	int tamano = sizeof(char) * strlen(ruta);
 	int validado;
-	void * envio= malloc(tamano + 4);
+	void * envio = malloc(tamano + 4);
 	memcpy(envio, &tamano, 4);
 	memcpy(envio + 4, ruta, tamano);
 	Serializar(VALIDARARCHIVO, tamano + 4, envio, clientefs);
@@ -1027,27 +1037,402 @@ int validarArchivo(char* ruta) {
 	return validarExisteArchivo;
 }
 
-void abrirArchivo(procesoACapaFs* unProceso) {
+int crearArchivo(int socket_aceptado, char* direccion) {
 
+	//TODO OJO CON LA BARRA DE ATRAS DEL NOMBRE
+
+	int tamanoNombre = sizeof(char) * strlen(direccion);
+	void* envio = malloc(tamanoNombre + 4);
+	memcpy(envio, &tamanoNombre, 4);
+	memcpy(envio + 4, direccion, tamanoNombre);
+	Serializar(CREARARCHIVO, tamanoNombre + 4, envio, clientefs);
+	sem_wait(&semCrearArchivo);
+
+	if (validarCrearArchivo < 0)
+		printf("mal el fs");
+
+	return validarCrearArchivo;
+
+}
+
+void abrirArchivo(procesoACapaFs* unProceso) {
+	int archivoExistente = validarArchivo(unProceso->path);
+	int indiceEnTablaGlobal;
+	int resultadoEjecucion;
+	int tienePermisoCreacion = 0;
+	char* permiso_creacion = "c";
+	if (string_contains(unProceso->permisos, permiso_creacion)) {
+		tienePermisoCreacion = 1;
+	}
+
+	if (!archivoExistente && !tienePermisoCreacion) { //El archivo no eexiste en FS y no tiene permisos para crear entonces no hace nada
+		//TODO excepcionPermisosCrear(unProceso->socket, unProceso->pid);
+		free(unProceso->path);
+		free(unProceso->permisos);
+		return;
+	}
+
+	if (archivoExistente) {
+		int entradaGlobalExistente = verificarEntradaEnTablaGlobal(
+				unProceso->path);
+
+		if (!entradaGlobalExistente) {
+			indiceEnTablaGlobal = agregarEntradaEnTablaGlobal(unProceso->path,
+					tamanoDireccion); //almacenar el Global FD
+		} else {
+			indiceEnTablaGlobal = buscarIndiceEnTablaGlobal(unProceso->path);
+		}
+		printf("Indice devuelto:%d\n", indiceEnTablaGlobal);
+	}
+
+	if (!archivoExistente && tienePermisoCreacion) {
+
+		resultadoEjecucion = crearArchivo(unProceso->socket, unProceso->path);
+		if (resultadoEjecucion < 0) {
+			//TOdo excepcionFileSystem(unProceso->socket, unProceso->paid);
+			free(unProceso->path);
+			free(unProceso->permisos);
+			return;
+		}
+		indiceEnTablaGlobal = agregarEntradaEnTablaGlobal(unProceso->path,
+				unProceso->tamano);
+		printf("Indice devuelto:%d\n", indiceEnTablaGlobal);
+	}
+
+	aumentarOpenEnTablaGlobal(unProceso->path);
+	unProceso->fd = actualizarTablaDelProceso(unProceso->pid,
+			unProceso->permisos, indiceEnTablaGlobal);
+	resultadoEjecucion = 1;
+	void * envio = malloc(8);
+	memcpy(envio, &resultadoEjecucion, 4);
+	memcpy(envio + 4, &unProceso->fd, 4);
+	Serializar(ABRIRARCHIVO, 8, envio, unProceso->socket);
+
+	printf("File descriptor:%d\n", unProceso->fd);
+	free(envio);
+	free(unProceso);
 }
 
 void cerrarArchivo(procesoACapaFs* unProceso) {
+	int resultadoEjecucion;
+	_Bool verificaPid(indiceTablaProceso* entrada) {
+		return entrada->pid == unProceso->pid;
+	}
+	_Bool verificaFd(entradaTablaProceso* entrada) {
+		return entrada->fd == unProceso->fd;
+	}
 
+	//verificar que la tabla de ese pid exista
+	int tablaProcesoExiste;
+	if (list_any_satisfy(listaTablasProcesos, (void*) verificaPid))
+		tablaProcesoExiste = 1;
+	else
+		tablaProcesoExiste = 0;
+
+	if (!tablaProcesoExiste) {
+		//TODO excepcionSinTablaArchivos(unProceso->socket, unProceso->pid);
+		return;
+	} else {
+
+		int encontroFd;
+		indiceTablaProceso* entradaTablaProceso = list_remove_by_condition(
+				listaTablasProcesos, (void*) verificaPid);
+		if (list_any_satisfy(entradaTablaProceso->tablaProceso,
+				(void*) verificaFd))
+			encontroFd = 1;
+		else
+			encontroFd = 0;
+		list_add(listaTablasProcesos, entradaTablaProceso);
+
+		if (!encontroFd) {
+			//todo excepcionFileDescriptorNoAbierto(socket, pid);
+			return;
+		} else {
+
+			int indiceTablaGlobal = borrarEntradaTablaProceso(unProceso->pid,
+					unProceso->fd);
+			disminuirOpenYVerificarExistenciaEntradaGlobal(indiceTablaGlobal);
+		}
+	}
+	resultadoEjecucion = 1;
+	Serializar(CERRARARCHIVO, 4, &resultadoEjecucion, unProceso->socket);
+	free(unProceso);
 }
 
 void escribirArchivo(procesoACapaFs* unProceso) {
+	_Bool verificaPid(indiceTablaProceso* entrada) {
+		return entrada->pid == unProceso->pid;
+	}
 
+	_Bool verificaFd(entradaTablaProceso* entrada) {
+		return entrada->fd == unProceso->fd;
+	}
+
+	int tablaProcesoExiste;
+	if (list_any_satisfy(listaTablasProcesos, (void*) verificaPid))
+		tablaProcesoExiste = 1;
+	else
+		tablaProcesoExiste = 0;
+
+	int encontroFd;
+
+	if (!tablaProcesoExiste) {
+		//TODO excepcionSinTablaArchivos(socket, pid);
+		//free(informacion);
+		return;
+	} else {
+
+		indiceTablaProceso* entradaTablaProceso2 = list_remove_by_condition(
+				listaTablasProcesos, (void*) verificaPid);
+		if (list_any_satisfy(entradaTablaProceso2->tablaProceso,
+				(void*) verificaFd))
+			encontroFd = 1;
+		else
+			encontroFd = 0;
+
+		if (!encontroFd) {
+			//TODO	excepcionFileDescriptorNoAbierto(socket, pid);
+			return;
+		}
+
+		if (encontroFd) {
+			entradaTablaProceso* entrada = list_remove_by_condition(
+					entradaTablaProceso2->tablaProceso, (void*) verificaFd);
+
+			int tiene_permisoEscritura = 0;
+			const char *permiso_escritura = "w";
+			if (string_contains(entrada->flags, permiso_escritura)) {
+				tiene_permisoEscritura = 1;
+			}
+
+			if (!tiene_permisoEscritura) {
+				//todo excepcionPermisosEscritura(socket, pid);
+				//free(informacion);
+				return;
+			}
+
+			char* direccion = buscarDireccionEnTablaGlobal(entrada->globalFd);
+
+			char** array_dir = string_n_split(direccion, 12, "/");
+			char* nombreArchivo = array_dir[0];
+			int tamanoNombre = sizeof(char) * strlen(nombreArchivo);
+
+			printf("Tamano del nombre :%d\n", tamanoNombre);
+			printf("Nombre del archivo: %s\n", nombreArchivo);
+			printf("Puntero:%d\n", entrada->puntero);
+			printf("Tamano a escribir :%d\n", unProceso->tamano);
+			printf("Informacion a escribir:%s\n", unProceso->data);
+			void*envio = malloc(12 + tamanoNombre + unProceso->tamano);
+			memcpy(envio, &tamanoNombre, 4);
+			memcpy(envio + 4, &entrada->puntero, 4);
+			memcpy(envio + 8, &unProceso->tamano, 4);
+			memcpy(envio + 12, &unProceso->data, unProceso->tamano);
+			memcpy(envio + 12 + unProceso->tamano, nombreArchivo, tamanoNombre);
+			Serializar(GUARDARDATOS, 12 + tamanoNombre + unProceso->tamano,
+					envio, clientefs);
+
+			list_add(entradaTablaProceso2->tablaProceso, entrada);
+			list_add(listaTablasProcesos, entradaTablaProceso2);
+			sem_wait(&semGuardarDatos);
+		}
+
+	}
+	Serializar(ESCRIBIRARCHIVO, 4, &validarGuardarDatos, unProceso->socket);
+	free(unProceso);
 }
 
 void leerArchivo(procesoACapaFs* unProceso) {
+	int resultadoEjecucion;
+	_Bool verificaPid(indiceTablaProceso* entrada) {
+		return entrada->pid == unProceso->pid;
+	}
 
+	_Bool verificaFd(entradaTablaProceso* entrada) {
+		return entrada->fd == unProceso->fd;
+	}
+
+	int tablaProcesoExiste;
+	if (list_any_satisfy(listaTablasProcesos, (void*) verificaPid))
+		tablaProcesoExiste = 1;
+	else
+		tablaProcesoExiste = 0;
+
+	if (!tablaProcesoExiste) {
+		//TODO excepcionSinTablaArchivos(socket, pid);
+		return;
+	} else {
+
+		int encontroFd;
+		indiceTablaProceso* entradaTablaProceso2 = list_remove_by_condition(
+				listaTablasProcesos, (void*) verificaPid);
+		if (list_any_satisfy(entradaTablaProceso2->tablaProceso,
+				(void*) verificaFd))
+			encontroFd = 1;
+		else
+			encontroFd = 0;
+
+		if (!encontroFd) {
+			//TODO excepcionFileDescriptorNoAbierto(socket, pid);
+			return;
+		} else {
+			entradaTablaProceso* entrada = list_remove_by_condition(
+					entradaTablaProceso2->tablaProceso, (void*) verificaFd);
+
+			int tiene_permisoLectura = 0;
+			const char *permiso_lectura = "r";
+			if (string_contains(entrada->flags, permiso_lectura)) {
+				tiene_permisoLectura = 1;
+			}
+			if (!tiene_permisoLectura) {
+				//TODO excepcionPermisosLectura(socket, pid);
+				return;
+			}
+
+			char* direccion = buscarDireccionEnTablaGlobal(entrada->globalFd);
+			list_add(entradaTablaProceso2->tablaProceso, entrada);
+			list_add(listaTablasProcesos, entradaTablaProceso2);
+
+			char** array_dir = string_n_split(direccion, 12, "/");
+			char* nombreArchivo = array_dir[0];
+			int tamanoNombre = sizeof(char) * strlen(nombreArchivo);
+
+			printf("Tamano del nombre del archivo:%d\n", tamanoNombre);
+			printf("Nombre del archivo:%s\n", nombreArchivo);
+			printf("Puntero :%d\n", entrada->puntero);
+			printf("Tamano a leer :%d\n", unProceso->tamano);
+
+			void* envio = malloc(12 + tamanoNombre);
+			memcpy(envio, &tamanoNombre, 4);
+			memcpy(envio + 4, &unProceso->tamano, 4);
+			memcpy(envio + 8, &entrada->puntero, 4);
+			memcpy(envio + 12, nombreArchivo, unProceso->tamano);
+			Serializar(OBTENERDATOS, 12 + unProceso->tamano, envio, clientefs);
+			free(envio);
+			sem_wait(&semObtenerDatos);
+			if (validarObtenerDatos == 1) {
+				void * envio2 = malloc(8 + unProceso->tamano);
+				memcpy(envio2, &validarObtenerDatos, 4);
+				memcpy(envio2 + 4, &unProceso->tamano, 4);
+				memcpy(envio2 + 8, datosDeFs, unProceso->tamano);
+				Serializar(LEERARCHIVO, 8 + unProceso->tamano, envio,
+						unProceso->socket);
+				free(envio2);
+				free(unProceso);
+			} else {
+				Serializar(LEERARCHIVO, 4, &validarObtenerDatos,
+						unProceso->socket);
+				free(unProceso);
+			}
+
+		}
+
+	}
 }
 
 void borrarArchivo(procesoACapaFs* unProceso) {
+	int resultadoEjecucion;
+	_Bool verificaPid(indiceTablaProceso* entrada) {
+		return entrada->pid == unProceso->pid;
+	}
+	_Bool verificaFd(entradaTablaProceso* entrada) {
+		return entrada->fd == unProceso->fd;
+	}
 
+	/*TODO: Necesito ir a buscar la ruta del archivo, para validarla*/
+	/*La busco de la sigueinte forma. Voy a la tabla por proceso, indexo con el fd.
+	 * De ahi saco el globalFd, y voy a la tabla global. Saco la direccion*/
+
+	//verificar que la tabla de ese pid exista
+	int tablaProcesoExiste;
+	if (list_any_satisfy(listaTablasProcesos, (void*) verificaPid))
+		tablaProcesoExiste = 1;
+	else
+		tablaProcesoExiste = 0;
+
+	if (!tablaProcesoExiste) {
+		//TODO excepcionSinTablaArchivos(unProceso->socket, unProceso->pid);
+		return;
+	} else {
+		int encontroFd;
+		indiceTablaProceso* entradaTablaProceso = list_remove_by_condition(
+				listaTablasProcesos, (void*) verificaPid);
+		if (list_any_satisfy(entradaTablaProceso->tablaProceso,
+				(void*) verificaFd))
+			encontroFd = 1;
+		else
+			encontroFd = 0;
+		list_add(listaTablasProcesos, entradaTablaProceso);
+
+		if (!encontroFd) { /*Si ese archivo no lo tiene abierto no lo puede borrar*/
+			//TODO excepcionFileDescriptorNoAbierto(unProceso->socket, unProceso->pid);
+			return;
+		} else {
+
+			/* Voy a la tabla global y borro la entrada, y saco el indice(GlobalFd) de donde lo borre.
+			 * Aca habria que ir a cada tabla de los procesos, y borrar la entrada. Uso como key el globalFd
+			 * Habria actualizar CADA puntero de la tabla de los procesos. Solo se actualizan las tablas que tengan
+			 * a los archivos que estaban por debajo de ese indice en la tabla global. Es disminuir en uno a cada globalFd.
+			 * Todo esto deberia ir despues que el FS borre al archivo
+			 * */
+
+			//hacer los sends para que el FS borre ese archivo y deje los bloques libres
+			/*if (resultadoEjecucion < 0) {
+			 excepcionFileSystem(socket, pid);
+			 return;
+			 }*/
+			int indiceGlobalFd = borrarEntradaTablaProceso(unProceso->pid,
+					unProceso->fd);
+			disminuirOpenYVerificarExistenciaEntradaGlobal(indiceGlobalFd);
+		}
+
+	}
+	Serializar(BORRARARCHIVO, 4, &resultadoEjecucion, unProceso->socket);
+	free(unProceso);
 }
 void moverCursorArchivo(procesoACapaFs* unProceso) {
+	_Bool verificaPid(indiceTablaProceso* entrada) {
+		return entrada->pid == unProceso->pid;
+	}
 
+	_Bool verificaFd(entradaTablaProceso* entrada) {
+		return entrada->fd == unProceso->fd;
+	}
+
+	//verificar que la tabla de ese pid exista
+	int tablaProcesoExiste;
+	if (list_any_satisfy(listaTablasProcesos, (void*) verificaPid))
+		tablaProcesoExiste = 1;
+	else
+		tablaProcesoExiste = 0;
+
+	if (!tablaProcesoExiste) {
+		//TODO excepcionSinTablaArchivos(socket, pid);
+		return;
+	} else {
+		int encontroFd;
+		indiceTablaProceso* entradaTablaProceso2 = list_remove_by_condition(
+				listaTablasProcesos, (void*) verificaPid);
+		if (list_any_satisfy(entradaTablaProceso2->tablaProceso,
+				(void*) verificaFd))
+			encontroFd = 1;
+		else
+			encontroFd = 0;
+
+		if (!encontroFd) {
+			//TODO excepcionArchivoInexistente(socket, pid);
+		} else {
+
+			entradaTablaProceso* entrada = list_remove_by_condition(
+					entradaTablaProceso2->tablaProceso, (void*) verificaFd);
+			entrada->puntero = unProceso->posicion;
+			list_add(entradaTablaProceso2->tablaProceso, entrada);
+			list_add(listaTablasProcesos, entradaTablaProceso2);
+
+			int todobien = 1;
+			Serializar(MOVERCURSOR, 4, &todobien, unProceso->socket);
+			free(unProceso);
+		}
+	}
 }
 
 char* conseguirSemaforoDeBloqueado(int pid) {
@@ -1185,6 +1570,7 @@ void procesarHeap() {
 		heap = queue_pop(colaHeap);
 		pthread_mutex_unlock(&mutexColaHeap);
 		datosHeap *data = procesoPideHeap(heap->pid, heap->cantidad);
+		sem_wait(&semTerminoDataHeap);
 		void * envio = malloc(8);
 		memcpy(envio, &data->pagina, 4);
 		memcpy(envio + 4, &data->offset, 4);
@@ -1677,7 +2063,7 @@ datosHeap* procesoPideHeap(int pid, int tamano) {
 	pthread_mutex_lock(&mutexMemoria);
 	reservarBloqueHeap(pid, tamano, puntero);
 	pthread_mutex_unlock(&mutexMemoria);
-
+	sem_post(&semTerminoDataHeap);
 	return puntero;
 }
 
