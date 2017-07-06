@@ -27,7 +27,7 @@ void configuracionMemoria(archivoConfigMemoria *unArchivo, t_config* config,
 	unArchivo->RETARDO_MEMORIA = config_get_int_value(config,
 			"RETARDO_MEMORIA");
 	printf("RETARDO_MEMORIA: %d\n", unArchivo->RETARDO_MEMORIA);
-	config_destroy(config);
+	//config_destroy(config);
 }
 
 void configuracionKernel(archivoConfigKernel *unArchivo, t_config* config,
@@ -81,7 +81,7 @@ void configuracionKernel(archivoConfigKernel *unArchivo, t_config* config,
 		printf("SHARED_VARS_INIT:%s\n", unArchivo->SHARED_VARS_INIT[i]);
 		i++;
 	}
-	config_destroy(config);
+	//config_destroy(config);
 }
 
 void configuracionCpu(archivoConfigCPU *unArchivo, t_config* config, char *dir) {
@@ -99,7 +99,7 @@ void configuracionCpu(archivoConfigCPU *unArchivo, t_config* config, char *dir) 
 
 	unArchivo->PUERTO_MEMORIA = config_get_int_value(config, "PUERTO_MEMORIA");
 	printf("PUERTO_MEMORIA: %d\n", unArchivo->PUERTO_MEMORIA);
-	config_destroy(config);
+	//config_destroy(config);
 }
 
 void configuracionConsola(archivoConfigConsola *unArchivo, t_config* config,
@@ -112,7 +112,7 @@ void configuracionConsola(archivoConfigConsola *unArchivo, t_config* config,
 
 	unArchivo->PUERTO_KERNEL = config_get_int_value(config, "PUERTO_KERNEL");
 	printf("PUERTO_KERNEL: %d\n", unArchivo->PUERTO_KERNEL);
-	config_destroy(config);
+	//config_destroy(config);
 }
 
 void configuracionFS(archivoConfigFS *unArchivo, t_config* config, char* dir,
@@ -139,7 +139,7 @@ void configuracionFS(archivoConfigFS *unArchivo, t_config* config, char* dir,
 			"TAMANIO_BLOQUES");
 	printf("TAMANIO_BLOQUES: %d\n", unArchivo->TAMANIO_BLOQUES);
 
-	config_destroy(config2);
-	config_destroy(config);
+	//config_destroy(config2);
+	//config_destroy(config);
 
 }

@@ -58,6 +58,19 @@ sem_t semMetaDataLeida;
 sem_t semProcesoAHeap;
 sem_t semLiberarHeap;
 sem_t semCapaFs;
+sem_t semExisteArchivo;
+sem_t semCrearArchivo;
+sem_t semBorrarArchivo;
+sem_t semObtenerDatos;
+sem_t semGuardarDatos;
+int validarExisteArchivo;
+int validarCrearArchivo;
+int validarBorrarArchivo;
+int validarObtenerDatos;
+char * datosDeFs;
+int validarGuardarDatos;
+
+pthread_mutex_t mutexDatosDeFs;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaExit;
 pthread_mutex_t mutexColaEx;
@@ -763,6 +776,40 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semCapaFs);
 		break;
 	}
+	case VALIDARARCHIVO: {
+		memcpy(&validarExisteArchivo, paquete, 4);
+		sem_post(&semExisteArchivo);
+		break;
+	}
+	case BORRARARCHIVOFS: {
+		memcpy(&validarBorrarArchivo, paquete, 4);
+		sem_post(&semBorrarArchivo);
+		break;
+	}
+	case CREARARCHIVO: {
+		memcpy(&validarCrearArchivo, paquete, 4);
+		sem_post(&semCrearArchivo);
+		break;
+	}
+	case GUARDARDATOS: {
+		memcpy(&validarGuardarDatos, paquete, 4);
+		sem_post(&semGuardarDatos);
+		break;
+	}
+	case OBTENERDATOS: {
+		int tamano;
+		memcpy(&tamano, paquete, 4);
+		if(tamano == -1){
+			validarObtenerDatos = 0;
+		} else {
+			pthread_mutex_lock(&mutexDatosDeFs);
+			datosDeFs = malloc(tamano);
+			memcpy(datosDeFs, paquete, tamano);
+			pthread_mutex_unlock(&mutexDatosDeFs);
+		}
+		sem_post(&semGuardarDatos);
+		break;
+	}
 
 		return;
 	}
@@ -807,26 +854,199 @@ void procesarCapaFs() {
 
 }
 
-void abrirArchivo(procesoACapaFs* unProceso){
+
+int actualizarTablaDelProceso(int pid,char* flags,int indiceEnTablaGlobal){
+	int tablaProcesoExiste;
+
+	_Bool verificaPid(indiceTablaProceso* entrada){
+		return entrada->pid == pid;
+	}
+
+	if(list_any_satisfy(listaTablasProcesos,(void*)verificaPid)) tablaProcesoExiste = 1;
+	else tablaProcesoExiste = 0;
+
+
+	 if(!tablaProcesoExiste){
+		 printf("La tabla no existe\n");
+		 indiceTablaProceso* entradaNuevaTabla = malloc(sizeof(indiceTablaProceso));
+		 entradaNuevaTabla->pid = pid;
+		 entradaNuevaTabla->tablaProceso = list_create();
+
+		 entradaTablaProceso* entrada=malloc(sizeof(entradaTablaProceso));
+		 entrada->fd = 3;
+		 entrada->flags = flags;
+		 entrada->globalFd = indiceEnTablaGlobal;
+		 entrada->puntero=0;
+
+		 list_add(entradaNuevaTabla->tablaProceso,entrada);
+
+		 list_add(listaTablasProcesos,entradaNuevaTabla);
+			return entrada->fd;
+		}
+	 else{
+		 printf("La tabla ya existe\n");
+
+		 indiceTablaProceso* entradaTablaExistente = list_remove_by_condition(listaTablasProcesos,(void*)verificaPid);//la remuevo para actualizarlo
+		 entradaTablaProceso* entrada = malloc(sizeof(entradaTablaProceso));
+		 entrada->fd = entradaTablaExistente->tablaProceso->elements_count + 3;
+		 entrada->flags = flags;
+		 entrada->globalFd = indiceEnTablaGlobal;
+		 printf("Agrego el indice :%d\n",entrada->globalFd);
+		 list_add(entradaTablaExistente->tablaProceso,entrada);
+		 list_add(listaTablasProcesos,entradaTablaExistente);//la vuelvo a agregar a la lista
+
+		 return entrada->fd;
+	 }
+}
+
+int borrarEntradaTablaProceso(int pid,int fd){
+	int globalFd;
+	_Bool verificaPid(indiceTablaProceso* entrada){
+							return entrada->pid == pid;
+						}
+	_Bool verificaFd(entradaTablaProceso* entrada){
+			return entrada->fd == fd;
+		}
+	indiceTablaProceso* entradaTablaProceso2 = list_remove_by_condition(listaTablasProcesos,(void*)verificaPid);
+	entradaTablaProceso* entrada2;
+	entrada2= list_remove_by_condition(entradaTablaProceso2->tablaProceso,(void*)verificaFd);
+	globalFd = entrada2->globalFd;
+	free(entrada2);
+	list_add(listaTablasProcesos,entradaTablaProceso2);
+	return globalFd;
+}
+
+
+int agregarEntradaEnTablaGlobal(char* direccion,int tamanioDireccion){
+	entradaTablaGlobal* entrada = malloc(sizeof(entradaTablaGlobal));
+	entrada->open = 0;
+	entrada->path = malloc(tamanioDireccion);
+	entrada->path=direccion;
+
+	list_add(tablaArchivosGlobal,entrada);
+
+	return tablaArchivosGlobal->elements_count - 1 ;
+}
+
+int verificarEntradaEnTablaGlobal(char* direccion){ /*TODO: Mutex tablaGlobal*/
+
+	_Bool verificaDireccion(entradaTablaGlobal* entrada){
+		return !strcmp(entrada->path,direccion);
+	}
+
+	if(list_is_empty(tablaArchivosGlobal)) return 0;
+	printf("La tabla global no esta vacia\n");
+
+	if(list_any_satisfy(tablaArchivosGlobal,(void*)verificaDireccion)) return 1;
+	return 0;
 
 }
 
-void cerrarArchivo(procesoACapaFs* unProceso){
+void actualizarIndicesGlobalesEnTablasProcesos(int indiceTablaGlobal){
+	int i;
+	int j;
+	indiceTablaProceso* indiceTabla;
+	entradaTablaProceso* entrada;
+	for(i=0;listaTablasProcesos->elements_count;i++){
+		indiceTabla = list_get(listaTablasProcesos,i);
+
+		for(j=0;j<indiceTabla->tablaProceso->elements_count;j++){
+			entrada = list_get(indiceTabla->tablaProceso,j);
+			if(entrada->globalFd > indiceTablaGlobal) entrada->globalFd--; /*TODO: No pregunto si es igual porque se supone que no existe mas en esa tabla. Corroborarlo*/
+		}
+	}
+}
+
+void aumentarOpenEnTablaGlobal(char* direccion){/*TODO: Mutex tablaGlobal*/
+	_Bool verificaDireccion(entradaTablaGlobal* entrada){
+			if(!strcmp(entrada->path,direccion)) return 1;
+			return 0;
+		}
+
+	entradaTablaGlobal* entrada=list_remove_by_condition(tablaArchivosGlobal,(void*)verificaDireccion);
+	entrada->open ++;
+	list_add(tablaArchivosGlobal,entrada);
+}
+
+void disminuirOpenYVerificarExistenciaEntradaGlobal(int indiceTablaGlobal){
+	entradaTablaGlobal* entrada = list_get(tablaArchivosGlobal,indiceTablaGlobal);
+	entrada->open --;
+
+	if(entrada->open==0){
+		list_remove(tablaArchivosGlobal,indiceTablaGlobal);
+		actualizarIndicesGlobalesEnTablasProcesos(indiceTablaGlobal);
+		free(entrada);
+	}
+}
+
+
+
+int buscarIndiceEnTablaGlobal(char* direccion){
+	int i;
+	int indice=0;
+	entradaTablaGlobal* entrada;
+
+	for(i=0;i<tablaArchivosGlobal->elements_count;i++){
+		entrada = list_get(tablaArchivosGlobal,i);
+		if(!strcmp(entrada->path,direccion)) indice = i;
+	}
+
+	return indice;
+}
+
+char* buscarDireccionEnTablaGlobal(int indice){
+	entradaTablaGlobal* entrada = list_get(tablaArchivosGlobal,indice);
+
+	return entrada->path;
+}
+
+void inicializarTablaProceso(int pid){
+	 indiceTablaProceso* indiceNuevaTabla = malloc(sizeof(indiceTablaProceso));
+	 indiceNuevaTabla->pid = pid;
+	 indiceNuevaTabla->tablaProceso = list_create();
+
+	 entradaTablaProceso* entrada=malloc(sizeof(entradaTablaProceso));
+	 entrada->fd = 0;
+	 entrada->flags = "rwc";
+	 entrada->globalFd = 0;
+	 entrada->puntero=0;
+
+	 list_add(indiceNuevaTabla->tablaProceso,entrada);
+
+	 list_add(listaTablasProcesos,indiceNuevaTabla);
+}
+
+int validarArchivo(char* ruta) {
+	int tamano = sizeof(char) * strlen(ruta);
+	int validado;
+	void * envio= malloc(tamano + 4);
+	memcpy(envio, &tamano, 4);
+	memcpy(envio + 4, ruta, tamano);
+	Serializar(VALIDARARCHIVO, tamano + 4, envio, clientefs);
+	sem_wait(&semExisteArchivo);
+	return validarExisteArchivo;
+}
+
+void abrirArchivo(procesoACapaFs* unProceso) {
 
 }
 
-void escribirArchivo(procesoACapaFs* unProceso){
+void cerrarArchivo(procesoACapaFs* unProceso) {
 
 }
 
-void leerArchivo(procesoACapaFs* unProceso){
+void escribirArchivo(procesoACapaFs* unProceso) {
 
 }
 
-void borrarArchivo(procesoACapaFs* unProceso){
+void leerArchivo(procesoACapaFs* unProceso) {
 
 }
-void moverCursorArchivo(procesoACapaFs* unProceso){
+
+void borrarArchivo(procesoACapaFs* unProceso) {
+
+}
+void moverCursorArchivo(procesoACapaFs* unProceso) {
 
 }
 

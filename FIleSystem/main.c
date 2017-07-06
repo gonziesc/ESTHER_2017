@@ -512,7 +512,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		break;
 	}
-	case BORRARARCHIVO: {
+	case BORRARARCHIVOFS: {
 		FILE *fp;
 
 		int tamanoArchivo;
@@ -548,15 +548,15 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 					d++;
 				}
 				validado = 1;
-				Serializar(BORRARARCHIVO, 4, &validado, cliente);
+				Serializar(BORRARARCHIVOFS, 4, &validado, cliente);
 
 			} else {
 				validado = 0;
-				Serializar(BORRARARCHIVO, 4, &validado, cliente);
+				Serializar(BORRARARCHIVOFS, 4, &validado, cliente);
 			}
 		} else {
 			validado = 0;
-			Serializar(BORRARARCHIVO, 4, &validado, cliente);
+			Serializar(BORRARARCHIVOFS, 4, &validado, cliente);
 		}
 		break;
 	}
