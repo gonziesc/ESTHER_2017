@@ -31,6 +31,7 @@ int32_t processID = 0;
 struct sockaddr_in direccionFs;
 struct sockaddr_in direccionServidor;
 t_queue* colaHeap;
+t_queue* colaCapaFs;
 t_queue* colaLiberaHeap;
 t_queue* colaNew;
 t_queue* colaCodigosAMemoria;
@@ -56,6 +57,7 @@ sem_t semMemoriaReservoHeap;
 sem_t semMetaDataLeida;
 sem_t semProcesoAHeap;
 sem_t semLiberarHeap;
+sem_t semCapaFs;
 pthread_mutex_t mutexColaNew;
 pthread_mutex_t mutexColaExit;
 pthread_mutex_t mutexColaEx;
@@ -70,6 +72,7 @@ pthread_mutex_t mutexMemoria;
 pthread_mutex_t mutexListaAdminHeap;
 pthread_mutex_t mutexColaHeap;
 pthread_mutex_t mutexColaLiberaHeap;
+pthread_mutex_t mutexColaCapaFs;
 pthread_t hiloPlanificadorLargoPlazo;
 pthread_t hiloEnviarProceso;
 pthread_t hiloPlanificadorCortoPlazo;
@@ -77,10 +80,13 @@ pthread_t hiloConexionFS;
 pthread_t hiloConexionMemoria;
 pthread_t hiloProcesarHeap;
 pthread_t hiloLiberaHepa;
+pthread_t hiloCapaFs;
 int noInteresa;
 t_log * logger;
 datosHeap tablaHeap[100];
 int indiceLibreHeap = 0;
+t_list* tablaArchivosGlobal;
+t_list* listaTablasProcesos;
 
 int32_t main(int argc, char**argv) {
 	logger = log_create("KERNEL.log", "KERNEL", 0, LOG_LEVEL_INFO);
@@ -95,8 +101,10 @@ int32_t main(int argc, char**argv) {
 	pthread_create(&hiloProcesarHeap, NULL, procesarHeap, NULL);
 	pthread_create(&hiloEnviarProceso, NULL, procesarScript, NULL);
 	pthread_create(&hiloLiberaHepa, NULL, liberarHeap, NULL);
+	pthread_create(&hiloCapaFs, NULL, procesarCapaFs, NULL);
 	levantarServidor();
 	pthread_join(hiloProcesarHeap, NULL);
+	pthread_join(hiloCapaFs, NULL);
 	pthread_join(hiloPlanificadorLargoPlazo, NULL);
 	pthread_join(hiloPlanificadorCortoPlazo, NULL);
 	pthread_join(hiloEnviarProceso, NULL);
@@ -107,6 +115,7 @@ int32_t main(int argc, char**argv) {
 void configuracion(char*dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigKernel));
 	configuracionKernel(t_archivoConfig, config, dir);
+	sem_init(&semCapaFs, 0, 0);
 	sem_init(&semUnScript, 0, 0);
 	sem_init(&semNew, 0, 0);
 	sem_init(&semReady, 0, 0);
@@ -128,11 +137,14 @@ void configuracion(char*dir) {
 	colaExit = queue_create();
 	colaCpu = queue_create();
 	colaHeap = queue_create();
+	colaCapaFs = queue_create();
 	listaAdmHeap = list_create();
 	colaProcesosConsola = queue_create();
 	colaCodigosAMemoria = queue_create();
 	colaProcesosBloqueados = queue_create();
 	colaLiberaHeap = queue_create();
+	tablaArchivosGlobal = list_create();
+	listaTablasProcesos = list_create();
 	colas_semaforos = malloc(
 			strlen((char*) t_archivoConfig->SEM_INIT) * sizeof(char*));
 
@@ -177,7 +189,7 @@ int32_t ConectarConFS() {
 		return 1;
 	}
 	procesar(paqueteRecibido->package, paqueteRecibido->header,
-			paqueteRecibido->size);
+			paqueteRecibido->size);    //TODO: FREE PAQUETE
 	return 0;
 }
 int32_t levantarServidor() {
@@ -516,15 +528,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 
-	case IMPRIMIRPROCESO: {		//imprimir
+	case IMPRIMIRPROCESO: {
 		proceso* unProceso;
 		int tamanioAEnviar;
-		int descriptor;
-		//TODO descriptor para escribir archivos
 		int tamanioTexto = tamanoPaquete - 4;
 		char *impresion = malloc(tamanioTexto + 4);
 		memcpy(impresion, paquete, tamanioTexto);
-		memcpy(&descriptor, paquete + tamanioTexto, 4);
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
 		queue_push(colaExec, unProceso);
@@ -638,9 +647,187 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaLiberaHeap, procesoAHeap);
 		pthread_mutex_unlock(&mutexColaLiberaHeap);
 		sem_post(&semLiberarHeap);
+		break;
 	}
+	case ABRIRARCHIVO: {
+		proceso* unProceso;
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		pthread_mutex_unlock(&mutexColaEx);
+		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
+		p->codigoOperacion = 0;
+		p->socket = socket;
+		p->pid = unProceso->pcb->programId;
+		int tamanoDireccion;
+		int tamanoFlags;
+		memcpy(&tamanoDireccion, paquete, 4);
+		p->path = malloc(tamanoDireccion);
+		memcpy(&tamanoFlags, paquete + 4, 4);
+		p->permisos = malloc(tamanoFlags);
+		memcpy(p->path, paquete + 8, tamanoDireccion);
+		memcpy(p->permisos, paquete + 8 + tamanoDireccion, tamanoFlags);
+		pthread_mutex_lock(&mutexColaCapaFs);
+		queue_push(colaCapaFs, p);
+		pthread_mutex_unlock(&mutexColaCapaFs);
+		sem_post(&semCapaFs);
+		break;
+	}
+	case BORRARARCHIVO: {
+		proceso* unProceso;
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		pthread_mutex_unlock(&mutexColaEx);
+		procesoACapaFs *p = malloc(sizeof(procesoACapaFs));
+		p->codigoOperacion = 1;
+		p->socket = socket;
+		p->pid = unProceso->pcb->programId;
+		memcpy(&p->fd, paquete, 4);
+		pthread_mutex_lock(&mutexColaCapaFs);
+		queue_push(colaCapaFs, p);
+		pthread_mutex_unlock(&mutexColaCapaFs);
+		sem_post(&semCapaFs);
+		break;
+	}
+	case CERRARARCHIVO: {
+		proceso* unProceso;
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		pthread_mutex_unlock(&mutexColaEx);
+		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
+		p->codigoOperacion = 2;
+		p->socket = socket;
+		p->pid = unProceso->pcb->programId;
+		memcpy(&p->fd, paquete, 4);
+		pthread_mutex_lock(&mutexColaCapaFs);
+		queue_push(colaCapaFs, p);
+		pthread_mutex_unlock(&mutexColaCapaFs);
+		sem_post(&semCapaFs);
+		break;
+	}
+	case ESCRIBIRARCHIVO: {
+		proceso* unProceso;
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		pthread_mutex_unlock(&mutexColaEx);
+		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
+		p->codigoOperacion = 3;
+		p->socket = socket;
+		p->pid = unProceso->pcb->programId;
+		int tamanioTexto = tamanoPaquete - 4;
+		p->data = malloc(tamanioTexto);
+		memcpy(p->data, paquete, tamanioTexto);
+		memcpy(&p->fd, paquete + tamanioTexto, 4); //TODO revisar esto
+		pthread_mutex_lock(&mutexColaCapaFs);
+		queue_push(colaCapaFs, p);
+		pthread_mutex_unlock(&mutexColaCapaFs);
+		sem_post(&semCapaFs);
+		break;
+	}
+	case LEERARCHIVO: {
+		proceso* unProceso;
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		pthread_mutex_unlock(&mutexColaEx);
+		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
+		p->codigoOperacion = 4;
+		p->socket = socket;
+		p->pid = unProceso->pcb->programId;
+		memcpy(&p->fd, paquete, 4);
+		memcpy(&p->tamano, paquete + 4, 4);
+		pthread_mutex_lock(&mutexColaCapaFs);
+		queue_push(colaCapaFs, p);
+		pthread_mutex_unlock(&mutexColaCapaFs);
+		sem_post(&semCapaFs);
+		break;
+	}
+	case MOVERCURSOR: {
+		proceso* unProceso;
+		pthread_mutex_lock(&mutexColaEx);
+		unProceso = sacarProcesoDeEjecucion(socket);
+		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		pthread_mutex_unlock(&mutexColaEx);
+		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
+		p->codigoOperacion = 5;
+		p->socket = socket;
+		p->pid = unProceso->pcb->programId;
+		memcpy(&p->fd, paquete, 4);
+		memcpy(&p->posicion, paquete + 4, 4);
+		pthread_mutex_lock(&mutexColaCapaFs);
+		queue_push(colaCapaFs, p);
+		pthread_mutex_unlock(&mutexColaCapaFs);
+		sem_post(&semCapaFs);
+		break;
+	}
+
 		return;
 	}
+}
+
+void procesarCapaFs() {
+	procesoACapaFs* unProceso;
+
+	while (1) {
+		sem_wait(&semCapaFs);
+		pthread_mutex_lock(&mutexColaCapaFs);
+		unProceso = queue_pop(unProceso);
+		pthread_mutex_unlock(&mutexColaCapaFs);
+		switch (unProceso->codigoOperacion) {
+		case 0: {
+			abrirArchivo(unProceso);
+			break;
+		}
+		case 1: {
+			borrarArchivo(unProceso);
+			break;
+		}
+		case 2: {
+			cerrarArchivo(unProceso);
+			break;
+		}
+		case 3: {
+			escribirArchivo(unProceso);
+			break;
+		}
+		case 4: {
+			leerArchivo(unProceso);
+			break;
+		}
+		case 5: {
+			moverCursorArchivo(unProceso);
+			break;
+		}
+		}
+
+	}
+
+}
+
+void abrirArchivo(procesoACapaFs* unProceso){
+
+}
+
+void cerrarArchivo(procesoACapaFs* unProceso){
+
+}
+
+void escribirArchivo(procesoACapaFs* unProceso){
+
+}
+
+void leerArchivo(procesoACapaFs* unProceso){
+
+}
+
+void borrarArchivo(procesoACapaFs* unProceso){
+
+}
+void moverCursorArchivo(procesoACapaFs* unProceso){
+
 }
 
 char* conseguirSemaforoDeBloqueado(int pid) {

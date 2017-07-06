@@ -224,28 +224,68 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case ABRIRARCHIVO: {
-		memcpy(&descriptorArchivoAbierto, paquete, 4);
+		int validado;
+		memcpy(&validado, paquete, 4);
+		if (validado == 0) {
+			programaAbortado = 1;
+			codigoAborto = codeArchivoNoexiste;
+		} else {
+			memcpy(&descriptorArchivoAbierto, paquete + 4, 4);
+		}
 		sem_post(&semAbrirArchivo);
 		break;
 	}
 	case CERRARARCHIVO: {
+		int validado;
+		memcpy(&validado, paquete, 4);
+		if (validado == 0) {
+			programaAbortado = 1;
+			codigoAborto = codeArchivoNoexiste;
+		} else {
+
+		}
 		sem_post(&semCerrarArchivo);
 		break;
 	}
 	case LEERARCHIVO: {
-		int tamanoLeido;
-		memcpy(&tamanoLeido, paquete, 4);
-		infoLeida = malloc(tamanoLeido);
-		memcpy(infoLeida, paquete, tamanoLeido);
-
+		int validado;
+		memcpy(&validado, paquete, 4);
+		if (validado == 0) {
+			programaAbortado = 1;
+			codigoAborto = codeArchivoNoexiste;
+		} else if (validado == 2) {
+			programaAbortado = 1;
+			codigoAborto = codeLeerSinPermisos;
+		} else {
+			int tamanoLeido;
+			memcpy(&tamanoLeido, paquete, 4);
+			infoLeida = malloc(tamanoLeido);
+			memcpy(infoLeida, paquete, tamanoLeido);
+		}
 		sem_post(&semLeerArchivo);
 		break;
 	}
 	case ESCRIBIRARCHIVO: {
+		int validado;
+		memcpy(&validado, paquete, 4);
+		if (validado == 0) {
+			programaAbortado = 1;
+			codigoAborto = codeArchivoNoexiste;
+		}
+		if (validado == 2) {
+			programaAbortado = 1;
+			codigoAborto = codeEscribirSinPermisos;
+		}
 		sem_post(&semEscribirArchivo);
 		break;
 	}
 	case MOVERCURSOR: {
+		int validado;
+		memcpy(&validado, paquete, 4);
+		if (validado == 0) {
+			programaAbortado = 1;
+			codigoAborto = codeArchivoNoexiste;
+		}
 		sem_post(&semMoverCursor);
 		break;
 	}
@@ -357,15 +397,15 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 		list_add(indiceStack->vars, unaVariable);
 		indiceStack->tamanoVars++;
 	}
-	if(programaAbortado == 0){
-	int valor = 0;
-	int direccionRetorno = convertirDireccionAPuntero(direccionVariable);
-	printf("[definirVariable]Defino %c ubicada en %d\n", nombreVariable,
-			direccionRetorno);
-	enviarDirecParaEscribirMemoria(direccionVariable, valor);
-	return (direccionRetorno);
-	}
-	else return 0;
+	if (programaAbortado == 0) {
+		int valor = 0;
+		int direccionRetorno = convertirDireccionAPuntero(direccionVariable);
+		printf("[definirVariable]Defino %c ubicada en %d\n", nombreVariable,
+				direccionRetorno);
+		enviarDirecParaEscribirMemoria(direccionVariable, valor);
+		return (direccionRetorno);
+	} else
+		return 0;
 
 }
 
@@ -941,6 +981,7 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
 	Serializar(ABRIRARCHIVO, 8 + tamanoFlags + tamanoDireccion, envio, cliente);
 	sem_wait(&semAbrirArchivo);
 	free(envio);
+	if(programaAbortado == 0)
 	return descriptorArchivoAbierto;
 }
 void borrar(t_descriptor_archivo descriptor) {
@@ -960,16 +1001,28 @@ void cerrar(t_descriptor_archivo descriptor) {
 
 void leer(t_descriptor_archivo descriptor, t_puntero puntero,
 		t_valor_variable tamano) {
-	void * envio = malloc(12);
+	void * envio = malloc(8);
 	memcpy(envio, &descriptor, 4);
-	memcpy(envio + 4, &puntero, 4);
-	memcpy(envio + 8, &tamano, 4);
-	Serializar(LEERARCHIVO, 12, envio, cliente);
+	memcpy(envio + 4, &tamano, 4);
+	Serializar(LEERARCHIVO, 8, envio, cliente);
 	sem_wait(&semLeerArchivo);
-	char *infoLeidaChar = string_new();
-	string_append(&infoLeidaChar, infoLeida);
-	printf("info leida %s", infoLeidaChar);
-	free(infoLeida);
+	if (programaAbortado == 0) {
+		char *infoLeidaChar = string_new();
+		string_append(&infoLeidaChar, infoLeida);
+		printf("info leida %s", infoLeidaChar);
+		int tamanoAUx = 0;
+		int offset = 0;
+		while(!(tamano == 0)){
+			int auxiliar;
+			memcpy(&auxiliar, infoLeida + offset, 4);
+			asignar(puntero + offset, auxiliar);
+			offset += 4;
+			tamano -= 4;
+			//todo ver impares
+		}
+		free(infoLeida);
+	}
+
 	free(envio);
 }
 

@@ -23,6 +23,25 @@
 #include <commons/log.h>
 #include <stdbool.h>
 
+typedef struct{
+	char* path;
+	int open;
+}entradaTablaGlobal;
+
+typedef struct{
+	int pid;
+	t_list* tablaProceso;
+}indiceTablaProceso;
+
+typedef struct{
+	int fd;
+	char* flags;
+	int globalFd;
+	int puntero;
+}entradaTablaProceso;
+
+
+
 typedef struct {
   int socketCPU;
   int socketCONSOLA;
@@ -74,6 +93,19 @@ typedef struct {
 }liberaDatosHeap;
 
 typedef struct {
+	char* path;
+	char * permisos;
+	int pid;
+	int socket;
+	int fd;
+	int tamano;
+	int posicion;
+	char * data;
+	int codigoOperacion;
+	int puntero;
+}procesoACapaFs;
+
+typedef struct {
 int pid;
 int consola;
 }procesoConsola;
@@ -84,7 +116,14 @@ char* semaforo;
 }procesoBloqueado;
 
 
+void abrirArchivo(procesoACapaFs*);
+void moverCursorArchivo(procesoACapaFs*);
+void escribirArchivo(procesoACapaFs*);
+void leerArchivo(procesoACapaFs*);
+void borrarArchivo(procesoACapaFs*);
+void cerrarArchivo(procesoACapaFs*);
 
+void procesarCapaFs();
 void liberarHeap();
 void procesarHeap();
 void procesoLiberaHeap(int, int, int);
