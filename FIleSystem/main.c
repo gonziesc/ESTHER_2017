@@ -84,14 +84,14 @@ char** obtArrayDeBloquesDeArchivo(char* ruta) {
 	t_config* configuracion_FS = config_create(ruta);
 
 	return config_get_array_value(configuracion_FS, "BLOQUES");
-	config_destroy(configuracion_FS);
+
 }
 
-char* obtTamanioArchivo(char* ruta) {
+int obtTamanioArchivo(char* ruta) {
 	t_config* configuracion_FS = config_create(ruta);
 
-	return config_get_string_value(configuracion_FS, "TAMANIO");
-	config_destroy(configuracion_FS);
+	return config_get_int_value(configuracion_FS, "TAMANIO");
+
 
 }
 
@@ -274,31 +274,28 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 			string_append(&nombreBloque, ".bin");
 			printf("Nombre del ultimo bloque: %s\n", nombreBloque);
 			printf("Tamano del archivo : %d\n",
-					atoi(obtTamanioArchivo(nombreArchivoRecibido)));
+					(obtTamanioArchivo(nombreArchivoRecibido)));
 			printf("Tamano del bloque: %d\n", t_archivoConfig->TAMANIO_BLOQUES);
-			int cantRestante = t_archivoConfig->TAMANIO_BLOQUES
-					- (atoi(obtTamanioArchivo(nombreArchivoRecibido))
-							- ((t_archivoConfig->TAMANIO_BLOQUES - 1)
-									* t_archivoConfig->TAMANIO_BLOQUES));
+			int cantRestante = cantidadBloques * t_archivoConfig->TAMANIO_BLOQUES
+					- ((obtTamanioArchivo(nombreArchivoRecibido)));
 			printf("Cantidad restante :%d\n", cantRestante);
 			if (tamanoBuffer < cantRestante) {
 				adx_store_data(nombreBloque, buffer);
 				//send diciendo que todo esta bien
 			} else {
-				int cuantosBloquesMasNecesito = tamanoBuffer
+				int cuantosBloquesMasNecesito = (tamanoBuffer - cantRestante)
 						/ t_archivoConfig->TAMANIO_BLOQUES;
-				printf("PASO POR ACAAAAAAAAAA3 \n");
-				if ((tamanoBuffer % t_archivoConfig->TAMANIO_BLOQUES) > 0) {
+
+				if (((tamanoBuffer - cantRestante) % t_archivoConfig->TAMANIO_BLOQUES) > 0) {
 					cuantosBloquesMasNecesito++;
 				}
-				printf("PASO POR ACAAAAAAAAAA3 \n");
 				//si no hay mas bloques de los que se requieren hay que hacer un send tirando error
 				int j;
 				int r = 0;
 				int bloquesEncontrados = 0;
 				int bloqs[cuantosBloquesMasNecesito];
-				for (j = 0; j < cantidadBloques; j++) {
-					printf("PASO POR ACAAAAAAAAAA3 \n");
+				for (j = 0; j < t_archivoConfig->CANTIDAD_BLOQUES; j++) {
+
 					bool bit = bitarray_test_bit(bitarray, j);
 					if (bit == 0) {
 						if (r == cuantosBloquesMasNecesito) {
@@ -309,7 +306,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 						}
 						bloquesEncontrados++;
 					}
-					printf("PASO POR ACAAAAAAAAAA3 \n");
 				}
 
 				if (bloquesEncontrados >= cuantosBloquesMasNecesito) {
@@ -350,15 +346,14 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 					}
 
 					//actualizamos el metadata del archivo con los nuevos bloques y el nuevo tamano del archivo
-					FILE *fp = fopen(nombreArchivoRecibido, "w");
+
 					char *dataAPonerEnFile = string_new();
 					string_append(&dataAPonerEnFile, "TAMANIO=");
-					char* tamanioArchivoViejo = obtTamanioArchivo(
+
+					int tamanioArchivoViejoInt =obtTamanioArchivo(
 							nombreArchivoRecibido);
-					int tamanioArchivoViejoInt = atoi(tamanioArchivoViejo);
 					int tamanioNuevo = tamanioArchivoViejoInt
-							+ (cuantosBloquesMasNecesito
-									* t_archivoConfig->TAMANIO_BLOQUES);
+							+ (tamanoBuffer);
 					char* tamanioNuevoChar = string_itoa(tamanioNuevo);
 					string_append(&dataAPonerEnFile, tamanioNuevoChar);
 					string_append(&dataAPonerEnFile, "\n");
@@ -382,7 +377,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 					}
 
 					string_append(&dataAPonerEnFile, "]");
-
+					fclose(fopen(nombreArchivoRecibido, "w"));
 					adx_store_data(nombreArchivoRecibido, dataAPonerEnFile);
 
 					validado = 1;
@@ -448,7 +443,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 					int t;
 					int inicial = d;
 					for (t = inicial;
-							t < ((inicial + cantidadBloquesQueNecesito) + 1);
+							t < ((inicial + cantidadBloquesQueNecesito));
 							t++) {
 						hizoLoQueNecesita = 1;
 						int indice = atoi(arrayBloques[t]);

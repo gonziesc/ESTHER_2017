@@ -737,6 +737,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		p->socket = socket;
 		p->pid = unProceso->pcb->programId;
 		int tamanioTexto = tamanoPaquete - 4;
+		p->tamano = tamanioTexto;
 		p->data = malloc(tamanioTexto);
 		memcpy(p->data, paquete, tamanioTexto);
 		memcpy(&p->fd, paquete + tamanioTexto, 4); //TODO revisar esto
