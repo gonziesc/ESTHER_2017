@@ -235,10 +235,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		memcpy(&tamanoBuffer, paquete + 8, sizeof(int));
 		printf("Tamano de la data:%d\n", tamanoBuffer);
-		char* buffer = malloc(tamanoBuffer);
+		void* buffer = malloc(tamanoBuffer);
+		int tamanoTotalBuffer = tamanoBuffer;
 
 		memcpy(buffer, paquete + 12, tamanoBuffer);
-		printf("Data :%s\n", buffer);
+		//printf("Data :%s\n", buffer);
 
 		memcpy(nombreArchivo, paquete + 12 + tamanoBuffer, tamanoNombreArchivo);
 		strcpy(nombreArchivo + tamanoNombreArchivo, "\0");
@@ -254,21 +255,19 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 			char** arrayBloques = obtArrayDeBloquesDeArchivo(
 					nombreArchivoRecibido);
 
-			int d = 0;
+
 			int cantidadBloques = 0;
-			while (!(arrayBloques[d] == NULL)) {
-				printf("%s \n", arrayBloques[d]);
-				d++;
+			while (!(arrayBloques[cantidadBloques] == NULL)) {
+				printf("%s \n", arrayBloques[cantidadBloques]);
 				cantidadBloques++;
 			}
-			d--;
 
 			printf("Cantidad de bloques :%d\n", cantidadBloques);
 
 			char *nombreBloque = string_new();
 			string_append(&nombreBloque, t_archivoConfig->PUERTO_MONTAJE);
 			string_append(&nombreBloque, "Bloques/");
-			string_append(&nombreBloque, arrayBloques[d]);
+			string_append(&nombreBloque, arrayBloques[cantidadBloques - 1]);
 			string_append(&nombreBloque, ".bin");
 			printf("Nombre del ultimo bloque: %s\n", nombreBloque);
 			printf("Tamano del archivo : %d\n",
@@ -280,29 +279,34 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 			printf("Cantidad restante :%d\n", cantRestante);
 			if (tamanoBuffer < cantRestante) {
 				adx_store_data(nombreBloque, buffer);
-				//send diciendo que todo esta bien
+				//TODO implementar puntero
 			} else {
-				int cuantosBloquesMasNecesito = (tamanoBuffer - cantRestante)
+				void* guardar = malloc(cantRestante);
+				memcpy(guardar, buffer, cantRestante);
+				adx_store_data(nombreBloque, guardar);
+				free(guardar);
+				tamanoBuffer -= cantRestante;
+				int cuantosBloquesMasNecesito = (tamanoBuffer)
 						/ t_archivoConfig->TAMANIO_BLOQUES;
 
-				if (((tamanoBuffer - cantRestante)
+				if (((tamanoBuffer)
 						% t_archivoConfig->TAMANIO_BLOQUES) > 0) {
 					cuantosBloquesMasNecesito++;
 				}
 				//si no hay mas bloques de los que se requieren hay que hacer un send tirando error
-				int j;
-				int r = 0;
+				int i;
+				int indiceNuevos = 0;
 				int bloquesEncontrados = 0;
-				int bloqs[cuantosBloquesMasNecesito];
-				for (j = 0; j < t_archivoConfig->CANTIDAD_BLOQUES; j++) {
+				int bloquesNuevos[cuantosBloquesMasNecesito];
+				for (i = 0; i < t_archivoConfig->CANTIDAD_BLOQUES; i++) {
 
-					bool bit = bitarray_test_bit(bitarray, j);
+					bool bit = bitarray_test_bit(bitarray, i);
 					if (bit == 0) {
-						if (r == cuantosBloquesMasNecesito) {
+						if (bloquesEncontrados == cuantosBloquesMasNecesito) {
 							break;
 						} else {
-							bloqs[r] = j;
-							r++;
+							bloquesNuevos[indiceNuevos] = i;
+							indiceNuevos++;
 						}
 						bloquesEncontrados++;
 					}
@@ -312,40 +316,40 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 					//guardamos en los bloques deseados
 
 					int s;
-					char* loQueVaQuedandoDeBuffer = (char*) buffer;
-					for (s = 0; s <= cuantosBloquesMasNecesito; s++) {
+					for (s = 0; s < cuantosBloquesMasNecesito; s++) {
 
 						char *nombreBloque = string_new();
 						string_append(&nombreBloque,
 								t_archivoConfig->PUERTO_MONTAJE);
 						string_append(&nombreBloque, "Bloques/");
-						char* numerito = string_itoa(bloqs[s]);
+						char* numerito = string_itoa(bloquesNuevos[s]);
 						string_append(&nombreBloque, numerito);
 						string_append(&nombreBloque, ".bin");
 						int offsetAux = 0;
 						if (tamanoBuffer > t_archivoConfig->TAMANIO_BLOQUES) {
 							//cortar el string
 
-							char* recortado = malloc(
+							void* recortado = malloc(
 									t_archivoConfig->TAMANIO_BLOQUES);
 							memcpy(recortado, buffer + offsetAux,
 									t_archivoConfig->TAMANIO_BLOQUES);
 							adx_store_data(nombreBloque, recortado);
 							offsetAux += t_archivoConfig->TAMANIO_BLOQUES;
+							tamanoBuffer-= t_archivoConfig->TAMANIO_BLOQUES;
 							free(recortado);
 						} else {
-							int sobras = offsetAux % t_archivoConfig->TAMANIO_BLOQUES;
-							char* recortado = malloc(
-									sobras);
-							memcpy(recortado, buffer + offsetAux, sobras);
+							void* recortado = malloc(
+									tamanoBuffer);
+							memcpy(recortado, buffer + offsetAux, tamanoBuffer);
 							//mandarlo to do de una
 							adx_store_data(nombreBloque,
-									loQueVaQuedandoDeBuffer);
+									recortado);
 							free(recortado);
 						}
 
 						//actualizamos el bitmap
-						bitarray_set_bit(bitarray, bloqs[s]);
+
+						bitarray_set_bit(bitarray, bloquesNuevos[s]);
 
 					}
 
@@ -356,7 +360,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 					int tamanioArchivoViejoInt = obtTamanioArchivo(
 							nombreArchivoRecibido);
-					int tamanioNuevo = tamanioArchivoViejoInt + (tamanoBuffer);
+					int tamanioNuevo = tamanioArchivoViejoInt + (tamanoTotalBuffer);
 					char* tamanioNuevoChar = string_itoa(tamanioNuevo);
 					string_append(&dataAPonerEnFile, tamanioNuevoChar);
 					string_append(&dataAPonerEnFile, "\n");
@@ -372,7 +376,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 						d++;
 					}
 					for (z = 0; z < cuantosBloquesMasNecesito; z++) {
-						char* bloqueString = string_itoa(bloqs[z]);
+						char* bloqueString = string_itoa(bloquesNuevos[z]);
 						string_append(&dataAPonerEnFile, bloqueString);
 						if (!(z == (cuantosBloquesMasNecesito - 1))) {
 							string_append(&dataAPonerEnFile, ",");
