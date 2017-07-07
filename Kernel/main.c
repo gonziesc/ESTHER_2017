@@ -1820,7 +1820,7 @@ void compactarPaginaHeap(int pagina, int pid) {
 
 	while (offset < MARCOS_SIZE
 			&& offset + sizeof(HeapMetaData) + actual.size
-					> MARCOS_SIZE - sizeof(HeapMetaData)) {
+					< MARCOS_SIZE - sizeof(HeapMetaData)) {
 		int tamanoLectura = sizeof(HeapMetaData);
 		void* lecturaPagina = malloc(sizeof(datosAdminHeap) + 3 * sizeof(int));
 		memcpy(lecturaPagina, &pagina, sizeof(processID));
@@ -1917,15 +1917,14 @@ int paginaHeapBloqueSuficiente(int posicionPaginaHeap, int pagina, int pid,
 datosHeap *verificarEspacioLibreHeap(int size, int pid) {
 	int i = 0;
 	datosHeap* puntero = malloc(sizeof(datosHeap));
-	datosAdminHeap* aux;
+	datosAdminHeap* aux = malloc(sizeof(datosAdminHeap));
 	puntero->pagina = -1;
 
 	pthread_mutex_lock(&mutexListaAdminHeap);
 	while (i < list_size(listaAdmHeap)) {
 		aux = (datosAdminHeap*) list_get(listaAdmHeap, i);
-		pthread_mutex_unlock(&mutexListaAdminHeap);
 
-		if (aux->tamanoDisponible >= size + sizeof(datosAdminHeap)
+		if (aux->tamanoDisponible >= size + sizeof(datosHeap)
 				&& aux->pid == pid) {
 			/**TODO: Mutex para compactar?*/
 			compactarPaginaHeap(aux->numeroPagina, aux->pid);
@@ -1968,7 +1967,6 @@ void reservarBloqueHeap(int pid, int size, datosHeap* puntero) {
 	}
 	pthread_mutex_unlock(&mutexListaAdminHeap);
 	int tamanoLectura = sizeof(HeapMetaData);
-	free(aux);
 	int otroOffset = puntero->offset - 8; // TODO: FIJARSE SI NO ES +8
 
 	void* lecturaPagina = malloc(sizeof(HeapMetaData) + 3 * sizeof(int));
@@ -2074,6 +2072,7 @@ datosHeap* procesoPideHeap(int pid, int tamano) {
 }
 
 void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
+	int i = 0;
 	datosAdminHeap* aux = malloc(sizeof(datosAdminHeap));
 	HeapMetaData bloque;
 

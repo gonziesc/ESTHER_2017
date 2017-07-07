@@ -12,4 +12,4 @@ SEM_IDS=[SEM1, SEM2, SEM3, mutexArch, b]
 SEM_INIT=[0, 0, 0, 1, 5]
 SHARED_VARS=[Global, UnaVar, tiempo3, pasadas]
 SHARED_VARS_INIT=[0, 5, 611, 0]
-STACK_SIZE=2
+STACK_SIZE=1
