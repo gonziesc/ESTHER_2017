@@ -19,6 +19,7 @@
 #include <conexiones.c>
 #include <configuracion.h>
 #include <serializador.h>
+#include <semaphore.h>
 
 #include <pthread.h>
 

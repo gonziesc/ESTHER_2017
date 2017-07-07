@@ -1229,7 +1229,7 @@ void escribirArchivo(procesoACapaFs* unProceso) {
 			memcpy(envio, &tamanoNombre, 4);
 			memcpy(envio + 4, &entrada->puntero, 4);
 			memcpy(envio + 8, &unProceso->tamano, 4);
-			memcpy(envio + 12, &unProceso->data, unProceso->tamano);
+			memcpy(envio + 12, unProceso->data, unProceso->tamano);
 			memcpy(envio + 12 + unProceso->tamano, nombreArchivo, tamanoNombre);
 			Serializar(GUARDARDATOS, 12 + tamanoNombre + unProceso->tamano,
 					envio, clientefs);

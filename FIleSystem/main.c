@@ -6,6 +6,7 @@ archivoConfigFS* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionServidor;
 int32_t servidor;
+sem_t semConfig;
 int32_t activado;
 int32_t header;
 struct sockaddr_in direccionCliente;
@@ -18,7 +19,15 @@ int32_t idHiloLevantarConexion;
 int noInteresa;
 
 int32_t main(int argc, char**argv) {
+	sem_init(&semConfig, 0, 0);
 	configuracion(argv[1], argv[2]);
+	sem_wait(&semConfig);
+	bitarray = bitarray_create_with_mode(mmapDeBitmap,
+			(t_archivoConfig->TAMANIO_BLOQUES
+					* t_archivoConfig->CANTIDAD_BLOQUES)
+					/ (8 * t_archivoConfig->TAMANIO_BLOQUES), MSB_FIRST);
+	printf("El tamano del bitarray es de : %d\n\n\n",
+			bitarray_get_max_bit(bitarray));
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
 			levantarConexion, NULL);
 	pthread_join(hiloLevantarConexion, NULL);
@@ -28,14 +37,22 @@ int32_t main(int argc, char**argv) {
 void inicializarMmap() {
 
 	int size;
-	struct stat s;
-	int fd = open("../Metadata/Bitmap.bin", O_RDWR);
+	char *nombreArchivoRecibido = string_new();
+	string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
+	string_append(&nombreArchivoRecibido, "Metadata/Bitmap.bin");
+	int bitmap = open(nombreArchivoRecibido, O_RDWR);
+	struct stat mystat;
+
+	if (fstat(bitmap, &mystat) < 0) {
+		printf("Error al establecer fstat\n");
+		close(bitmap);
+	}
 
 	/* Get the size of the file. */
-	int status = fstat(fd, &s);
-	size = s.st_size;
-	mmapDeBitmap = mmap(0, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
 
+	mmapDeBitmap = mmap(NULL, mystat.st_size, PROT_WRITE | PROT_READ,
+			MAP_SHARED, bitmap, 0);
+	sem_post(&semConfig);
 }
 
 void printBitmap() {
@@ -82,13 +99,6 @@ void configuracion(char * dir, char* dir2) {
 	t_archivoConfig = malloc(sizeof(archivoConfigFS));
 	configuracionFS(t_archivoConfig, config, dir, dir2);
 	inicializarMmap();
-	bitarray = bitarray_create_with_mode(mmapDeBitmap,
-			(t_archivoConfig->TAMANIO_BLOQUES
-					* t_archivoConfig->CANTIDAD_BLOQUES)
-					/ (8 * t_archivoConfig->TAMANIO_BLOQUES), LSB_FIRST);
-
-	printf("El tamano del bitarray es de : %d\n\n\n",
-			bitarray_get_max_bit(bitarray));
 
 	//printBitmap();
 }
@@ -247,7 +257,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 					nombreArchivoRecibido);
 
 			int d = 0;
-			int cantidadBloques = 1;
+			int cantidadBloques = 0;
 			while (!(arrayBloques[d] == NULL)) {
 				printf("%s \n", arrayBloques[d]);
 				d++;
@@ -259,7 +269,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 			char *nombreBloque = string_new();
 			string_append(&nombreBloque, t_archivoConfig->PUERTO_MONTAJE);
-			string_append(&nombreBloque, "Bloque/");
+			string_append(&nombreBloque, "Bloques/");
 			string_append(&nombreBloque, arrayBloques[d]);
 			string_append(&nombreBloque, ".bin");
 			printf("Nombre del ultimo bloque: %s\n", nombreBloque);
@@ -312,7 +322,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 						char *nombreBloque = string_new();
 						string_append(&nombreBloque,
 								t_archivoConfig->PUERTO_MONTAJE);
-						string_append(&nombreBloque, "Bloque/");
+						string_append(&nombreBloque, "Bloques/");
 						char* numerito = string_itoa(bloqs[s]);
 						string_append(&nombreBloque, numerito);
 						string_append(&nombreBloque, ".bin");
@@ -414,7 +424,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Archivos");
+		string_append(&nombreArchivoRecibido, "Archivos/");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
 
@@ -445,7 +455,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 						char *nombreBloque = string_new();
 						string_append(&nombreBloque,
 								t_archivoConfig->PUERTO_MONTAJE);
-						string_append(&nombreBloque, "Bloque/");
+						string_append(&nombreBloque, "Bloques/");
 						string_append(&nombreBloque, arrayBloques[t]);
 						string_append(&nombreBloque, ".bin");
 
