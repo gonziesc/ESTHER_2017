@@ -356,6 +356,7 @@ void procesarScript() {
 			pthread_mutex_lock(&mutexMemoria);
 			Serializar(INICIALIZARPROCESO, 8, enviocantidadDePaginas,
 					clienteMEM);
+			free(enviocantidadDePaginas);
 			pthread_mutex_unlock(&mutexMemoria);
 			Serializar(PID, 4, &processID, unScript->socket);
 			enviarProcesoAMemoria(unPcb->cantidadDePaginas, unScript->codigo,
@@ -677,12 +678,14 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		int tamanoDireccion;
 		int tamanoFlags;
 		memcpy(&tamanoDireccion, paquete, 4);
-		p->path = malloc(tamanoDireccion);
+		p->path = malloc(tamanoDireccion + 1);
 		p->tamano = tamanoDireccion;
 		memcpy(&tamanoFlags, paquete + 4, 4);
 		p->permisos = malloc(tamanoFlags);
-		memcpy(p->path, paquete + 8, tamanoDireccion);
-		memcpy(p->permisos, paquete + 8 + tamanoDireccion, tamanoFlags);
+		memcpy(p->permisos, paquete + 8, tamanoFlags);
+		memcpy(p->path, paquete + 8 + tamanoFlags, tamanoDireccion);
+		char* barra_cero = "\0";
+		memcpy(p->path + tamanoDireccion, barra_cero, 1);
 		pthread_mutex_lock(&mutexColaCapaFs);
 		queue_push(colaCapaFs, p);
 		pthread_mutex_unlock(&mutexColaCapaFs);
@@ -954,7 +957,7 @@ void actualizarIndicesGlobalesEnTablasProcesos(int indiceTablaGlobal) {
 	int j;
 	indiceTablaProceso* indiceTabla;
 	entradaTablaProceso* entrada;
-	for (i = 0; listaTablasProcesos->elements_count; i++) {
+	for (i = 0; i < listaTablasProcesos->elements_count; i++) {
 		indiceTabla = list_get(listaTablasProcesos, i);
 
 		for (j = 0; j < indiceTabla->tablaProceso->elements_count; j++) {
@@ -1047,7 +1050,7 @@ int crearArchivo(int socket_aceptado, char* direccion) {
 	memcpy(envio + 4, direccion, tamanoNombre);
 	Serializar(CREARARCHIVO, tamanoNombre + 4, envio, clientefs);
 	sem_wait(&semCrearArchivo);
-
+	free(envio);
 	if (validarCrearArchivo < 0)
 		printf("mal el fs");
 
@@ -1234,6 +1237,7 @@ void escribirArchivo(procesoACapaFs* unProceso) {
 			list_add(entradaTablaProceso2->tablaProceso, entrada);
 			list_add(listaTablasProcesos, entradaTablaProceso2);
 			sem_wait(&semGuardarDatos);
+			free(envio);
 		}
 
 	}
@@ -1305,7 +1309,7 @@ void leerArchivo(procesoACapaFs* unProceso) {
 			memcpy(envio, &tamanoNombre, 4);
 			memcpy(envio + 4, &unProceso->tamano, 4);
 			memcpy(envio + 8, &entrada->puntero, 4);
-			memcpy(envio + 12, nombreArchivo, unProceso->tamano);
+			memcpy(envio + 12, nombreArchivo, tamanoNombre);
 			Serializar(OBTENERDATOS, 12 + unProceso->tamano, envio, clientefs);
 			free(envio);
 			sem_wait(&semObtenerDatos);
@@ -1735,8 +1739,8 @@ int pideSemaforo(char *semaforo) {
 			return atoi(t_archivoConfig->SEM_INIT[i]);
 		}
 	}
-	printf("No encontre SEM id, exit\n");
-	exit(0);
+	//printf("No encontre SEM id, exit\n");
+	//exit(0);
 }
 
 void escribeSemaforo(char *semaforo, int valor) {
@@ -1754,8 +1758,8 @@ void escribeSemaforo(char *semaforo, int valor) {
 			return;
 		}
 	}
-	printf("No encontre SEM id, exit\n");
-	exit(0);
+	//printf("No encontre SEM id, exit\n");
+	//exit(0);
 }
 
 void liberaSemaforo(char *semaforo) {
@@ -1784,8 +1788,8 @@ void liberaSemaforo(char *semaforo) {
 			return;
 		}
 	}
-	printf("No encontre SEM id, exit\n");
-	exit(0);
+	//printf("No encontre SEM id, exit\n");
+	//exit(0);
 }
 
 void bloqueoSemaforo(proceso *proceso, char *semaforo) {
@@ -1800,8 +1804,8 @@ void bloqueoSemaforo(proceso *proceso, char *semaforo) {
 
 		}
 	}
-	printf("No encontre SEM id, exit\n");
-	exit(0);
+	//printf("No encontre SEM id, exit\n");
+	// exit(0);
 }
 
 void compactarPaginaHeap(int pagina, int pid) {
@@ -1962,7 +1966,7 @@ void reservarBloqueHeap(int pid, int size, datosHeap* puntero) {
 	}
 	pthread_mutex_unlock(&mutexListaAdminHeap);
 	int tamanoLectura = sizeof(HeapMetaData);
-
+	free(aux);
 	int otroOffset = puntero->offset - 8; // TODO: FIJARSE SI NO ES +8
 
 	void* lecturaPagina = malloc(sizeof(HeapMetaData) + 3 * sizeof(int));
@@ -1973,7 +1977,7 @@ void reservarBloqueHeap(int pid, int size, datosHeap* puntero) {
 	Serializar(METADATALEIDA, 16, lecturaPagina, clienteMEM);
 	sem_wait(&semMetaDataLeida);
 	memcpy(&auxBloque, metaDataLeida, sizeof(HeapMetaData));
-
+	free(lecturaPagina);
 	sizeLibreViejo = auxBloque.size;
 	auxBloque.isFree = 1;
 	auxBloque.size = size;
@@ -2107,7 +2111,7 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 			clienteMEM);
 	sem_wait(&semPaginaEnviada);
 	pthread_mutex_unlock(&mutexMemoria);
-
+	free(envioPagina);
 	pthread_mutex_lock(&mutexListaAdminHeap);
 	while (i < list_size(listaAdmHeap)) {
 		aux = list_get(listaAdmHeap, i);

@@ -972,12 +972,12 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
 		string_append(&flagsAConcatenar, "w");
 	}
 	int tamanoFlags = sizeof(char) * strlen(flagsAConcatenar);
-	int tamanoDireccion = sizeof(char) * strlen(direccion);
+	int tamanoDireccion = sizeof(char) * strlen(direccion) ;
 	void *envio = malloc(8 + tamanoFlags + tamanoDireccion);
 	memcpy(envio, &tamanoDireccion, 4);
 	memcpy(envio + 4, &tamanoFlags, 4);
 	memcpy(envio + 8, flagsAConcatenar, tamanoFlags);
-	memcpy(envio + 8 + tamanoFlags, direccion, tamanoDireccion);
+	memcpy(envio + 8 + tamanoFlags, direccion, tamanoDireccion );
 	Serializar(ABRIRARCHIVO, 8 + tamanoFlags + tamanoDireccion, envio, cliente);
 	sem_wait(&semAbrirArchivo);
 	free(envio);
@@ -995,7 +995,7 @@ void cerrar(t_descriptor_archivo descriptor) {
 	void * envio = malloc(4);
 	memcpy(envio, &descriptor, 4);
 	Serializar(CERRARARCHIVO, 4, envio, cliente);
-	sem_wait(&semBorrarArchivo);
+	sem_wait(&semCerrarArchivo);
 	free(envio);
 }
 

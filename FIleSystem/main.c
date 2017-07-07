@@ -90,7 +90,7 @@ void configuracion(char * dir, char* dir2) {
 	printf("El tamano del bitarray es de : %d\n\n\n",
 			bitarray_get_max_bit(bitarray));
 
-	printBitmap();
+	//printBitmap();
 }
 int32_t levantarConexion() {
 	llenarSocketAdrr(&direccionServidor, t_archivoConfig->PUERTO_KERNEL);
@@ -138,7 +138,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Archivos/");
+		string_append(&nombreArchivoRecibido, "Archivos");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 		printf("%s\n", nombreArchivoRecibido);
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
@@ -166,7 +166,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Archivos/");
+		string_append(&nombreArchivoRecibido, "Archivos");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 		int j;
 		int encontroUnBloque = 0;
@@ -414,7 +414,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Archivos/");
+		string_append(&nombreArchivoRecibido, "Archivos");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
 
@@ -526,7 +526,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
-		string_append(&nombreArchivoRecibido, "Archivos/");
+		string_append(&nombreArchivoRecibido, "Archivos");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
