@@ -100,7 +100,7 @@ typedef struct {
 	int fd;
 	int tamano;
 	int posicion;
-	char * data;
+	void * data;
 	int codigoOperacion;
 	int puntero;
 }procesoACapaFs;

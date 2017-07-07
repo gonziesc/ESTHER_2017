@@ -68,7 +68,7 @@ int validarExisteArchivo;
 int validarCrearArchivo;
 int validarBorrarArchivo;
 int validarObtenerDatos;
-char * datosDeFs;
+void * datosDeFs;
 int validarGuardarDatos;
 
 pthread_mutex_t mutexDatosDeFs;
@@ -809,12 +809,13 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		if (tamano == -1) {
 			validarObtenerDatos = 0;
 		} else {
+			validarObtenerDatos = 1;
 			pthread_mutex_lock(&mutexDatosDeFs);
 			datosDeFs = malloc(tamano);
 			memcpy(datosDeFs, paquete, tamano);
 			pthread_mutex_unlock(&mutexDatosDeFs);
 		}
-		sem_post(&semGuardarDatos);
+		sem_post(&semObtenerDatos);
 		break;
 	}
 
@@ -1319,7 +1320,7 @@ void leerArchivo(procesoACapaFs* unProceso) {
 				memcpy(envio2, &validarObtenerDatos, 4);
 				memcpy(envio2 + 4, &unProceso->tamano, 4);
 				memcpy(envio2 + 8, datosDeFs, unProceso->tamano);
-				Serializar(LEERARCHIVO, 8 + unProceso->tamano, envio,
+				Serializar(LEERARCHIVO, 8 + unProceso->tamano, envio2,
 						unProceso->socket);
 				free(envio2);
 				free(unProceso);

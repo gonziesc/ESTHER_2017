@@ -293,6 +293,13 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 }
 
+bool validarQuantum(int valor){
+	if(algoritmo == 0)
+		return true;
+	else
+		return valor != 0;
+}
+
 void procesarScript() {
 	while (1) {
 		sem_wait(&semHayScript);
@@ -301,7 +308,7 @@ void procesarScript() {
 		programaAbortado = 0;
 		int quantum_aux = quantum;
 		int pid = unPcb->programId;
-		while ((quantum_aux != 0) && !programaBloqueado && !programaFinalizado
+		while (validarQuantum(quantum_aux) && !programaBloqueado && !programaFinalizado
 				&& !programaAbortado) {
 			posicionMemoria* datos_para_memoria = malloc(
 					sizeof(posicionMemoria));
@@ -331,7 +338,7 @@ void procesarScript() {
 			destruirPCB(unPcb);
 			sem_post(&semDestruirPCB);
 		}
-		if ((quantum_aux == 0) && !programaFinalizado && !programaBloqueado
+		if (algoritmo == 1 && (quantum_aux == 0) && !programaFinalizado && !programaBloqueado
 				&& !programaAbortado) {
 
 			serializarPCB(unPcb, cliente, FINDEQUATUM);
@@ -874,7 +881,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable,
 
 void escribir(t_descriptor_archivo descriptorArchivo, void* informacion,
 		t_valor_variable tamano) {
-	char* envio = malloc(tamano + 4);
+	void* envio = malloc(tamano + 4);
 	memcpy(envio, informacion, tamano);
 	memcpy(envio + tamano, &descriptorArchivo, 4);
 	if (descriptorArchivo == 0 || descriptorArchivo == 1
