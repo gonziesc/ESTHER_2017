@@ -489,6 +489,8 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas) {
 }
 
 void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas) {
+	if(frameGeneral.framesLibres > 0){
+		noIMporta = 1;
 	int32_t i = ultimaPaginaPid[pid] + 1;
 	ultimaPaginaPid[pid] += 1;
 	int32_t frame = calcularPosicion(pid, i);
@@ -510,7 +512,10 @@ void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas) {
 		punteroMemoria[frameLibre] = nodoTablaMemoria;
 		frameGeneral.framesLibres--;
 
-	}
+	}}
+
+	else
+		noIMporta = 0;
 }
 
 int32_t estaLibre(int32_t unFrame) {

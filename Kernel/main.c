@@ -2,6 +2,7 @@
 
 struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
+int abortoPorFaltaDeMemoria;
 script* unScript;
 int32_t fdmax;
 int32_t cpuDisponible;
@@ -393,6 +394,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case MEMORIARESERVOHEAP: {
+		int algo;
+		memcpy(&algo, paquete, 4);
+		if (algo == 0)
+			abortoPorFaltaDeMemoria = 1;
 		sem_post(&semMemoriaReservoHeap);
 		break;
 	}
@@ -526,6 +531,15 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		destruirPCB(unProceso->pcb);
 		unProceso->pcb = pcbRecibido;
 		abortar(unProceso, codeMasMemoriaQuePaginas);
+		break;
+	}
+	case ABORTOEXPECIONDEMEMORIA: {
+		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
+				pcbRecibido->programId);
+		destruirPCB(unProceso->pcb);
+		unProceso->pcb = pcbRecibido;
+		abortar(unProceso, codeExcepcionMemoria);
 		break;
 	}
 	case ABORTOARCHIVONOEXISTE: {
@@ -1660,6 +1674,8 @@ void procesarHeap() {
 		if (data->pagina == -1) {
 			Serializar(ABORTOPORMASRESERVERAQUEPAGINA, 4, &noInteresa,
 					heap->socket);
+		} else if (data->pagina == -2) {
+			Serializar(ABORTOEXPECIONDEMEMORIA, 4, &noInteresa, heap->socket);
 		} else {
 			void * envio = malloc(8);
 			memcpy(envio, &data->pagina, 4);
@@ -2044,7 +2060,7 @@ void reservarBloqueHeap(int pid, int size, datosHeap* puntero) {
 		if (aux->numeroPagina == puntero->pagina && aux->pid == pid) {
 			if (size + sizeof(HeapMetaData) > aux->tamanoDisponible) {
 				pthread_mutex_unlock(&mutexListaAdminHeap);
-				printf("\nEntre a un error\n");
+				//printf("\nEntre a un error\n");
 
 			} else {
 				aux->tamanoDisponible = aux->tamanoDisponible - size
@@ -2114,24 +2130,26 @@ void reservarPaginaHeap(int pid, int pagina) { //Reservo una página de heap nue
 	memcpy(buffer, &aux, sizeof(HeapMetaData));
 	Serializar(PROCESOPIDEHEAP, 4, &pid, clienteMEM);
 	sem_wait(&semMemoriaReservoHeap);
-	void* envioPagina = malloc(sizeof(HeapMetaData) + 4 * sizeof(int));
-	memcpy(envioPagina, &pid, sizeof(processID));
-	memcpy(envioPagina + 4, &pagina, sizeof(int));
-	memcpy(envioPagina + 8, &tamanoAux, sizeof(int));
-	memcpy(envioPagina + 12, &offsetAux, sizeof(int));
-	memcpy(envioPagina + 16, buffer, sizeof(HeapMetaData));
-	Serializar(PAGINA, sizeof(HeapMetaData) + 4 * sizeof(int), envioPagina,
-			clienteMEM);
-	sem_wait(&semPaginaEnviada);
+	if (abortoPorFaltaDeMemoria == 0) {
+		void* envioPagina = malloc(sizeof(HeapMetaData) + 4 * sizeof(int));
+		memcpy(envioPagina, &pid, sizeof(processID));
+		memcpy(envioPagina + 4, &pagina, sizeof(int));
+		memcpy(envioPagina + 8, &tamanoAux, sizeof(int));
+		memcpy(envioPagina + 12, &offsetAux, sizeof(int));
+		memcpy(envioPagina + 16, buffer, sizeof(HeapMetaData));
+		Serializar(PAGINA, sizeof(HeapMetaData) + 4 * sizeof(int), envioPagina,
+				clienteMEM);
+		sem_wait(&semPaginaEnviada);
 
-	datosAdminHeap* bloqueAdmin = malloc(sizeof(datosAdminHeap));
-	bloqueAdmin->numeroPagina = pagina;
-	bloqueAdmin->pid = pid;
-	bloqueAdmin->tamanoDisponible = aux.size;
+		datosAdminHeap* bloqueAdmin = malloc(sizeof(datosAdminHeap));
+		bloqueAdmin->numeroPagina = pagina;
+		bloqueAdmin->pid = pid;
+		bloqueAdmin->tamanoDisponible = aux.size;
 
-	list_add(listaAdmHeap, bloqueAdmin);
-	free(buffer);
-	free(envioPagina);
+		list_add(listaAdmHeap, bloqueAdmin);
+		free(buffer);
+		free(envioPagina);
+	}
 }
 
 datosHeap* procesoPideHeap(int pid, int tamano) {
@@ -2156,11 +2174,18 @@ datosHeap* procesoPideHeap(int pid, int tamano) {
 
 		//TODO manejar si ya no hay mas recursos
 	}
-	pthread_mutex_lock(&mutexMemoria);
-	reservarBloqueHeap(pid, tamano, puntero);
-	pthread_mutex_unlock(&mutexMemoria);
-	sem_post(&semTerminoDataHeap);
-	return puntero;
+	if (abortoPorFaltaDeMemoria == 0) {
+		pthread_mutex_lock(&mutexMemoria);
+		reservarBloqueHeap(pid, tamano, puntero);
+		pthread_mutex_unlock(&mutexMemoria);
+		sem_post(&semTerminoDataHeap);
+		return puntero;
+	} else {
+		sem_post(&semTerminoDataHeap);
+		puntero = malloc(sizeof(datosHeap));
+		puntero->pagina = -2;
+		return puntero;
+	}
 }
 
 void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
