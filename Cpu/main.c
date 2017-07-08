@@ -1,6 +1,6 @@
 #include "main.h"
-
-
+#define ARCHIVOLOG "/home/utnso/Log/logCpu.txt"
+t_log *logger;
 archivoConfigCPU* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionKernel;
@@ -62,6 +62,8 @@ AnSISOP_kernel privilegiadas = { .AnSISOP_escribir = escribir, .AnSISOP_wait =
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
+	logger= log_create(ARCHIVOLOG, "CPU", 0, LOG_LEVEL_INFO);
+	log_info(logger,"Iniciando CPU\n");
 	pthread_create(&hiloKernel, NULL, ConectarConKernel, NULL);
 	pthread_create(&hiloMemoria, NULL, conectarConMemoria, NULL);
 	pthread_create(&hiloProcesarScript, NULL, procesarScript, NULL);
@@ -141,7 +143,7 @@ int32_t ConectarConKernel() {
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	switch (id) {
 	case ARCHIVO: {
-		printf("%s", paquete);
+		log_info(logger,"%s", paquete);
 		break;
 	}
 	case MATARPIDPORCONSOLA: {
@@ -162,30 +164,30 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case FILESYSTEM: {
-		printf("Se conecto FS");
+		log_info(logger,"Se conecto FS");
 		break;
 	}
 	case KERNEL: {
-		printf("Se conecto Kernel\n");
+		log_info(logger,"Se conecto Kernel\n");
 		break;
 	}
 	case CPU: {
-		printf("Se conecto CPU");
+		log_info(logger,"Se conecto CPU");
 		break;
 	}
 	case CONSOLA: {
-		printf("Se conecto Consola");
+		log_info(logger,"Se conecto Consola");
 		break;
 	}
 	case VALORVARIABLECOMPARTIDA: {
 		memcpy(&valorVaribleCompartida, paquete, 4);
-		printf("compartida en procesar %d", valorVaribleCompartida);
+		log_info(logger,"compartida en procesar %d", valorVaribleCompartida);
 		sem_post(&semVariableCompartidaValor);
 		break;
 	}
 	case MEMORIA: {
 		memcpy(&tamanoPag, (paquete), sizeof(int));
-		printf("Se conecto Memoria\n");
+		log_info(logger,"Se conecto Memoria\n");
 		break;
 	}
 	case LEERSENTENCIA: {
@@ -211,7 +213,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	case PCB: {
 		sem_wait(&semDestruirPCB);
 		unPcb = deserializarPCB(paquete);
-		printf("unPcb id: %d\n", unPcb->programId);
+		log_info(logger,"unPcb id: %d\n", unPcb->programId);
 		sem_post(&semHayScript);
 		break;
 	}
@@ -220,10 +222,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		memcpy(&quantumSleep, paquete + 4, 4);
 		memcpy(&algoritmo, paquete + 8, 4);
 		memcpy(&stackSize, paquete + 12, 4);
-		printf("quatum: %d\n", quantum);
-		printf("quatum slep: %d\n", quantumSleep);
-		printf("stack: %d\n", stackSize);
-		printf("algoritmo: %d\n", algoritmo);
+		log_info(logger,"quatum: %d\n", quantum);
+		log_info(logger,"quatum slep: %d\n", quantumSleep);
+		log_info(logger,"stack: %d\n", stackSize);
+		log_info(logger,"algoritmo: %d\n", algoritmo);
 		break;
 	}
 	case PROCESOPIDEHEAP: {
@@ -346,7 +348,7 @@ void procesarScript() {
 			sem_wait(&semSentenciaCompleta);
 			char* barra_cero = "\0";
 			memcpy(sentencia + (datos_para_memoria->size - 1), barra_cero, 1);
-			printf("[procesarScript]Sentencia: %s de pid %d \n", sentencia,
+			log_info(logger,"[procesarScript]Sentencia: %s de pid %d \n", sentencia,
 					pid);
 			analizadorLinea(depurarSentencia(sentencia), &primitivas,
 					&privilegiadas);
@@ -387,7 +389,7 @@ char* depurarSentencia(char* sentencia) {
 
 }
 t_puntero definirVariable(t_nombre_variable nombreVariable) {
-	printf("[definirVariable]Entre a definir %c\n", nombreVariable);
+	log_info(logger,"[definirVariable]Entre a definir %c\n", nombreVariable);
 	posicionMemoria *direccionVariable = malloc(sizeof(posicionMemoria));
 	variable *unaVariable = malloc(sizeof(variable));
 	indiceDeStack *indiceStack = malloc(sizeof(indiceDeStack));
@@ -405,17 +407,17 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 	}
 
 	else if ((nombreVariable >= '0') && (nombreVariable <= '9')) {
-		printf("[definirVariable]Creando argumento %c\n", nombreVariable);
+		log_info(logger,"[definirVariable]Creando argumento %c\n", nombreVariable);
 		armarDireccionDeArgumento(direccionVariable);
 		list_add(indiceStack->args, direccionVariable);
-		printf("[definirVariable]Direccion de argumento %c es %d %d %d\n",
+		log_info(logger,"[definirVariable]Direccion de argumento %c es %d %d %d\n",
 				nombreVariable, direccionVariable->pag, direccionVariable->off,
 				direccionVariable->size);
 		indiceStack->tamanoArgs++;
 	}
 
 	else if (indiceStack->tamanoVars == 0 && (unPcb->tamanoIndiceStack) > 1) {
-		printf("[definirVariable]Declarando variable %c de funcion\n",
+		log_info(logger,"[definirVariable]Declarando variable %c de funcion\n",
 				nombreVariable);
 		armarDireccionDeFuncion(direccionVariable);
 		unaVariable->etiqueta = nombreVariable;
@@ -435,7 +437,7 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 	if (programaAbortado == 0) {
 		int valor = 0;
 		int direccionRetorno = convertirDireccionAPuntero(direccionVariable);
-		printf("[definirVariable]Defino %c ubicada en %d\n", nombreVariable,
+		log_info(logger,"[definirVariable]Defino %c ubicada en %d\n", nombreVariable,
 				direccionRetorno);
 		enviarDirecParaEscribirMemoria(direccionVariable, valor);
 		return (direccionRetorno);
@@ -464,17 +466,17 @@ void armarDireccionDeFuncion(posicionMemoria *direccionReal) {
 		int posicionStackAnterior = unPcb->tamanoIndiceStack - 2;
 		int posicionUltimaVariable = ((indiceDeStack*) (list_get(
 				unPcb->indiceStack, unPcb->tamanoIndiceStack - 2)))->tamanoVars - 1;
-		printf("[armarDireccionDeFuncion]Entrando a definir variable en contexto sin argumentos y sin vars en stack:%d var:%d\n",posicionStackAnterior, posicionUltimaVariable);
+		log_info(logger,"[armarDireccionDeFuncion]Entrando a definir variable en contexto sin argumentos y sin vars en stack:%d var:%d\n",posicionStackAnterior, posicionUltimaVariable);
 		proximaDireccion(posicionStackAnterior, posicionUltimaVariable, direccionReal);
 		}
 	} else if (stackActual->tamanoVars == 0) {
-		printf("[armarDireccionDeFuncion]Entrando a definir variable a partir del ultimo argumento\n");
+		log_info(logger,"[armarDireccionDeFuncion]Entrando a definir variable a partir del ultimo argumento\n");
 		int posicionStackActual = unPcb->tamanoIndiceStack - 1;
 		int posicionUltimoArgumento = (stackActual)->tamanoArgs - 1;
 		proximaDireccionArg(posicionStackActual, posicionUltimoArgumento,
 				direccionReal);
 	} else {
-		printf("[armarDireccionDeFuncion]Entrando a definir variable a partir de la ultima variable\n");
+		log_info(logger,"[armarDireccionDeFuncion]Entrando a definir variable a partir de la ultima variable\n");
 		int posicionStackActual = unPcb->tamanoIndiceStack - 1;
 		int posicionUltimaVariable = stackActual->tamanoVars - 1;
 		proximaDireccion(posicionStackActual, posicionUltimaVariable,
@@ -486,11 +488,11 @@ void armarDireccionDeFuncion(posicionMemoria *direccionReal) {
 void proximaDireccionArg(int posStack, int posUltVar,
 		posicionMemoria* direccionReal) {
 	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
-	printf("Entre a proximadirecArg\n");
+	log_info(logger,"Entre a proximadirecArg\n");
 	int offset = ((posicionMemoria*) (list_get(
 			((indiceDeStack*) (list_get(unPcb->indiceStack, posStack)))->args,
 			posUltVar)))->off + 4;
-	printf("Offset siguiente es %d\n", offset);
+	log_info(logger,"Offset siguiente es %d\n", offset);
 	if (offset >= tamanoPag) {
 		direccion->pag =
 				((posicionMemoria*) (list_get(
@@ -521,7 +523,7 @@ void proximaDireccionArg(int posStack, int posUltVar,
 }
 
 t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
-	printf("[obtenerPosicionVariable]Obtener posicion de %c\n", nombreVariable);
+	log_info(logger,"[obtenerPosicionVariable]Obtener posicion de %c\n", nombreVariable);
 	int posicionStack = unPcb->tamanoIndiceStack - 1;
 	int direccionRetorno;
 	if ((nombreVariable >= '0') && (nombreVariable <= '9')) {
@@ -544,7 +546,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 			variableNueva = ((variable*) (list_get(
 					((indiceDeStack*) (list_get(unPcb->indiceStack,
 							posicionStack)))->vars, posMax)));
-			printf("[obtenerPosicionVariable]Variable: %c\n",
+			log_info(logger,"[obtenerPosicionVariable]Variable: %c\n",
 					variableNueva->etiqueta);
 			if (variableNueva->etiqueta == nombreVariable) {
 				direccionRetorno =
@@ -563,7 +565,7 @@ t_puntero obtenerPosicionVariable(t_nombre_variable nombreVariable) {
 			posMax--;
 		}
 	}
-	printf("[ERROR]No debería llegar aca\n");
+	log_info(logger,"[ERROR]No debería llegar aca\n");
 }
 
 void destruirContextoActual(void) {
@@ -594,12 +596,12 @@ void destruirContextoActual(void) {
 	list_destroy(contextoAFinalizar->args);
 	free(contextoAFinalizar);
 	unPcb->tamanoIndiceStack--;
-	printf("[destruirContextoActual]Contexto destruido\n");
+	log_info(logger,"[destruirContextoActual]Contexto destruido\n");
 
 }
 
 void finalizar(void) {
-	printf("[finalizar]Finalizar funcion\n");
+	log_info(logger,"[finalizar]Finalizar funcion\n");
 	if (unPcb->tamanoIndiceStack != 0){
 		indiceDeStack *contextoAFinalizar = list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack - 1);
 		unPcb->programCounter = contextoAFinalizar->retPos;
@@ -607,7 +609,7 @@ void finalizar(void) {
 	}
 	else{
 		destruirContextoActual();
-		printf("[finalizar]Programa Finalizado\n");
+		log_info(logger,"[finalizar]Programa Finalizado\n");
 		programaFinalizado = 1;
 		Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
 		destruirPCB(unPcb);
@@ -653,11 +655,11 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero punteroRetorno) {
 void irAlLabel(t_nombre_etiqueta etiqueta) {
 	t_puntero_instruccion instruccion;
 	char** string_cortado = string_split(etiqueta, "\n");
-	printf("[irAlLabel]Busco etiqueta: %s y mide: %d\n", etiqueta,
+	log_info(logger,"[irAlLabel]Busco etiqueta: %s y mide: %d\n", etiqueta,
 			strlen(etiqueta));
 	instruccion = metadata_buscar_etiqueta(string_cortado[0],
 			unPcb->indiceEtiquetas, unPcb->tamanoindiceEtiquetas);
-	printf("[irAlLabel]Ir a instruccion %d\n", instruccion);
+	log_info(logger,"[irAlLabel]Ir a instruccion %d\n", instruccion);
 	unPcb->programCounter = instruccion - 1;
 	return;
 }
@@ -669,7 +671,7 @@ void retornar(t_valor_variable valorRetorno) {
 	int direccionRetorno = convertirDireccionAPuntero(
 			&(contextoAFinalizar->retVar));
 	asignar(direccionRetorno, valorRetorno);
-	printf("[retornar]Retornando %d en %d\n", valorRetorno, direccionRetorno);
+	log_info(logger,"[retornar]Retornando %d en %d\n", valorRetorno, direccionRetorno);
 
 	unPcb->programCounter = contextoAFinalizar->retPos;
 	destruirContextoActual();
@@ -686,13 +688,13 @@ t_valor_variable dereferenciar(t_puntero puntero) {
 	enviarDirecParaLeerMemoria(direccion, DEREFERENCIAR);
 	sem_wait(&semDereferenciar);
 	free(direccion);
-	printf("[dereferenciar]Dereferenciar %d y su valor es: %d\n", puntero,
+	log_info(logger,"[dereferenciar]Dereferenciar %d y su valor es: %d\n", puntero,
 			valorDerenferenciado);
 	return valorDerenferenciado;
 }
 
 void asignar(t_puntero punteroAVariable, t_valor_variable valor) {
-	printf("[asignar]Asignando en %d el valor %d\n", punteroAVariable, valor);
+	log_info(logger,"[asignar]Asignando en %d el valor %d\n", punteroAVariable, valor);
 	posicionMemoria *direccion = malloc(sizeof(posicionMemoria));
 	convertirPunteroADireccion(punteroAVariable, direccion);
 	enviarDirecParaEscribirMemoria(direccion, valor);
@@ -715,7 +717,7 @@ void armarDireccionDeArgumento(posicionMemoria *direccionReal) {
 
 	if (((indiceDeStack*) list_get(unPcb->indiceStack,
 			unPcb->tamanoIndiceStack - 1))->tamanoArgs == 0) {
-		printf("[armarDireccionDeArgumento]No hay argumentos\n");
+		log_info(logger,"[armarDireccionDeArgumento]No hay argumentos\n");
 		int posicionStackAnterior = unPcb->tamanoIndiceStack - 2;
 		int posicionUltimaVariable = ((indiceDeStack*) (list_get(
 				unPcb->indiceStack, unPcb->tamanoIndiceStack - 2)))->tamanoVars
@@ -723,7 +725,7 @@ void armarDireccionDeArgumento(posicionMemoria *direccionReal) {
 		proximaDireccion(posicionStackAnterior, posicionUltimaVariable,
 				direccionReal);
 	} else {
-		printf("[armarDireccionDeArgumento]Busco ultimo argumento\n");
+		log_info(logger,"[armarDireccionDeArgumento]Busco ultimo argumento\n");
 		int posicionStackActual = unPcb->tamanoIndiceStack - 1;
 		int posicionUltimoArgumento = ((indiceDeStack*) (list_get(
 				unPcb->indiceStack, unPcb->tamanoIndiceStack - 1)))->tamanoArgs
@@ -846,11 +848,11 @@ void crearEstructuraParaMemoria(programControlBlock* unPcb, int tamPag,
 	info->pag = ceil(
 			(double) unPcb->indiceCodigo[(unPcb->programCounter) * 2]
 					/ (double) tamPag);
-	//printf("[crearEstructuraParaMemoria]Voy a leer la pagina: %d\n", info->pag);
+	//log_info(logger,"[crearEstructuraParaMemoria]Voy a leer la pagina: %d\n", info->pag);
 	info->off = (unPcb->indiceCodigo[((unPcb->programCounter) * 2)] % tamPag);
-	//printf("[crearEstructuraParaMemoria]Voy a leer con offswet: %d\n", info->off);
+	//log_info(logger,"[crearEstructuraParaMemoria]Voy a leer con offswet: %d\n", info->off);
 	info->size = unPcb->indiceCodigo[((unPcb->programCounter) * 2) + 1];
-	//printf("[crearEstructuraParaMemoria]Voy a leer el tamano: %d\n", info->size);
+	//log_info(logger,"[crearEstructuraParaMemoria]Voy a leer el tamano: %d\n", info->size);
 	memcpy(informacion, info, 12);
 	free(info);
 	return;
@@ -902,7 +904,7 @@ t_valor_variable obtenerValorCompartida(t_nombre_compartida variable) {
 	Serializar(VALORVARIABLECOMPARTIDA, strlen(variable) + 1,
 			variable_compartida, cliente);
 	sem_wait(&semVariableCompartidaValor);
-	printf("[obtenerValorCompartida]compartida en procesar %d",
+	log_info(logger,"[obtenerValorCompartida]compartida en procesar %d",
 			valorVaribleCompartida);
 	free(variable_compartida);
 	return valorVaribleCompartida;
@@ -915,7 +917,7 @@ t_valor_variable asignarValorCompartida(t_nombre_compartida variable,
 	memcpy(variableCompartida, &valor, 4);
 	memcpy(variableCompartida + 4, variable, strlen(variable));
 	memcpy(variableCompartida + strlen(variable) + 4, barra_cero, 1);
-	printf("[asignarValorCompartida]Variable %s le asigno %d\n",
+	log_info(logger,"[asignarValorCompartida]Variable %s le asigno %d\n",
 			variableCompartida + 4, (int*) variableCompartida[0]);
 	Serializar(ASIGNOVALORVARIABLECOMPARTIDA, 5 + strlen(variable),
 			variableCompartida, cliente);
@@ -977,7 +979,7 @@ t_puntero reservar(t_valor_variable espacio) {
 	sem_wait(&semProcesoPideHeap);
 	if (programaAbortado == 0) {
 		t_puntero puntero = paginaHeap * tamanoPag + offsetHeap;
-		printf("El puntero es %d", puntero);
+		log_info(logger,"El puntero es %d", puntero);
 		free(envio);
 		return puntero;
 	}
@@ -1014,15 +1016,15 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
 	int descriptor;
 	char *flagsAConcatenar = string_new();
 	if (flags.creacion == true) {
-		printf("Tiene permiso de creacion\n");
+		log_info(logger,"Tiene permiso de creacion\n");
 		string_append(&flagsAConcatenar, "c");
 	}
 	if (flags.lectura == true) {
-		printf("Tiene permiso de lectura\n");
+		log_info(logger,"Tiene permiso de lectura\n");
 		string_append(&flagsAConcatenar, "r");
 	}
 	if (flags.escritura == true) {
-		printf("Tiene permiso de escritura\n");
+		log_info(logger,"Tiene permiso de escritura\n");
 		string_append(&flagsAConcatenar, "w");
 	}
 	int tamanoFlags = sizeof(char) * strlen(flagsAConcatenar);
@@ -1063,7 +1065,7 @@ void leer(t_descriptor_archivo descriptor, t_puntero puntero,
 	if (programaAbortado == 0) {
 		char *infoLeidaChar = string_new();
 		string_append(&infoLeidaChar, infoLeida);
-		printf("info leida %s", infoLeidaChar);
+		log_info(logger,"info leida %s", infoLeidaChar);
 		int pagina = puntero / tamanoPag;
 		int offset = puntero - (tamanoPag * pagina);
 		void* envioPagina = malloc(tamanoPag + 4 * sizeof(int));

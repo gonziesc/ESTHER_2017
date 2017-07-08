@@ -17,6 +17,9 @@
 #include <serializador.h>
 #include <parser/metadata_program.h>
 #include <semaphore.h>
+#include <commons/log.h>
+
+t_log* log;
 
 typedef struct{
 	int PID;

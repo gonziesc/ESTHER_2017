@@ -18,6 +18,8 @@
 #include <commons/log.h>
 #include <commons/collections/list.h>
 
+t_log* log;
+
 typedef struct {
 	int32_t id;
 	int32_t tamanio;

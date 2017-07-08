@@ -25,9 +25,10 @@
 #include <configuracion.h>
 #include <serializador.h>
 #include <semaphore.h>
-
+#include <commons/log.h>
 #include <pthread.h>
 
+t_log* log;
 
 void configuracion(char*, char*);
 int32_t levantarConexion();

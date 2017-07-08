@@ -1,5 +1,5 @@
 #include "main.h"
-
+#define ARCHIVOLOG "/home/utnso/Log/logFileSystem.txt"
 unsigned char *mmapDeBitmap;
 t_bitarray * bitarray;
 archivoConfigFS* t_archivoConfig;
@@ -21,6 +21,8 @@ int noInteresa;
 int32_t main(int argc, char**argv) {
 	sem_init(&semConfig, 0, 0);
 	configuracion(argv[1], argv[2]);
+	log= log_create(ARCHIVOLOG, "FileSystem", 0, LOG_LEVEL_INFO);
+	log_info(log,"Iniciando FileSystem\n");
 	sem_wait(&semConfig);
 	bitarray = bitarray_create_with_mode(mmapDeBitmap,
 			(t_archivoConfig->TAMANIO_BLOQUES
@@ -36,7 +38,7 @@ int32_t main(int argc, char**argv) {
 		fputc(1, f);
 	}
 	fclose(f);
-	printf("El tamano del bitarray es de : %d\n\n\n",
+	log_info(log,"El tamano del bitarray es de : %d\n\n\n",
 			bitarray_get_max_bit(bitarray));
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
 			levantarConexion, NULL);
@@ -54,7 +56,7 @@ void inicializarMmap() {
 	struct stat mystat;
 
 	if (fstat(bitmap, &mystat) < 0) {
-		printf("Error al establecer fstat\n");
+		log_info(log,"Error al establecer fstat\n");
 		close(bitmap);
 	}
 
@@ -69,9 +71,9 @@ void printBitmap() {
 	int j;
 	for (j = 0; j < 32; j++) {
 		bool a = bitarray_test_bit(bitarray, j);
-		printf("%i", a);
+		log_info(log,"%i", a);
 	}
-	printf("\n");
+	log_info(log,"\n");
 }
 
 void adx_store_data(const char *filepath, const char *data) {
@@ -122,11 +124,11 @@ int32_t levantarConexion() {
 		perror("Falló el bind");
 		return 1;
 	}
-	printf("Estoy escuchando\n");
+	log_info(log,"Estoy escuchando\n");
 	listen(servidor, 100);
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
 	Serializar(FILESYSTEM, 4, &noInteresa, cliente);
-	printf("Recibí una conexión en %d!!\n", cliente);
+	log_info(log,"Recibí una conexión en %d!!\n", cliente);
 	while (1) {
 		paquete* paqueteRecibido = Deserializar(cliente);
 		if (paqueteRecibido->header < 0) {
@@ -142,7 +144,7 @@ int32_t levantarConexion() {
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	switch (id) {
 	case KERNEL: {
-		printf("Se conecto Kernel\n");
+		log_info(log,"Se conecto Kernel\n");
 		break;
 	}
 	case VALIDARARCHIVO: {
@@ -159,7 +161,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
 		string_append(&nombreArchivoRecibido, "Archivos");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
-		printf("%s\n", nombreArchivoRecibido);
+		log_info(log,"%s\n", nombreArchivoRecibido);
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
 			// file exists
 			validado = 1;
@@ -220,11 +222,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 			validado = 1;
 			Serializar(CREARARCHIVO, 4, &validado, cliente);
-			printf("Se creo el archivo\n");
+			log_info(log,"Se creo el archivo\n");
 		} else {
 			validado = 0;
 			Serializar(CREARARCHIVO, 4, &validado, cliente);
-			printf("No se creo el archivo\n");
+			log_info(log,"No se creo el archivo\n");
 		}
 		break;
 	}
@@ -237,29 +239,29 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		int tamanoBuffer;
 
 		memcpy(&tamanoNombreArchivo, paquete, sizeof(int));
-		printf("Tamano nombre archivo:%d\n", tamanoNombreArchivo);
+		log_info(log,"Tamano nombre archivo:%d\n", tamanoNombreArchivo);
 		char* nombreArchivo = malloc(tamanoNombreArchivo);
 
 		memcpy(&puntero, paquete + 4, sizeof(int));
-		printf("Puntero:%d\n", puntero);
+		log_info(log,"Puntero:%d\n", puntero);
 
 		memcpy(&tamanoBuffer, paquete + 8, sizeof(int));
-		printf("Tamano de la data:%d\n", tamanoBuffer);
+		log_info(log,"Tamano de la data:%d\n", tamanoBuffer);
 		void* buffer = malloc(tamanoBuffer);
 		int tamanoTotalBuffer = tamanoBuffer;
 
 		memcpy(buffer, paquete + 12, tamanoBuffer);
-		//printf("Data :%s\n", buffer);
+		//log_info(log,"Data :%s\n", buffer);
 
 		memcpy(nombreArchivo, paquete + 12 + tamanoBuffer, tamanoNombreArchivo);
 		strcpy(nombreArchivo + tamanoNombreArchivo, "\0");
-		printf("Nombre archivo:%s\n", nombreArchivo);
+		log_info(log,"Nombre archivo:%s\n", nombreArchivo);
 		char *nombreArchivoRecibido = string_new();
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
 		string_append(&nombreArchivoRecibido, "Archivos/");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
 
-		printf("Toda la ruta :%s\n", nombreArchivoRecibido);
+		log_info(log,"Toda la ruta :%s\n", nombreArchivoRecibido);
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
 
 			char** arrayBloques = obtArrayDeBloquesDeArchivo(
@@ -267,25 +269,25 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 			int cantidadBloques = 0;
 			while (!(arrayBloques[cantidadBloques] == NULL)) {
-				printf("%s \n", arrayBloques[cantidadBloques]);
+				log_info(log,"%s \n", arrayBloques[cantidadBloques]);
 				cantidadBloques++;
 			}
 
-			printf("Cantidad de bloques :%d\n", cantidadBloques);
+			log_info(log,"Cantidad de bloques :%d\n", cantidadBloques);
 
 			char *nombreBloque = string_new();
 			string_append(&nombreBloque, t_archivoConfig->PUERTO_MONTAJE);
 			string_append(&nombreBloque, "Bloques/");
 			string_append(&nombreBloque, arrayBloques[cantidadBloques - 1]);
 			string_append(&nombreBloque, ".bin");
-			printf("Nombre del ultimo bloque: %s\n", nombreBloque);
-			printf("Tamano del archivo : %d\n",
+			log_info(log,"Nombre del ultimo bloque: %s\n", nombreBloque);
+			log_info(log,"Tamano del archivo : %d\n",
 					(obtTamanioArchivo(nombreArchivoRecibido)));
-			printf("Tamano del bloque: %d\n", t_archivoConfig->TAMANIO_BLOQUES);
+			log_info(log,"Tamano del bloque: %d\n", t_archivoConfig->TAMANIO_BLOQUES);
 			int cantRestante = cantidadBloques
 					* t_archivoConfig->TAMANIO_BLOQUES
 					- ((obtTamanioArchivo(nombreArchivoRecibido)));
-			printf("Cantidad restante :%d\n", cantRestante);
+			log_info(log,"Cantidad restante :%d\n", cantRestante);
 			if (tamanoBuffer < cantRestante) {
 				adx_store_data(nombreBloque, buffer);
 				char *dataAPonerEnFile = string_new();
@@ -460,7 +462,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
 		string_append(&nombreArchivoRecibido, "Archivos/");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
-		printf("Nombre archivo:%s\n", nombreArchivo);
+		log_info(log,"Nombre archivo:%s\n", nombreArchivo);
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
 
 			int calcularBloqueInicial = offset

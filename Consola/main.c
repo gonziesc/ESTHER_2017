@@ -1,5 +1,5 @@
 #include "main.h"
-
+#define ARCHIVOLOG "/home/utnso/Log/logMemoria.txt"
 int32_t opcion;
 char nombreArchivo[100];
 archivoConfigConsola* t_archivoConfig;
@@ -23,6 +23,8 @@ int pidActual;
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
+	log= log_create(ARCHIVOLOG, "Consola", 0, LOG_LEVEL_INFO);
+	log_info(log,"Iniciando Consola\n");
 	idHiloConectarseConKernel = pthread_create(&hiloConectarseConKernel, NULL,
 			ConectarseConKernel, noInteresa);
 	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando,

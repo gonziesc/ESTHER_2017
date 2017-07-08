@@ -1,4 +1,5 @@
 #include "main.h"
+#define ARCHIVOLOG "/home/utnso/Log/logMemoria.txt"
 archivoConfigMemoria* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionServidor;
@@ -48,9 +49,9 @@ sem_t semPaginas;
 pthread_mutex_t mutexProcesar;
 
 int32_t main(int argc, char**argv) {
-
-	printf("memoria \n");
 	configuracion(argv[1]);
+	log= log_create(ARCHIVOLOG, "Memoria", 0, LOG_LEVEL_INFO);
+	log_info(log,"Iniciando Memoria\n");
 	infoTablaMemoria tablaMemoria[t_archivoConfig->MARCOS];
 	infoNodoCache tablaCache[t_archivoConfig->ENTRADAS_CACHE];
 	cacheLru tablaUsos[t_archivoConfig->ENTRADAS_CACHE];
@@ -93,7 +94,7 @@ int32_t levantarConexion() {
 		return 1;
 	}
 
-	printf("Estoy escuchando\n");
+	log_info(log,"Estoy escuchando\n");
 	listen(servidor, 100);
 
 	conectarseConKernel();
@@ -102,7 +103,7 @@ int32_t levantarConexion() {
 
 void conectarseConKernel() {
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-	printf("Recibí una conexión en %d!!\n", cliente);
+	log_info(log,"Recibí una conexión en %d!!\n", cliente);
 	int envio = t_archivoConfig->MARCOS_SIZE;
 	Serializar(MEMORIA, 4, &envio, cliente);
 
@@ -124,7 +125,7 @@ void atenderConexionesCPu() {
 }
 
 int atenderCpu(int socket) {
-	printf("Recibí una conexión en %d!!\n", socket);
+	log_info(log,"Recibí una conexión en %d!!\n", socket);
 	int envio = t_archivoConfig->MARCOS_SIZE;
 	Serializar(MEMORIA, 4, &envio, socket);
 	while (1) {
@@ -163,7 +164,7 @@ int atenderKernel() {
 
 void leerComando() {
 	while (1) {
-		printf("\nIngrese comando\n"
+		log_info(log,"\nIngrese comando\n"
 				"1: dump\n"
 				"2: buscar frame\n"
 				"3: leer de pagina\n"
@@ -179,13 +180,13 @@ void leerComando() {
 		case 2: {
 			int32_t pid;
 			int32_t pagina;
-			printf("ingresar pid\n");
+			log_info(log,"ingresar pid\n");
 			scanf("%d", &pid);
-			printf("ingresar pagina\n");
+			log_info(log,"ingresar pagina\n");
 			scanf("%d", &pagina);
 			int32_t unFrame = buscarFrame(pid, pagina);
-			printf("el frame correspondiente: ");
-			printf("%d\n", unFrame);
+			log_info(log,"el frame correspondiente: ");
+			log_info(log,"%d\n", unFrame);
 			break;
 		}
 		case 3: {
@@ -193,20 +194,20 @@ void leerComando() {
 			int32_t pagina;
 			int32_t offset;
 			int32_t tamano;
-			printf("ingresar pid\n");
+			log_info(log,"ingresar pid\n");
 			scanf("%d", &pid);
-			printf("ingresar pagina\n");
+			log_info(log,"ingresar pagina\n");
 			scanf("%d", &pagina);
-			printf("ingresar offset\n");
+			log_info(log,"ingresar offset\n");
 			scanf("%d", &offset);
-			printf("ingresar tamano\n");
+			log_info(log,"ingresar tamano\n");
 			scanf("%d", &tamano);
 			char *conten = leerDePagina(pid, pagina, offset, tamano);
 
 			/*else {
 			 conten = leerDeCache(pid, pagina, offset, tamano);
 			 }*/
-			printf("%s/n", conten);
+			log_info(log,"%s/n", conten);
 			break;
 		}
 
@@ -216,16 +217,16 @@ void leerComando() {
 			int32_t offset;
 			int32_t tamano;
 			//char* contenido = malloc(32); pq de 32 y aca
-			printf("ingresar pid\n");
+			log_info(log,"ingresar pid\n");
 			scanf("%d", &pid);
-			printf("ingresar pagina\n");
+			log_info(log,"ingresar pagina\n");
 			scanf("%d", &pagina);
-			printf("ingresar offset\n");
+			log_info(log,"ingresar offset\n");
 			scanf("%d", &offset);
-			printf("ingresar tamano\n");
+			log_info(log,"ingresar tamano\n");
 			scanf("%d", &tamano);
 			char* contenido = malloc(tamano);
-			printf("ingresar contenido\n");
+			log_info(log,"ingresar contenido\n");
 			scanf("%s", contenido);
 			escribirEnCache(pid, pagina, offset, tamano, contenido);
 			escribirEnPagina(pid, pagina, offset, tamano, contenido);
@@ -238,9 +239,9 @@ void leerComando() {
 		case 6: {
 			int32_t pid;
 			int32_t pagina;
-			printf("ingresar pid\n");
+			log_info(log,"ingresar pid\n");
 			scanf("%d", &pid);
-			printf("ingresar pagina\n");
+			log_info(log,"ingresar pagina\n");
 			scanf("%d", &pagina);
 			liberarPaginaDeProceso(pid, pagina);
 			break;
@@ -255,27 +256,27 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	int numero_pagina, offset, tamanio, pid_actual;
 	switch (id) {
 	case ARCHIVO: {
-		printf("%s", paquete);
+		log_info(log,"%s", paquete);
 		break;
 	}
 	case FILESYSTEM: {
-		printf("Se conecto FS\n");
+		log_info(log,"Se conecto FS\n");
 		break;
 	}
 	case KERNEL: {
-		printf("Se conecto Kernel\n");
+		log_info(log,"Se conecto Kernel\n");
 		break;
 	}
 	case CPU: {
-		printf("Se conecto CPU\n");
+		log_info(log,"Se conecto CPU\n");
 		break;
 	}
 	case CONSOLA: {
-		printf("Se conecto Consola\n");
+		log_info(log,"Se conecto Consola\n");
 		break;
 	}
 	case MEMORIA: {
-		printf("Se conecto memoria\n");
+		log_info(log,"Se conecto memoria\n");
 		break;
 	}
 	case CODIGO: {
@@ -323,8 +324,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(codigoPagina, paquete + 16, tamano);
 		almacenarFrameEnCache(pid, tamano, codigoPagina, numeroPagina);
 		escribirEnPagina(pid, numeroPagina, offset, tamano, codigoPagina);
-		//printf("pagina: %s\n", pagina);
-		//printf("pid: %d\n", pid);
+		//log_info(log,"pagina: %s\n", pagina);
+		//log_info(log,"pid: %d\n", pid);
 		Serializar(PAGINAENVIADA, 4, &noIMporta, socket);
 		//tamanoPaquete es la cantidad de paginas que necesito
 
@@ -343,7 +344,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 				"[LEERSENTENCIA]Quiero leer en la direccion: %d %d %d y le voy a enviar a socket: %d\n",
 				numero_pagina, offset, tamanio, socket);
 		char * contenido = leerDePagina(pid, numero_pagina, offset, tamanio);
-		//printf("lei: %s\n", contenido);
+		//log_info(log,"lei: %s\n", contenido);
 		Serializar(id, tamanio, contenido, socket);
 		//ojo pid actual
 		break;
@@ -359,7 +360,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 				"Quiero leer en la direccion: %d %d %d y le voy a enviar a socket: %d\n",
 				numero_pagina, offset, offset, socket);
 		char * contenido = leerDePagina(pid, numero_pagina, offset, tamanio);
-		//printf("lei: %s\n", contenido);
+		//log_info(log,"lei: %s\n", contenido);
 		Serializar(DEREFERENCIAR, tamanio, contenido, socket);
 		//ojo pid actual
 		break;
@@ -445,14 +446,14 @@ void dump() {
 
 void size() {
 	int32_t size;
-	printf("size: 0 memoria 1 proceso\n ");
+	log_info(log,"size: 0 memoria 1 proceso\n ");
 	scanf("%d", &size);
 	switch (size) {
 	case 0: {
-		printf("tamanio total memoria %d\n", frameGeneral.tamanio);
-		printf("tamanio disponible memoria %d\n",
+		log_info(log,"tamanio total memoria %d\n", frameGeneral.tamanio);
+		log_info(log,"tamanio disponible memoria %d\n",
 				frameGeneral.tamanioDisponible);
-		printf("tamanio ocupado memoria %d\n", frameGeneral.tamanioOcupado);
+		log_info(log,"tamanio ocupado memoria %d\n", frameGeneral.tamanioOcupado);
 		break;
 	}
 	case 1: {
@@ -749,7 +750,7 @@ void escribirEnCache(int32_t pid, int32_t pagina, int32_t offset,
 	 }
 	 else
 	 {
-	 printf("proceso no ingreso a cache por maximo de entradas");
+	 log_info(log,"proceso no ingreso a cache por maximo de entradas");
 	 }
 	 }
 	 else

@@ -25,7 +25,7 @@ endif
 all: Cpu
 
 dependents:
-	-cd /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug && $(MAKE) clean all
+	-cd /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug && $(MAKE) all
 
 # Tool invocations
 Cpu: $(OBJS) $(USER_OBJS) /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so

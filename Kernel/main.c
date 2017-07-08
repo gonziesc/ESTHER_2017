@@ -1,5 +1,5 @@
 #include "main.h"
-
+#define ARCHIVOLOG "/home/utnso/Log/logKernel.txt"
 struct sockaddr_in direccionCliente;
 uint32_t tamanoDireccion;
 int abortoPorFaltaDeMemoria;
@@ -98,16 +98,16 @@ pthread_t hiloProcesarHeap;
 pthread_t hiloLiberaHepa;
 pthread_t hiloCapaFs;
 int noInteresa;
-t_log * logger;
 datosHeap tablaHeap[100];
 int indiceLibreHeap = 0;
 t_list* tablaArchivosGlobal;
 t_list* listaTablasProcesos;
+t_log* logger;
 
 int32_t main(int argc, char**argv) {
-	logger = log_create("KERNEL.log", "KERNEL", 0, LOG_LEVEL_INFO);
-
 	configuracion(argv[1]);
+	logger= log_create(ARCHIVOLOG, "Kernel", 0, LOG_LEVEL_INFO);
+	log_info(logger,"Iniciando Kernel\n");
 	conectarConMemoria();
 	ConectarConFS();
 	pthread_create(&hiloPlanificadorLargoPlazo, NULL, planificadorLargoPlazo,
@@ -221,7 +221,7 @@ int32_t levantarServidor() {
 		perror("Falló el bind\n");
 		return 1;
 	}
-	printf("Estoy escuchando\n");
+	log_info(logger,"Estoy escuchando\n");
 	listen(servidor, 100);
 	FD_SET(0, &master);
 	FD_SET(clienteMEM, &master);
@@ -246,12 +246,12 @@ int32_t levantarServidor() {
 							&tamanoDireccion)) == -1) {
 						perror("accept\n");
 					} else {
-						printf("numer serv%d\n", newfd);
+						log_info(logger,"numer serv%d\n", newfd);
 						FD_SET(newfd, &master); // añadir al conjunto maestro
 						if (newfd > fdmax) {    // actualizar el máximo
 							fdmax = newfd;
 						}
-						printf("selectserver: new connection from %s on "
+						log_info(logger,"selectserver: new connection from %s on "
 								"socket %d\n",
 								inet_ntoa(direccionCliente.sin_addr), newfd);
 					}
@@ -261,7 +261,7 @@ int32_t levantarServidor() {
 						int logitudIO = read(0, codigoKernel, 4);
 						if (logitudIO > 0) {
 							int codigoOperacion = (int) (*codigoKernel) - 48;
-							printf("Got data on stdin: %d\n", codigoOperacion);
+							log_info(logger,"Got data on stdin: %d\n", codigoOperacion);
 							procesarEntrada(codigoOperacion);
 							free(codigoKernel);
 						} else {
@@ -279,7 +279,7 @@ int32_t levantarServidor() {
 							//SI ES CPU, SCAARLA DE LA LISA
 							close(i); // bye!
 							FD_CLR(i, &master); // eliminar del conjunto maestro
-							printf("selectserver: socket %d hung up\n", i);
+							log_info(logger,"selectserver: socket %d hung up\n", i);
 						} else if (paqueteRecibido->header == -2) {
 							close(i); // bye!
 							FD_CLR(i, &master); // eliminar del conjunto maestro
@@ -306,7 +306,7 @@ void procesarEntrada(int codigoOperacion) {
 	}
 	case 2: {
 		int pidAMatar;
-		printf("Ingrese pid a finalizar\n");
+		log_info(logger,"Ingrese pid a finalizar\n");
 		scanf("%d", &pidAMatar);
 		//TODO avisar a consola
 		abortarProgramaPorConsola(pidAMatar, -35);
@@ -378,8 +378,8 @@ void procesarScript() {
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
 	switch (id) {
 	case ARCHIVO: {
-		//printf("%s\n", paquete);
-		//printf("%d\n", tamanoPaquete);
+		//log_info(logger,"%s\n", paquete);
+		//log_info(logger,"%d\n", tamanoPaquete);
 		//paquete[tamanoPaquete] = '\0';
 		unScript = malloc(sizeof(script));
 		unScript->tamano = tamanoPaquete;
@@ -390,7 +390,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case FILESYSTEM: {
-		printf("Se conecto FS\n");
+		log_info(logger,"Se conecto FS\n");
 		break;
 	}
 	case MEMORIARESERVOHEAP: {
@@ -413,7 +413,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		enviar.quantum = t_archivoConfig->QUANTUM;
 		enviar.quantumSleep = t_archivoConfig->QUANTUM_SLEEP;
 		enviar.stack = t_archivoConfig->STACK_SIZE;
-		printf("%s\n", t_archivoConfig->ALGORITMO);
+		log_info(logger,"%s\n", t_archivoConfig->ALGORITMO);
 		if (!(strcmp(t_archivoConfig->ALGORITMO, "RR"))) {
 			enviar.algoritmo = 1;
 		} else {
@@ -424,16 +424,16 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCpu, socket);
 		pthread_mutex_unlock(&mutexColaCpu);
 		sem_post(&semCpu);
-		printf("Se conecto CPU\n");
+		log_info(logger,"Se conecto CPU\n");
 		break;
 	}
 	case CONSOLA: {
-		printf("Se conecto Consola\n");
+		log_info(logger,"Se conecto Consola\n");
 		break;
 	}
 	case MEMORIA: {
 		memcpy(&MARCOS_SIZE, (paquete), sizeof(int));
-		printf("Se conecto memoria\n");
+		log_info(logger,"Se conecto memoria\n");
 		break;
 	}
 	case CODIGO: {
@@ -450,7 +450,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semEntraElProceso);
 		memcpy(&header, paquete, 4);
 
-		printf("header %d\n", header);
+		log_info(logger,"header %d\n", header);
 		break;
 	}
 	case PROGRAMATERMINADO: {
@@ -969,7 +969,7 @@ int actualizarTablaDelProceso(int pid, char* flags, int indiceEnTablaGlobal) {
 		tablaProcesoExiste = 0;
 
 	if (!tablaProcesoExiste) {
-		printf("La tabla no existe\n");
+		log_info(logger,"La tabla no existe\n");
 		indiceTablaProceso* entradaNuevaTabla = malloc(
 				sizeof(indiceTablaProceso));
 		entradaNuevaTabla->pid = pid;
@@ -986,7 +986,7 @@ int actualizarTablaDelProceso(int pid, char* flags, int indiceEnTablaGlobal) {
 		list_add(listaTablasProcesos, entradaNuevaTabla);
 		return entrada->fd;
 	} else {
-		printf("La tabla ya existe\n");
+		log_info(logger,"La tabla ya existe\n");
 
 		indiceTablaProceso* entradaTablaExistente = list_remove_by_condition(
 				listaTablasProcesos, (void*) verificaPid); //la remuevo para actualizarlo
@@ -994,7 +994,7 @@ int actualizarTablaDelProceso(int pid, char* flags, int indiceEnTablaGlobal) {
 		entrada->fd = entradaTablaExistente->tablaProceso->elements_count + 3;
 		entrada->flags = flags;
 		entrada->globalFd = indiceEnTablaGlobal;
-		printf("Agrego el indice :%d\n", entrada->globalFd);
+		log_info(logger,"Agrego el indice :%d\n", entrada->globalFd);
 		list_add(entradaTablaExistente->tablaProceso, entrada);
 		list_add(listaTablasProcesos, entradaTablaExistente); //la vuelvo a agregar a la lista
 
@@ -1040,7 +1040,7 @@ int verificarEntradaEnTablaGlobal(char* direccion) { /*TODO: Mutex tablaGlobal*/
 
 	if (list_is_empty(tablaArchivosGlobal))
 		return 0;
-	printf("La tabla global no esta vacia\n");
+	log_info(logger,"La tabla global no esta vacia\n");
 
 	if (list_any_satisfy(tablaArchivosGlobal, (void*) verificaDireccion))
 		return 1;
@@ -1148,7 +1148,7 @@ int crearArchivo(int socket_aceptado, char* direccion) {
 	sem_wait(&semCrearArchivo);
 	free(envio);
 	if (validarCrearArchivo < 0)
-		printf("mal el fs");
+		log_info(logger,"mal el fs");
 
 	return validarCrearArchivo;
 
@@ -1181,7 +1181,7 @@ void abrirArchivo(procesoACapaFs* unProceso) {
 		} else {
 			indiceEnTablaGlobal = buscarIndiceEnTablaGlobal(unProceso->path);
 		}
-		printf("Indice devuelto:%d\n", indiceEnTablaGlobal);
+		log_info(logger,"Indice devuelto:%d\n", indiceEnTablaGlobal);
 	}
 
 	if (!archivoExistente && tienePermisoCreacion) {
@@ -1195,7 +1195,7 @@ void abrirArchivo(procesoACapaFs* unProceso) {
 		}
 		indiceEnTablaGlobal = agregarEntradaEnTablaGlobal(unProceso->path,
 				unProceso->tamano);
-		printf("Indice devuelto:%d\n", indiceEnTablaGlobal);
+		log_info(logger,"Indice devuelto:%d\n", indiceEnTablaGlobal);
 	}
 
 	aumentarOpenEnTablaGlobal(unProceso->path);
@@ -1207,7 +1207,7 @@ void abrirArchivo(procesoACapaFs* unProceso) {
 	memcpy(envio + 4, &unProceso->fd, 4);
 	Serializar(ABRIRARCHIVO, 8, envio, unProceso->socket);
 
-	printf("File descriptor:%d\n", unProceso->fd);
+	log_info(logger,"File descriptor:%d\n", unProceso->fd);
 	free(envio);
 	free(unProceso);
 }
@@ -1316,11 +1316,11 @@ void escribirArchivo(procesoACapaFs* unProceso) {
 			char* nombreArchivo = array_dir[0];
 			int tamanoNombre = sizeof(char) * strlen(nombreArchivo);
 
-			printf("Tamano del nombre :%d\n", tamanoNombre);
-			printf("Nombre del archivo: %s\n", nombreArchivo);
-			printf("Puntero:%d\n", entrada->puntero);
-			printf("Tamano a escribir :%d\n", unProceso->tamano);
-			printf("Informacion a escribir:%s\n", unProceso->data);
+			log_info(logger,"Tamano del nombre :%d\n", tamanoNombre);
+			log_info(logger,"Nombre del archivo: %s\n", nombreArchivo);
+			log_info(logger,"Puntero:%d\n", entrada->puntero);
+			log_info(logger,"Tamano a escribir :%d\n", unProceso->tamano);
+			log_info(logger,"Informacion a escribir:%s\n", unProceso->data);
 			void*envio = malloc(12 + tamanoNombre + unProceso->tamano);
 			memcpy(envio, &tamanoNombre, 4);
 			memcpy(envio + 4, &entrada->puntero, 4);
@@ -1394,10 +1394,10 @@ void leerArchivo(procesoACapaFs* unProceso) {
 
 			int tamanoNombre = sizeof(char) * strlen(direccion);
 
-			printf("Tamano del nombre del archivo:%d\n", tamanoNombre);
-			printf("Nombre del archivo:%s\n", direccion);
-			printf("Puntero :%d\n", entrada->puntero);
-			printf("Tamano a leer :%d\n", unProceso->tamano);
+			log_info(logger,"Tamano del nombre del archivo:%d\n", tamanoNombre);
+			log_info(logger,"Nombre del archivo:%s\n", direccion);
+			log_info(logger,"Puntero :%d\n", entrada->puntero);
+			log_info(logger,"Tamano a leer :%d\n", unProceso->tamano);
 
 			void* envio = malloc(12 + tamanoNombre);
 			memcpy(envio, &tamanoNombre, 4);
@@ -1472,8 +1472,8 @@ void borrarArchivo(procesoACapaFs* unProceso) {
 
 			int tamanoNombre = sizeof(char) * strlen(direccion);
 
-			printf("Tamano del nombre del archivo:%d\n", tamanoNombre);
-			printf("Nombre del archivo:%s\n", direccion);
+			log_info(logger,"Tamano del nombre del archivo:%d\n", tamanoNombre);
+			log_info(logger,"Nombre del archivo:%s\n", direccion);
 			void* envio = malloc(tamanoNombre + 4);
 			memcpy(envio, &tamanoNombre, 4);
 			memcpy(envio + 4, direccion, tamanoNombre);
@@ -1587,7 +1587,7 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 	unPcb->indiceCodigo = malloc(unPcb->tamanoIndiceCodigo * 2 * sizeof(int));
 
 	for (i = 0; i < metadata_program->instrucciones_size; i++) {
-		/*printf("Instruccion inicio:%d offset:%d %.*s",
+		/*log_info(logger,"Instruccion inicio:%d offset:%d %.*s",
 		 metadata_program->instrucciones_serializado[i].start,
 		 metadata_program->instrucciones_serializado[i].offset,
 		 metadata_program->instrucciones_serializado[i].offset,
@@ -1638,7 +1638,7 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo,
 			Serializar(PAGINA, MARCOS_SIZE + 4 * sizeof(int), envioPagina,
 					clienteMEM);
 			pthread_mutex_unlock(&mutexMemoria);
-			printf("num pagina %d\n", i);
+			log_info(logger,"num pagina %d\n", i);
 			sem_wait(&semPaginaEnviada);
 			free(envioPagina);
 		} else {
@@ -1654,7 +1654,7 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo,
 			Serializar(PAGINA, MARCOS_SIZE + 4 * sizeof(int), envioPagina,
 					clienteMEM);
 			pthread_mutex_unlock(&mutexMemoria);
-			printf("num pagina %d\n", i);
+			log_info(logger,"num pagina %d\n", i);
 			sem_wait(&semPaginaEnviada);
 			free(envioPagina);
 		}
@@ -1759,7 +1759,7 @@ proceso* sacarProcesoDeEjecucion(int sock) {
 			return (proceso*) list_remove(colaExec->elements, a);
 		a++;
 	}
-	printf("NO HAY PROCESO\n");
+	log_info(logger,"NO HAY PROCESO\n");
 
 	return NULL;
 }
@@ -1772,7 +1772,7 @@ proceso* sacarProcesoDeEjecucionPorPid(int pid) {
 			return (proceso*) list_remove(colaExec->elements, a);
 		a++;
 	}
-	printf("NO HAY PROCESO\n");
+	log_info(logger,"NO HAY PROCESO\n");
 
 	return NULL;
 }
@@ -1785,7 +1785,7 @@ proceso* buscarProcesoEnEjecucion(int pid) {
 			return procesoABuscar;
 		a++;
 	}
-	printf("NO HAY PROCESO\n");
+	log_info(logger,"NO HAY PROCESO\n");
 
 	return NULL;
 }
@@ -1800,7 +1800,7 @@ void modificarCantidadDePaginas(int pid) {
 		}
 		a++;
 	}
-	printf("NO HAY PROCESO\n");
+	log_info(logger,"NO HAY PROCESO\n");
 
 }
 
@@ -1814,7 +1814,7 @@ int pideVariable(char *variable) {
 			return atoi(t_archivoConfig->SHARED_VARS_INIT[i]);
 		}
 	}
-	printf("No encontre variable %s %d id, exit\n", variable, strlen(variable));
+	log_info(logger,"No encontre variable %s %d id, exit\n", variable, strlen(variable));
 //TODO abortar
 }
 
@@ -1830,7 +1830,7 @@ void escribeVariable(char *variable, int valor) {
 			return;
 		}
 	}
-	printf("No encontre VAR %s id, exit\n", variable);
+	log_info(logger,"No encontre VAR %s id, exit\n", variable);
 	free(variable);
 //TODO abortar
 
@@ -1838,7 +1838,7 @@ void escribeVariable(char *variable, int valor) {
 
 int pideSemaforo(char *semaforo) {
 	int i;
-//printf("NUCLEO: pide sem %s\n", semaforo);
+//log_info(logger,"NUCLEO: pide sem %s\n", semaforo);
 
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
 			i++) {
@@ -1846,7 +1846,7 @@ int pideSemaforo(char *semaforo) {
 			return atoi(t_archivoConfig->SEM_INIT[i]);
 		}
 	}
-	//printf("No encontre SEM id, exit\n");
+	//log_info(logger,"No encontre SEM id, exit\n");
 	//exit(0);
 }
 
@@ -1854,7 +1854,7 @@ void escribeSemaforo(char *semaforo, int valor) {
 	int i;
 	char str[15];
 	sprintf(str, "%d", valor);
-//printf("NUCLEO: pide sem %s\n", semaforo);
+//log_info(logger,"NUCLEO: pide sem %s\n", semaforo);
 
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
 			i++) {
@@ -1865,7 +1865,7 @@ void escribeSemaforo(char *semaforo, int valor) {
 			return;
 		}
 	}
-	//printf("No encontre SEM id, exit\n");
+	//log_info(logger,"No encontre SEM id, exit\n");
 	//exit(0);
 }
 
@@ -1895,7 +1895,7 @@ void liberaSemaforo(char *semaforo) {
 			return;
 		}
 	}
-	//printf("No encontre SEM id, exit\n");
+	//log_info(logger,"No encontre SEM id, exit\n");
 	//exit(0);
 }
 
@@ -1914,7 +1914,7 @@ void bloqueoSemaforo(proceso *proceso, char *semaforo) {
 			}
 		}
 	}
-	//printf("No encontre SEM id, exit\n");
+	//log_info(logger,"No encontre SEM id, exit\n");
 	// exit(0);
 }
 
@@ -1985,7 +1985,7 @@ void compactarPaginaHeap(int pagina, int pid) {
 
 int paginaHeapBloqueSuficiente(int posicionPaginaHeap, int pagina, int pid,
 		int size) {
-	printf("Pagina Heap Bloque Suficiente\n");
+	log_info(logger,"Pagina Heap Bloque Suficiente\n");
 	int i = 0;
 
 	HeapMetaData auxBloque;
@@ -2009,7 +2009,7 @@ int paginaHeapBloqueSuficiente(int posicionPaginaHeap, int pagina, int pid,
 
 		if (auxBloque.size >= size + sizeof(HeapMetaData)
 				&& auxBloque.isFree == -1) {
-			printf("Pagina Heap Bloque Suficiente\n");
+			log_info(logger,"Pagina Heap Bloque Suficiente\n");
 			free(buffer);
 			return i + 8;
 		}
@@ -2062,7 +2062,7 @@ void reservarBloqueHeap(int pid, int size, datosHeap* puntero) {
 		if (aux->numeroPagina == puntero->pagina && aux->pid == pid) {
 			if (size + sizeof(HeapMetaData) > aux->tamanoDisponible) {
 				pthread_mutex_unlock(&mutexListaAdminHeap);
-				//printf("\nEntre a un error\n");
+				//log_info(logger,"\nEntre a un error\n");
 
 			} else {
 				aux->tamanoDisponible = aux->tamanoDisponible - size
@@ -2215,7 +2215,7 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 
 	bloque.isFree = -1;
 	/*TODO: Poder saber bien cuanto estoy liberando*/
-	printf("\n\nEstoy liberando:%d\n\n", bloque.size);
+	log_info(logger,"\n\nEstoy liberando:%d\n\n", bloque.size);
 
 	memcpy(buffer, &bloque, sizeof(HeapMetaData));
 
@@ -2276,7 +2276,7 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 	pthread_mutex_unlock(&mutexColaReady);
 	if (unProceso != NULL) {
 		log_info(logger, "NUCLEO: Abortado x consola, en ready. Pre wait");
-		printf("aborte pid: %d con codigo %d\n", unProceso->pcb->programId,
+		log_info(logger,"aborte pid: %d con codigo %d\n", unProceso->pcb->programId,
 				codigo);
 		//sem_post(&semCpu);
 		log_info(logger, "NUCLEO: post wait");
@@ -2294,7 +2294,7 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 
 		}
 		if (unProceso != NULL) {
-			printf("aborte pid: %d con codigo %d\n", unProceso->pcb->programId,
+			log_info(logger,"aborte pid: %d con codigo %d\n", unProceso->pcb->programId,
 					codigo);
 			log_info(logger, "NUCLEO: Abortado x consola, en semaforo");
 			abortar(unProceso, codigo);
@@ -2313,7 +2313,7 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 
 			}
 			if (unProceso != NULL) {
-				printf("aborte pid: %d con codigo %d\n",
+				log_info(logger,"aborte pid: %d con codigo %d\n",
 						unProceso->pcb->programId, codigo);
 				log_info(logger, "NUCLEO: Abortado x consola, en semaforo");
 				abortar(unProceso, codigo);

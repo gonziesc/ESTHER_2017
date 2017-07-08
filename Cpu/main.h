@@ -17,6 +17,7 @@
 #include <serializador.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <commons/log.h>
 
 int programaBloqueado;
 int programaFinalizado;
