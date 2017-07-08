@@ -143,6 +143,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("%s", paquete);
 		break;
 	}
+	case MATARPIDPORCONSOLA: {
+			programaAbortado = 1;
+			codigoAborto = ABORTOPORCONSOLA;
+			break;
+		}
 	case FILESYSTEM: {
 		printf("Se conecto FS");
 		break;
@@ -228,7 +233,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		memcpy(&validado, paquete, 4);
 		if (validado == 0) {
 			programaAbortado = 1;
-			codigoAborto = codeArchivoNoexiste;
+			codigoAborto = ABORTOARCHIVONOEXISTE;
 		} else {
 			memcpy(&descriptorArchivoAbierto, paquete + 4, 4);
 		}

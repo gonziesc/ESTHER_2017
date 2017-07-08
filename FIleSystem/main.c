@@ -405,6 +405,31 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 				}
 
 			}
+			char *dataAPonerEnFile = string_new();
+			string_append(&dataAPonerEnFile, "TAMANIO=");
+
+			int tamanioArchivoViejoInt = obtTamanioArchivo(
+					nombreArchivoRecibido);
+			int tamanioNuevo = tamanioArchivoViejoInt + (tamanoTotalBuffer);
+			char* tamanioNuevoChar = string_itoa(tamanioNuevo);
+			string_append(&dataAPonerEnFile, tamanioNuevoChar);
+			string_append(&dataAPonerEnFile, "\n");
+			string_append(&dataAPonerEnFile, "BLOQUES=[");
+			int z;
+
+			char** arrayBloques2 = obtArrayDeBloquesDeArchivo(
+					nombreArchivoRecibido);
+			string_append(&dataAPonerEnFile, arrayBloques2[0]);
+			int d = 1;
+			while (!(arrayBloques2[d] == NULL)) {
+				string_append(&dataAPonerEnFile, ",");
+				string_append(&dataAPonerEnFile, arrayBloques2[d]);
+
+				d++;
+			}
+			string_append(&dataAPonerEnFile, "]");
+			fclose(fopen(nombreArchivoRecibido, "w"));
+			adx_store_data(nombreArchivoRecibido, dataAPonerEnFile);
 			validado = 1;
 			Serializar(GUARDARDATOS, 4, &validado, cliente);
 
