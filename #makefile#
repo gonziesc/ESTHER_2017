@@ -1,0 +1,4 @@
+OBJ := cpu.o kernel.o filesystem.o memoria.o consola.o
+# CURRENT_DIR := $(shell pwd)
+DIR := $(CURDIR)
+HEADER: = -
