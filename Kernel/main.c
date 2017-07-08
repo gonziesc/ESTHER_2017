@@ -1369,12 +1369,10 @@ void leerArchivo(procesoACapaFs* unProceso) {
 			list_add(entradaTablaProceso2->tablaProceso, entrada);
 			list_add(listaTablasProcesos, entradaTablaProceso2);
 
-			char** array_dir = string_n_split(direccion, 12, "/");
-			char* nombreArchivo = array_dir[0];
-			int tamanoNombre = sizeof(char) * strlen(nombreArchivo);
+			int tamanoNombre = sizeof(char) * strlen(direccion);
 
 			printf("Tamano del nombre del archivo:%d\n", tamanoNombre);
-			printf("Nombre del archivo:%s\n", nombreArchivo);
+			printf("Nombre del archivo:%s\n", direccion);
 			printf("Puntero :%d\n", entrada->puntero);
 			printf("Tamano a leer :%d\n", unProceso->tamano);
 
@@ -1382,8 +1380,8 @@ void leerArchivo(procesoACapaFs* unProceso) {
 			memcpy(envio, &tamanoNombre, 4);
 			memcpy(envio + 4, &unProceso->tamano, 4);
 			memcpy(envio + 8, &entrada->puntero, 4);
-			memcpy(envio + 12, nombreArchivo, tamanoNombre);
-			Serializar(OBTENERDATOS, 12 + unProceso->tamano, envio, clientefs);
+			memcpy(envio + 12, direccion, tamanoNombre);
+			Serializar(OBTENERDATOS, 12 + tamanoNombre, envio, clientefs);
 			free(envio);
 			sem_wait(&semObtenerDatos);
 			if (validarObtenerDatos == 1) {

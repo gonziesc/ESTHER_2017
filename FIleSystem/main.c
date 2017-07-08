@@ -460,6 +460,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
 		string_append(&nombreArchivoRecibido, "Archivos/");
 		string_append(&nombreArchivoRecibido, nombreArchivo);
+		printf("Nombre archivo:%s\n", nombreArchivo);
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
 
 			int calcularBloqueInicial = offset

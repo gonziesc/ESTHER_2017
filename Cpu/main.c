@@ -144,10 +144,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case MATARPIDPORCONSOLA: {
-			programaAbortado = 1;
-			codigoAborto = ABORTOPORCONSOLA;
-			break;
-		}
+		programaAbortado = 1;
+		codigoAborto = ABORTOPORCONSOLA;
+		break;
+	}
 	case FILESYSTEM: {
 		printf("Se conecto FS");
 		break;
@@ -298,8 +298,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 }
 
-bool validarQuantum(int valor){
-	if(algoritmo == 0)
+bool validarQuantum(int valor) {
+	if (algoritmo == 0)
 		return true;
 	else
 		return valor != 0;
@@ -313,8 +313,8 @@ void procesarScript() {
 		programaAbortado = 0;
 		int quantum_aux = quantum;
 		int pid = unPcb->programId;
-		while (validarQuantum(quantum_aux) && !programaBloqueado && !programaFinalizado
-				&& !programaAbortado) {
+		while (validarQuantum(quantum_aux) && !programaBloqueado
+				&& !programaFinalizado && !programaAbortado) {
 			posicionMemoria* datos_para_memoria = malloc(
 					sizeof(posicionMemoria));
 			crearEstructuraParaMemoria(unPcb, tamanoPag, datos_para_memoria);
@@ -343,8 +343,8 @@ void procesarScript() {
 			destruirPCB(unPcb);
 			sem_post(&semDestruirPCB);
 		}
-		if (algoritmo == 1 && (quantum_aux == 0) && !programaFinalizado && !programaBloqueado
-				&& !programaAbortado) {
+		if (algoritmo == 1 && (quantum_aux == 0) && !programaFinalizado
+				&& !programaBloqueado && !programaAbortado) {
 
 			serializarPCB(unPcb, cliente, FINDEQUATUM);
 			destruirPCB(unPcb);
@@ -617,8 +617,8 @@ void irAlLabel(t_nombre_etiqueta etiqueta) {
 	char** string_cortado = string_split(etiqueta, "\n");
 	printf("[irAlLabel]Busco etiqueta: %s y mide: %d\n", etiqueta,
 			strlen(etiqueta));
-	instruccion = metadata_buscar_etiqueta(string_cortado[0], unPcb->indiceEtiquetas,
-			unPcb->tamanoindiceEtiquetas);
+	instruccion = metadata_buscar_etiqueta(string_cortado[0],
+			unPcb->indiceEtiquetas, unPcb->tamanoindiceEtiquetas);
 	printf("[irAlLabel]Ir a instruccion %d\n", instruccion);
 	unPcb->programCounter = instruccion - 1;
 	return;
@@ -894,6 +894,7 @@ void escribir(t_descriptor_archivo descriptorArchivo, void* informacion,
 			|| descriptorArchivo == 2) {
 		Serializar(IMPRIMIRPROCESO, tamano + 4, envio, cliente);
 		free(envio);
+
 		return;
 	}
 	Serializar(ESCRIBIRARCHIVO, tamano + 4, envio, cliente);
@@ -985,17 +986,17 @@ t_descriptor_archivo abrir(t_direccion_archivo direccion, t_banderas flags) {
 		string_append(&flagsAConcatenar, "w");
 	}
 	int tamanoFlags = sizeof(char) * strlen(flagsAConcatenar);
-	int tamanoDireccion = sizeof(char) * strlen(direccion) ;
+	int tamanoDireccion = sizeof(char) * strlen(direccion);
 	void *envio = malloc(8 + tamanoFlags + tamanoDireccion);
 	memcpy(envio, &tamanoDireccion, 4);
 	memcpy(envio + 4, &tamanoFlags, 4);
 	memcpy(envio + 8, flagsAConcatenar, tamanoFlags);
-	memcpy(envio + 8 + tamanoFlags, direccion, tamanoDireccion );
+	memcpy(envio + 8 + tamanoFlags, direccion, tamanoDireccion);
 	Serializar(ABRIRARCHIVO, 8 + tamanoFlags + tamanoDireccion, envio, cliente);
 	sem_wait(&semAbrirArchivo);
 	free(envio);
-	if(programaAbortado == 0)
-	return descriptorArchivoAbierto;
+	if (programaAbortado == 0)
+		return descriptorArchivoAbierto;
 }
 void borrar(t_descriptor_archivo descriptor) {
 	void * envio = malloc(4);
@@ -1023,16 +1024,16 @@ void leer(t_descriptor_archivo descriptor, t_puntero puntero,
 		char *infoLeidaChar = string_new();
 		string_append(&infoLeidaChar, infoLeida);
 		printf("info leida %s", infoLeidaChar);
-		int tamanoAUx = 0;
-		int offset = 0;
-		while(!(tamano == 0)){
-			int auxiliar;
-			memcpy(&auxiliar, infoLeida + offset, 4);
-			asignar(puntero + offset, auxiliar);
-			offset += 4;
-			tamano -= 4;
-			//todo ver impares
-		}
+		int pagina = puntero / tamanoPag;
+		int offset = puntero - (tamanoPag * pagina);
+		void* envioPagina = malloc(tamanoPag + 4 * sizeof(int));
+		memcpy(envioPagina, &unPcb->programId, 4);
+		memcpy(envioPagina + 4, &pagina, sizeof(int));
+		memcpy(envioPagina + 8, &tamano, sizeof(int));
+		memcpy(envioPagina + 12, &offset, sizeof(int));
+		memcpy(envioPagina + 16, infoLeida, tamano);
+		Serializar(PAGINA, tamanoPag + 4 * sizeof(int), envioPagina,
+				clienteMEM);
 		free(infoLeida);
 	}
 
