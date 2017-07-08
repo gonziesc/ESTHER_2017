@@ -519,6 +519,15 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		abortar(unProceso, codeStackOverflow);
 		break;
 	}
+	case ABORTOPORMASRESERVERAQUEPAGINA: {
+		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
+				pcbRecibido->programId);
+		destruirPCB(unProceso->pcb);
+		unProceso->pcb = pcbRecibido;
+		abortar(unProceso, codeMasMemoriaQuePaginas);
+		break;
+	}
 	case ABORTOARCHIVONOEXISTE: {
 		programControlBlock* pcbRecibido = deserializarPCB(paquete);
 		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
@@ -1648,12 +1657,19 @@ void procesarHeap() {
 		pthread_mutex_unlock(&mutexColaHeap);
 		datosHeap *data = procesoPideHeap(heap->pid, heap->cantidad);
 		sem_wait(&semTerminoDataHeap);
-		void * envio = malloc(8);
-		memcpy(envio, &data->pagina, 4);
-		memcpy(envio + 4, &data->offset, 4);
-		Serializar(PROCESOPIDEHEAP, 8, envio, heap->socket);
+		if (data->pagina == -1) {
+			Serializar(ABORTOPORMASRESERVERAQUEPAGINA, 4, &noInteresa,
+					heap->socket);
+		} else {
+			void * envio = malloc(8);
+			memcpy(envio, &data->pagina, 4);
+			memcpy(envio + 4, &data->offset, 4);
+			Serializar(PROCESOPIDEHEAP, 8, envio, heap->socket);
+			free(envio);
+		}
+
 		free(heap);
-		free(envio);
+
 		free(data);
 	}
 
@@ -2122,8 +2138,10 @@ datosHeap* procesoPideHeap(int pid, int tamano) {
 	datosHeap * puntero;
 	//TODO contar para memory leaks
 	if (tamano > MARCOS_SIZE - sizeof(HeapMetaData) * 2) {
-		//TODO: manejar errores de pedir heap
-		return 0;
+		sem_post(&semTerminoDataHeap);
+		puntero = malloc(sizeof(datosHeap));
+		puntero->pagina = -1;
+		return puntero;
 	}
 	puntero = verificarEspacioLibreHeap(tamano, pid);
 	if (puntero->pagina == -1) {

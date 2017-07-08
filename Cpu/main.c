@@ -148,6 +148,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		codigoAborto = ABORTOPORCONSOLA;
 		break;
 	}
+	case ABORTOPORMASRESERVERAQUEPAGINA: {
+		sem_post(&semProcesoPideHeap);
+		programaAbortado = 1;
+		codigoAborto = ABORTOPORMASRESERVERAQUEPAGINA;
+		break;
+	}
 	case FILESYSTEM: {
 		printf("Se conecto FS");
 		break;
@@ -937,11 +943,13 @@ t_puntero reservar(t_valor_variable espacio) {
 	memcpy(envio + 4, &espacio, sizeof(int));
 	Serializar(PROCESOPIDEHEAP, 8, envio, cliente);
 	sem_wait(&semProcesoPideHeap);
-
+	if(programaAbortado == 0) {
 	t_puntero puntero = paginaHeap * tamanoPag + offsetHeap;
 	printf("El puntero es %d", puntero);
 	free(envio);
 	return puntero;
+	}
+	return 0;
 }
 void liberar(t_puntero puntero) {
 	posicionMemoria *datos_para_memoria = malloc(sizeof(posicionMemoria));
