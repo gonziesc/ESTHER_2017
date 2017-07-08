@@ -1505,9 +1505,10 @@ void crearPCB(char* codigo, programControlBlock *unPcb) {
 	}
 	unPcb->tamanoindiceEtiquetas = metadata_program->etiquetas_size;
 	unPcb->indiceEtiquetas = malloc(
-			unPcb->tamanoindiceEtiquetas * sizeof(char));
+			unPcb->tamanoindiceEtiquetas * sizeof(char) + sizeof(char));
 	memcpy(unPcb->indiceEtiquetas, metadata_program->etiquetas,
 			unPcb->tamanoindiceEtiquetas * sizeof(char));
+	strcpy(unPcb->indiceEtiquetas+sizeof(char)*unPcb->tamanoindiceEtiquetas, "\0");
 	unPcb->indiceStack = list_create();
 
 	indiceDeStack *indiceInicial;
@@ -1655,7 +1656,7 @@ proceso* sacarProcesoDeEjecucion(int sock) {
 		a++;
 	}
 	printf("NO HAY PROCESO\n");
-	exit(0);
+
 	return NULL;
 }
 
@@ -1668,7 +1669,7 @@ proceso* sacarProcesoDeEjecucionPorPid(int pid) {
 		a++;
 	}
 	printf("NO HAY PROCESO\n");
-	exit(0);
+
 	return NULL;
 }
 
@@ -1681,7 +1682,7 @@ proceso* buscarProcesoEnEjecucion(int pid) {
 		a++;
 	}
 	printf("NO HAY PROCESO\n");
-	exit(0);
+
 	return NULL;
 }
 
@@ -1696,7 +1697,7 @@ void modificarCantidadDePaginas(int pid) {
 		a++;
 	}
 	printf("NO HAY PROCESO\n");
-	exit(0);
+
 }
 
 int pideVariable(char *variable) {

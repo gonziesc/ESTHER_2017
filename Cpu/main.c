@@ -609,9 +609,10 @@ void llamarConRetorno(t_nombre_etiqueta etiqueta, t_puntero punteroRetorno) {
 
 void irAlLabel(t_nombre_etiqueta etiqueta) {
 	t_puntero_instruccion instruccion;
+	char** string_cortado = string_split(etiqueta, "\n");
 	printf("[irAlLabel]Busco etiqueta: %s y mide: %d\n", etiqueta,
 			strlen(etiqueta));
-	instruccion = metadata_buscar_etiqueta(etiqueta, unPcb->indiceEtiquetas,
+	instruccion = metadata_buscar_etiqueta(string_cortado[0], unPcb->indiceEtiquetas,
 			unPcb->tamanoindiceEtiquetas);
 	printf("[irAlLabel]Ir a instruccion %d\n", instruccion);
 	unPcb->programCounter = instruccion - 1;
