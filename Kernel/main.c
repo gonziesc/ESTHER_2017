@@ -330,11 +330,12 @@ void procesarScript() {
 		pthread_mutex_lock(&mutexProcesarScript);
 		int cantidadDePaginas = ceil(
 				(double) unScript->tamano / (double) MARCOS_SIZE);
-		int cantidadDePaginasToales = cantidadDePaginas
+		int cantidadDePaginasTotales = cantidadDePaginas
 				+ t_archivoConfig->STACK_SIZE + 1;
 
+		log_info(logger,"Llego un Script con %d paginas en total\n", cantidadDePaginasTotales);
 		pthread_mutex_lock(&mutexMemoria);
-		Serializar(TAMANO, sizeof(int), &cantidadDePaginasToales, clienteMEM);
+		Serializar(TAMANO, sizeof(int), &cantidadDePaginasTotales, clienteMEM);
 		pthread_mutex_unlock(&mutexMemoria);
 		sem_wait(&semEntraElProceso);
 		if (header == OK) {
@@ -346,14 +347,15 @@ void procesarScript() {
 			crearPCB(unScript->codigo, unPcb);
 			unaConsola->pid = processID;
 			unaConsola->consola = unScript->socket;
-			ultimaPaginaPid[processID] = cantidadDePaginasToales;
+			log_info(logger,"Se acepto el proceso de PID:\n", unaConsola->pid);
+			ultimaPaginaPid[processID] = cantidadDePaginasTotales;
 			//TODO semaforo?
 			queue_push(colaProcesosConsola, unaConsola);
 			unProceso->pcb = unPcb;
 			unProceso->socketCONSOLA = unScript->socket;
 			char * enviocantidadDePaginas = malloc(2 * sizeof(int));
 			memcpy(enviocantidadDePaginas, &processID, sizeof(int));
-			memcpy(enviocantidadDePaginas + 4, &cantidadDePaginasToales,
+			memcpy(enviocantidadDePaginas + 4, &cantidadDePaginasTotales,
 					sizeof(int));
 			pthread_mutex_lock(&mutexMemoria);
 			Serializar(INICIALIZARPROCESO, 8, enviocantidadDePaginas,
@@ -369,6 +371,7 @@ void procesarScript() {
 			pthread_mutex_unlock(&mutexColaNew);
 			sem_post(&semNew);
 			free(unScript->codigo);
+			log_info(logger,"Se acepto el proceso a new con un PID:\n", unPcb->programId);
 		}
 		pthread_mutex_unlock(&mutexProcesarScript);
 	}
@@ -387,6 +390,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		unScript->socket = socket;
 		memcpy(unScript->codigo, paquete, tamanoPaquete);
 		sem_post(&semUnScript);
+		log_info(logger,"Entro un Script");
 		break;
 	}
 	case FILESYSTEM: {
@@ -399,12 +403,16 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		if (algo == 0)
 			abortoPorFaltaDeMemoria = 1;
 		sem_post(&semMemoriaReservoHeap);
+
+		log_info(logger,"Heap reservado correctamente");
 		break;
 	}
 	case METADATALEIDA: {
 		metaDataLeida = malloc(tamanoPaquete);
 		memcpy(metaDataLeida, paquete, tamanoPaquete);
 		sem_post(&semMetaDataLeida);
+
+		log_info(logger,"Metadata leida correctamente");
 		break;
 	}
 
@@ -443,6 +451,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case PAGINAENVIADA: {
+		log_info(logger,"Se envio la pagina correctamente");
 		sem_post(&semPaginaEnviada);
 		break;
 	}
@@ -450,7 +459,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semEntraElProceso);
 		memcpy(&header, paquete, 4);
 
-		log_info(logger,"header %d\n", header);
+		log_info(logger,"Entro al proceso con correctamente. Header: %d\n", header);
 		break;
 	}
 	case PROGRAMATERMINADO: {
@@ -467,6 +476,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		Serializar(PROGRAMATERMINADO, 4, &procesoTerminado->pcb->programId,
 				procesoTerminado->socketCONSOLA);
 		sem_post(&semCpu);
+
+		log_info(logger,"Moviendo el programa de PID %d a exit", procesoTerminado->pcb->programId);
 		break;
 	}
 	case PUNTEROPAGINAHEAP:
@@ -474,6 +485,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		punteroPaginaHeap = malloc(tamanoPaquete);
 		memcpy(punteroPaginaHeap, paquete, tamanoPaquete);
 		sem_post(&semPunteroPaginaHeap);
+		log_info(logger,"Se escribio Heap correctamente");
 		break;
 	}
 	case ABORTOPORCONSOLA: {
@@ -504,9 +516,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			queue_push(colaExec, unProceso);
 			pthread_mutex_unlock(&mutexColaEx);
 			Serializar(ABORTOPORCONSOLA, 4, &noInteresa, unProceso->socketCPU);
+			log_info(logger,"Se aborto el proceso de PID %d", unProceso->pcb->programId);
 		} else {
 
 			abortarProgramaPorConsola(pid, codeFinalizarPrograma);
+			log_info(logger,"Se aborto el proceso de PID %d", pid);
 		}
 		pthread_mutex_unlock(&mutexSyscall);
 		break;
@@ -522,6 +536,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		destruirPCB(unProceso->pcb);
 		unProceso->pcb = pcbRecibido;
 		abortar(unProceso, codeStackOverflow);
+		log_info(logger,"El proceso de PID %d se aborto por stack overflow", unProceso->pcb->programId);
 		break;
 	}
 	case ABORTOPORMASRESERVERAQUEPAGINA: {
@@ -531,6 +546,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		destruirPCB(unProceso->pcb);
 		unProceso->pcb = pcbRecibido;
 		abortar(unProceso, codeMasMemoriaQuePaginas);
+
+		log_info(logger,"El proceso de PID %d se aborto por heap overflow", unProceso->pcb->programId);
 		break;
 	}
 	case ABORTOEXPECIONDEMEMORIA: {
@@ -540,6 +557,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		destruirPCB(unProceso->pcb);
 		unProceso->pcb = pcbRecibido;
 		abortar(unProceso, codeExcepcionMemoria);
+
+		log_info(logger,"El proceso de PID %d se aborto por excepcion de memoria", unProceso->pcb->programId);
 		break;
 	}
 	case ABORTOARCHIVONOEXISTE: {
@@ -549,6 +568,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		destruirPCB(unProceso->pcb);
 		unProceso->pcb = pcbRecibido;
 		abortar(unProceso, codeArchivoNoexiste);
+
+		log_info(logger,"El proceso de PID %d se aborto por archivo inexistente", unProceso->pcb->programId);
 		break;
 	}
 		//procesar pid muerto
@@ -576,6 +597,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		}
 		pthread_mutex_unlock(&mutexSyscall);
 
+		log_info(logger,"El proceso de PID %d salio por fin de quantum", unProceso->pcb->programId);
 		break;
 	}
 	case ASIGNOVALORVARIABLECOMPARTIDA: {
@@ -593,6 +615,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		escribeVariable(variable, valor);
 		pthread_mutex_unlock(&mutexConfig);
 		pthread_mutex_unlock(&mutexSyscall);
+		log_info(logger,"El proceso de PID %d asigno una variable compartida", unProceso->pcb->programId);
 		break;
 	}
 
@@ -611,6 +634,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexConfig);
 		free(variable);
 		pthread_mutex_unlock(&mutexSyscall);
+
+		log_info(logger,"El proceso de PID %d pidio una variable compartida", unProceso->pcb->programId);
 		break;
 	}
 
@@ -630,6 +655,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 				unProceso->socketCONSOLA);
 		free(impresion);
 		pthread_mutex_unlock(&mutexSyscall);
+
+		log_info(logger,"El proceso de PID %d se imprimio por consola", unProceso->pcb->programId);
 		break;
 	}
 	case PROCESOWAIT: {
@@ -667,6 +694,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		pthread_mutex_unlock(&mutexConfig);
 		//free(semaforo);
+
+		log_info(logger,"El proceso de PID %d esta esperando un semaforo", unProceso->pcb->programId);
 		break;
 	}
 	case PROCESOSIGNAL: {
@@ -683,6 +712,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexConfig);
 		free(semaforo);
 		pthread_mutex_unlock(&mutexSyscall);
+
+		log_info(logger,"El proceso de PID %d hizo senial de un semaforo", unProceso->pcb->programId);
 		break;
 	}
 	case SEBLOQUEOELPROCESO: {
@@ -700,6 +731,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCpu, socket);
 		sem_post(&semCpu);
 		pthread_mutex_unlock(&mutexSyscall);
+
+		log_info(logger,"El proceso de PID %d se bloqueo", unProceso->pcb->programId);
 		break;
 
 	}
@@ -722,6 +755,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexColaHeap);
 		sem_post(&semProcesoAHeap);
 		pthread_mutex_unlock(&mutexSyscall);
+
+		log_info(logger,"El proceso de PID %d pidio Heap", unProceso->pcb->programId);
 		break;
 	}
 	case PROCESOLIBERAHEAP: {
@@ -745,6 +780,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexColaLiberaHeap);
 		sem_post(&semLiberarHeap);
 		pthread_mutex_unlock(&mutexSyscall);
+		log_info(logger,"El proceso de PID %d libero heap", unProceso->pcb->programId);
 		break;
 	}
 	case ABRIRARCHIVO: {
@@ -774,6 +810,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
 		pthread_mutex_unlock(&mutexSyscall);
+
+		log_info(logger,"El proceso de PID %d abrio un archivo", unProceso->pcb->programId);
 		break;
 	}
 	case BORRARARCHIVO: {
@@ -793,6 +831,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
 		pthread_mutex_unlock(&mutexSyscall);
+
+		log_info(logger,"El proceso de PID %d borro un archivo", unProceso->pcb->programId);
 		break;
 	}
 	case CERRARARCHIVO: {
@@ -812,6 +852,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
 		pthread_mutex_unlock(&mutexSyscall);
+		log_info(logger,"El proceso de PID %d cerro un archivo", unProceso->pcb->programId);
 		break;
 	}
 	case ESCRIBIRARCHIVO: {
@@ -835,6 +876,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
 		pthread_mutex_unlock(&mutexSyscall);
+		log_info(logger,"El proceso de PID %d escribio un archivo", unProceso->pcb->programId);
 		break;
 	}
 	case LEERARCHIVO: {
@@ -855,6 +897,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
 		pthread_mutex_unlock(&mutexSyscall);
+		log_info(logger,"El proceso de PID %d leyo un archivo", unProceso->pcb->programId);
 		break;
 	}
 	case MOVERCURSOR: {
@@ -875,6 +918,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
 		pthread_mutex_unlock(&mutexSyscall);
+		log_info(logger,"El proceso de PID %d movio el puntero", unProceso->pcb->programId);
 		break;
 	}
 	case VALIDARARCHIVO: {
@@ -997,7 +1041,7 @@ int actualizarTablaDelProceso(int pid, char* flags, int indiceEnTablaGlobal) {
 		log_info(logger,"Agrego el indice :%d\n", entrada->globalFd);
 		list_add(entradaTablaExistente->tablaProceso, entrada);
 		list_add(listaTablasProcesos, entradaTablaExistente); //la vuelvo a agregar a la lista
-
+		log_info(logger,"El proceso de PID %d actualizo su tabla de procesos", pid);
 		return entrada->fd;
 	}
 }
@@ -1658,7 +1702,7 @@ void enviarProcesoAMemoria(int cantidadDePaginas, char* codigo,
 			sem_wait(&semPaginaEnviada);
 			free(envioPagina);
 		}
-
+		log_info(logger,"El proceso de PID %d envio la pagina numero %d a memoria ", processID, i);
 	}
 	sem_post(&semEnvioPaginas);
 }
@@ -1720,6 +1764,7 @@ void planificadorLargoPlazo() {
 		queue_push(colaReady, unProcesoPlp);
 		pthread_mutex_unlock(&mutexColaReady);
 		sem_post(&semReady);
+		log_info(logger,"[NEW->READY] PID %d", unProcesoPlp->pcb->programId);
 	}
 
 }
@@ -1737,6 +1782,7 @@ void planificadorCortoPlazo() {
 		socket = (int) queue_pop(colaCpu);
 		pthread_mutex_unlock(&mutexColaCpu);
 		ejecutar(unProcesoPcp, socket);
+		log_info(logger,"[READY->EXECUTING] PID %d", unProcesoPcp->pcb->programId);
 
 	}
 
@@ -1748,6 +1794,7 @@ void ejecutar(proceso* procesoAEjecutar, int socket) {
 	queue_push(colaExec, procesoAEjecutar);
 	pthread_mutex_unlock(&mutexColaEx);
 	serializarPCB(procesoAEjecutar->pcb, socket, PCB);
+	log_info(logger,"[El proceso de PID %d paso a ejecutarse a la Cpu de socket %d", procesoAEjecutar->pcb->programId, socket);
 	//el problema esta aca
 }
 
