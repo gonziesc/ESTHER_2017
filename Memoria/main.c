@@ -115,18 +115,18 @@ void atenderConexionesCPu() {
 	while (1) {
 		clienteCpu = accept(servidor, (void*) &direccionCliente,
 				&tamanoDireccion);
-		printf("Recibí una conexión en %d!!\n", clienteCpu);
-		int envio = t_archivoConfig->MARCOS_SIZE;
-		Serializar(MEMORIA, 4, &envio, clienteCpu);
 
 		pthread_create(&hiloAtender, NULL, (void *) atenderCpu, clienteCpu);
 
-		pthread_join(hiloAtender, NULL);
+		//pthread_join(hiloAtender, NULL);
 	}
 
 }
 
 int atenderCpu(int socket) {
+	printf("Recibí una conexión en %d!!\n", socket);
+	int envio = t_archivoConfig->MARCOS_SIZE;
+	Serializar(MEMORIA, 4, &envio, socket);
 	while (1) {
 		paquete* paqueteRecibido = Deserializar(socket);
 		if (paqueteRecibido->header == -1 || paqueteRecibido->header == -2) {
@@ -331,7 +331,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		//almacernarPaginaEnFrame(pid, tamanoPaquete, paquete);
 		break;
 	}
-	case LEERSENTENCIA: case METADATALEIDA: case PROCESOLIBERAHEAP: {
+	case LEERSENTENCIA:
+	case METADATALEIDA:
+	case PROCESOLIBERAHEAP: {
 		int pid;
 		memcpy(&numero_pagina, paquete, sizeof(int));
 		memcpy(&offset, paquete + sizeof(int), sizeof(int));
@@ -487,26 +489,26 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas) {
 }
 
 void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas) {
-		int32_t i = ultimaPaginaPid[pid] + 1;
-		ultimaPaginaPid[pid] += 1;
-		int32_t frame = calcularPosicion(pid, i);
-		int32_t libre;
-		libre = estaLibre(frame);
-		if (libre == 1) {
+	int32_t i = ultimaPaginaPid[pid] + 1;
+	ultimaPaginaPid[pid] += 1;
+	int32_t frame = calcularPosicion(pid, i);
+	int32_t libre;
+	libre = estaLibre(frame);
+	if (libre == 1) {
 
-			nodoTablaMemoria.numeroPagina = i;
-			nodoTablaMemoria.pid = pid;
-			punteroMemoria[frame] = nodoTablaMemoria;
-			frameGeneral.framesLibres--;
+		nodoTablaMemoria.numeroPagina = i;
+		nodoTablaMemoria.pid = pid;
+		punteroMemoria[frame] = nodoTablaMemoria;
+		frameGeneral.framesLibres--;
 
-		} else {
-			int32_t frameLibre;
-			frameLibre = buscarFrameLibre();
-			agregarSiguienteEnOverflow(frame, frameLibre);
-			nodoTablaMemoria.numeroPagina = i;
-			nodoTablaMemoria.pid = pid;
-			punteroMemoria[frameLibre] = nodoTablaMemoria;
-			frameGeneral.framesLibres--;
+	} else {
+		int32_t frameLibre;
+		frameLibre = buscarFrameLibre();
+		agregarSiguienteEnOverflow(frame, frameLibre);
+		nodoTablaMemoria.numeroPagina = i;
+		nodoTablaMemoria.pid = pid;
+		punteroMemoria[frameLibre] = nodoTablaMemoria;
+		frameGeneral.framesLibres--;
 
 	}
 }

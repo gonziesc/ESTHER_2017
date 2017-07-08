@@ -26,6 +26,16 @@ int32_t main(int argc, char**argv) {
 			(t_archivoConfig->TAMANIO_BLOQUES
 					* t_archivoConfig->CANTIDAD_BLOQUES)
 					/ (8 * t_archivoConfig->TAMANIO_BLOQUES), MSB_FIRST);
+	char *nombreArchivoRecibido = string_new();
+	string_append(&nombreArchivoRecibido, t_archivoConfig->PUERTO_MONTAJE);
+	string_append(&nombreArchivoRecibido, "Metadata/Bitmap.bin");
+	FILE *f;
+	f = fopen(nombreArchivoRecibido, "wr+");
+	int i;
+	for (i = 0; i < 5192; i++) {
+		fputc(1, f);
+	}
+	fclose(f);
 	printf("El tamano del bitarray es de : %d\n\n\n",
 			bitarray_get_max_bit(bitarray));
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
@@ -255,7 +265,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 			char** arrayBloques = obtArrayDeBloquesDeArchivo(
 					nombreArchivoRecibido);
 
-
 			int cantidadBloques = 0;
 			while (!(arrayBloques[cantidadBloques] == NULL)) {
 				printf("%s \n", arrayBloques[cantidadBloques]);
@@ -289,8 +298,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 				int cuantosBloquesMasNecesito = (tamanoBuffer)
 						/ t_archivoConfig->TAMANIO_BLOQUES;
 
-				if (((tamanoBuffer)
-						% t_archivoConfig->TAMANIO_BLOQUES) > 0) {
+				if (((tamanoBuffer) % t_archivoConfig->TAMANIO_BLOQUES) > 0) {
 					cuantosBloquesMasNecesito++;
 				}
 				//si no hay mas bloques de los que se requieren hay que hacer un send tirando error
@@ -335,15 +343,13 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 									t_archivoConfig->TAMANIO_BLOQUES);
 							adx_store_data(nombreBloque, recortado);
 							offsetAux += t_archivoConfig->TAMANIO_BLOQUES;
-							tamanoBuffer-= t_archivoConfig->TAMANIO_BLOQUES;
+							tamanoBuffer -= t_archivoConfig->TAMANIO_BLOQUES;
 							free(recortado);
 						} else {
-							void* recortado = malloc(
-									tamanoBuffer);
+							void* recortado = malloc(tamanoBuffer);
 							memcpy(recortado, buffer + offsetAux, tamanoBuffer);
 							//mandarlo to do de una
-							adx_store_data(nombreBloque,
-									recortado);
+							adx_store_data(nombreBloque, recortado);
 							free(recortado);
 						}
 
@@ -360,7 +366,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 					int tamanioArchivoViejoInt = obtTamanioArchivo(
 							nombreArchivoRecibido);
-					int tamanioNuevo = tamanioArchivoViejoInt + (tamanoTotalBuffer);
+					int tamanioNuevo = tamanioArchivoViejoInt
+							+ (tamanoTotalBuffer);
 					char* tamanioNuevoChar = string_itoa(tamanioNuevo);
 					string_append(&dataAPonerEnFile, tamanioNuevoChar);
 					string_append(&dataAPonerEnFile, "\n");
