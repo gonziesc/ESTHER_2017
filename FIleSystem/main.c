@@ -465,6 +465,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 			int calcularBloqueInicial = offset
 					/ t_archivoConfig->TAMANIO_BLOQUES;
+
 			int offsetInicial = offset % t_archivoConfig->TAMANIO_BLOQUES;
 			int indice = calcularBloqueInicial;
 			fp = fopen(nombreArchivoRecibido, "r");
@@ -547,7 +548,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 
 		if (access(nombreArchivoRecibido, F_OK) != -1) {
 
-			fp = fopen(nombreArchivoRecibido, "w");
+			fp = fopen(nombreArchivoRecibido, "r");
 			//poner en un array los bloques de ese archivo para luego liberarlos
 			char** arrayBloques = obtArrayDeBloquesDeArchivo(
 					nombreArchivoRecibido);

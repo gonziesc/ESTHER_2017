@@ -306,6 +306,16 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		sem_post(&semMoverCursor);
 		break;
 	}
+	case BORRARARCHIVO: {
+		int validado;
+		memcpy(&validado, paquete, 4);
+		if (validado == 0) {
+			programaAbortado = 1;
+			codigoAborto = codeArchivoNoexiste;
+		}
+		sem_post(&semBorrarArchivo);
+		break;
+	}
 	}
 
 }

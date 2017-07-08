@@ -792,7 +792,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCapaFs, p);
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
-		pthread_mutex_lock(&mutexSyscall);
+		pthread_mutex_unlock(&mutexSyscall);
 		break;
 	}
 	case CERRARARCHIVO: {
@@ -1452,39 +1452,41 @@ void borrarArchivo(procesoACapaFs* unProceso) {
 		return;
 	} else {
 		int encontroFd;
-		indiceTablaProceso* entradaTablaProceso = list_remove_by_condition(
+		indiceTablaProceso* entradaTablaProceso2 = list_remove_by_condition(
 				listaTablasProcesos, (void*) verificaPid);
-		if (list_any_satisfy(entradaTablaProceso->tablaProceso,
+		if (list_any_satisfy(entradaTablaProceso2->tablaProceso,
 				(void*) verificaFd))
 			encontroFd = 1;
 		else
 			encontroFd = 0;
-		list_add(listaTablasProcesos, entradaTablaProceso);
+		list_add(listaTablasProcesos, entradaTablaProceso2);
 
 		if (!encontroFd) { /*Si ese archivo no lo tiene abierto no lo puede borrar*/
 			//TODO excepcionFileDescriptorNoAbierto(unProceso->socket, unProceso->pid);
 			return;
 		} else {
+			entradaTablaProceso* entrada = list_find(
+								entradaTablaProceso2->tablaProceso, (void*) verificaFd);
+			char* direccion = buscarDireccionEnTablaGlobal(entrada->globalFd);
 
-			/* Voy a la tabla global y borro la entrada, y saco el indice(GlobalFd) de donde lo borre.
-			 * Aca habria que ir a cada tabla de los procesos, y borrar la entrada. Uso como key el globalFd
-			 * Habria actualizar CADA puntero de la tabla de los procesos. Solo se actualizan las tablas que tengan
-			 * a los archivos que estaban por debajo de ese indice en la tabla global. Es disminuir en uno a cada globalFd.
-			 * Todo esto deberia ir despues que el FS borre al archivo
-			 * */
 
-			//hacer los sends para que el FS borre ese archivo y deje los bloques libres
-			/*if (resultadoEjecucion < 0) {
-			 excepcionFileSystem(socket, pid);
-			 return;
-			 }*/
-			int indiceGlobalFd = borrarEntradaTablaProceso(unProceso->pid,
-					unProceso->fd);
-			disminuirOpenYVerificarExistenciaEntradaGlobal(indiceGlobalFd);
+			int tamanoNombre = sizeof(char) * strlen(direccion);
+
+			printf("Tamano del nombre del archivo:%d\n", tamanoNombre);
+			printf("Nombre del archivo:%s\n", direccion);
+			void* envio = malloc(tamanoNombre + 4);
+			memcpy(envio, &tamanoNombre, 4);
+			memcpy(envio + 4, direccion, tamanoNombre);
+			Serializar(BORRARARCHIVOFS, tamanoNombre + 4, envio, clientefs);
+			//int indiceGlobalFd = borrarEntradaTablaProceso(unProceso->pid,
+					//unProceso->fd);
+			//disminuirOpenYVerificarExistenciaEntradaGlobal(indiceGlobalFd);
+			sem_wait(&semBorrarArchivo);
 		}
 
 	}
-	Serializar(BORRARARCHIVO, 4, &resultadoEjecucion, unProceso->socket);
+	int validado = 1;
+	Serializar(BORRARARCHIVO, 4, &validado, unProceso->socket);
 	free(unProceso);
 }
 void moverCursorArchivo(procesoACapaFs* unProceso) {
