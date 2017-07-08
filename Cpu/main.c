@@ -1,5 +1,6 @@
 #include "main.h"
 
+
 archivoConfigCPU* t_archivoConfig;
 t_config *config;
 struct sockaddr_in direccionKernel;
@@ -406,7 +407,7 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 	else if (indiceStack->tamanoVars == 0 && (unPcb->tamanoIndiceStack) > 1) {
 		printf("[definirVariable]Declarando variable %c de funcion\n",
 				nombreVariable);
-		armarDirecccionDeFuncion(direccionVariable);
+		armarDireccionDeFuncion(direccionVariable);
 		unaVariable->etiqueta = nombreVariable;
 		unaVariable->direccion = direccionVariable;
 		list_add(indiceStack->vars, unaVariable);
@@ -433,26 +434,37 @@ t_puntero definirVariable(t_nombre_variable nombreVariable) {
 
 }
 
-void armarDirecccionDeFuncion(posicionMemoria *direccionReal) {
+void armarDireccionDeFuncion(posicionMemoria *direccionReal) {
 	indiceDeStack *stackActual = (indiceDeStack*) list_get(unPcb->indiceStack,
 			unPcb->tamanoIndiceStack - 1);
+	int existenVariables = 0;
+	int posMax = unPcb->tamanoIndiceStack - 2;
+	while (posMax >= 0){
+		if(((indiceDeStack*) list_get(unPcb->indiceStack, posMax))->tamanoVars != 0){
+			existenVariables =1;
+		}
+		posMax--;
+	}
 	if (stackActual->tamanoArgs == 0 && stackActual->tamanoVars == 0) {
 		printf(
-				"Entrando a definir variable en contexto sin argumentos y sin vars\n");
+				"[armarDireccionDeFuncion]Entrando a definir variable en contexto sin argumentos y sin vars\n");
+		if (!existenVariables){
+			armarDireccionPrimeraPagina(direccionReal);
+		}else{
 		int posicionStackAnterior = unPcb->tamanoIndiceStack - 2;
 		int posicionUltimaVariable = ((indiceDeStack*) (list_get(
-				unPcb->indiceStack, unPcb->tamanoIndiceStack - 2)))->tamanoVars
-				- 1;
-		proximaDireccion(posicionStackAnterior, posicionUltimaVariable,
-				direccionReal);
+				unPcb->indiceStack, unPcb->tamanoIndiceStack - 2)))->tamanoVars - 1;
+		printf("[armarDireccionDeFuncion]Entrando a definir variable en contexto sin argumentos y sin vars en stack:%d var:%d\n",posicionStackAnterior, posicionUltimaVariable);
+		proximaDireccion(posicionStackAnterior, posicionUltimaVariable, direccionReal);
+		}
 	} else if (stackActual->tamanoVars == 0) {
-		printf("Entrando a definir variable a partir del ultimo argumento\n");
+		printf("[armarDireccionDeFuncion]Entrando a definir variable a partir del ultimo argumento\n");
 		int posicionStackActual = unPcb->tamanoIndiceStack - 1;
 		int posicionUltimoArgumento = (stackActual)->tamanoArgs - 1;
 		proximaDireccionArg(posicionStackActual, posicionUltimoArgumento,
 				direccionReal);
 	} else {
-		printf("Entrando a definir variable a partir de la ultima variable\n");
+		printf("[armarDireccionDeFuncion]Entrando a definir variable a partir de la ultima variable\n");
 		int posicionStackActual = unPcb->tamanoIndiceStack - 1;
 		int posicionUltimaVariable = stackActual->tamanoVars - 1;
 		proximaDireccion(posicionStackActual, posicionUltimaVariable,
@@ -578,9 +590,13 @@ void destruirContextoActual(void) {
 
 void finalizar(void) {
 	printf("[finalizar]Finalizar funcion\n");
-	destruirContextoActual();
-
-	if (unPcb->tamanoIndiceStack == 0) {
+	if (unPcb->tamanoIndiceStack != 0){
+		indiceDeStack *contextoAFinalizar = list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack - 1);
+		unPcb->programCounter = contextoAFinalizar->retPos;
+		destruirContextoActual();
+	}
+	else{
+		destruirContextoActual();
 		printf("[finalizar]Programa Finalizado\n");
 		programaFinalizado = 1;
 		Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
@@ -603,7 +619,7 @@ indiceDeStack* crearStack() {
 void llamarSinRetorno(t_nombre_etiqueta etiqueta) {
 	indiceDeStack *nuevoContexto = crearStack(nuevoContexto);
 	printf(
-			"[llamarConRetorno]Creo nuevo contexto con pos: %d que debe volver en la sentencia %d\n",
+			"[llamarSinRetorno]Creo nuevo contexto con pos: %d que debe volver en la sentencia %d\n",
 			nuevoContexto->pos, nuevoContexto->retPos);
 	list_add(unPcb->indiceStack, nuevoContexto);
 	unPcb->tamanoIndiceStack++;
