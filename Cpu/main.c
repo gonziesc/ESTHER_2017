@@ -602,13 +602,9 @@ void destruirContextoActual(void) {
 
 void finalizar(void) {
 	log_info(logger,"[finalizar]Finalizar funcion\n");
-	if (unPcb->tamanoIndiceStack != 0){
-		indiceDeStack *contextoAFinalizar = list_get(unPcb->indiceStack, unPcb->tamanoIndiceStack - 1);
-		unPcb->programCounter = contextoAFinalizar->retPos;
-		destruirContextoActual();
-	}
-	else{
-		destruirContextoActual();
+	destruirContextoActual();
+	if (unPcb->tamanoIndiceStack == 0){
+
 		log_info(logger,"[finalizar]Programa Finalizado\n");
 		programaFinalizado = 1;
 		Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);

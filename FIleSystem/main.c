@@ -56,7 +56,6 @@ void inicializarMmap() {
 	struct stat mystat;
 
 	if (fstat(bitmap, &mystat) < 0) {
-		log_info(log,"Error al establecer fstat\n");
 		close(bitmap);
 	}
 
@@ -64,6 +63,7 @@ void inicializarMmap() {
 
 	mmapDeBitmap = mmap(NULL, mystat.st_size, PROT_WRITE | PROT_READ,
 	MAP_SHARED, bitmap, 0);
+	close(bitmap);
 	sem_post(&semConfig);
 }
 

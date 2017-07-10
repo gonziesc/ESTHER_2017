@@ -770,6 +770,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(&pid, paquete, 4);
 		memcpy(&pagina, paquete + 4, 4);
 		memcpy(&offsetPagina, paquete + 8, 4);
+		log_info(logger,"llego hasta aca con pid %d", unProceso->pcb->programId);
 		liberaDatosHeap* procesoAHeap = malloc(sizeof(liberaDatosHeap));
 		procesoAHeap->pid = pid;
 		procesoAHeap->socket = socket;
@@ -1364,7 +1365,7 @@ void escribirArchivo(procesoACapaFs* unProceso) {
 			log_info(logger,"Nombre del archivo: %s\n", nombreArchivo);
 			log_info(logger,"Puntero:%d\n", entrada->puntero);
 			log_info(logger,"Tamano a escribir :%d\n", unProceso->tamano);
-			log_info(logger,"Informacion a escribir:%s\n", unProceso->data);
+			//log_info(logger,"Informacion a escribir:%s\n", unProceso->data);
 			void*envio = malloc(12 + tamanoNombre + unProceso->tamano);
 			memcpy(envio, &tamanoNombre, 4);
 			memcpy(envio + 4, &entrada->puntero, 4);
@@ -1931,11 +1932,14 @@ void liberaSemaforo(char *semaforo) {
 				queue_push(colaReady, proceso);
 				pthread_mutex_unlock(&mutexColaReady);
 				sem_post(&semReady);
+				log_info(logger,"desbloquee\n");
 			} else {
 				//esto deberia sumar 1
 				int valor = 1 + atoi(t_archivoConfig->SEM_INIT[i]);
+				//char* str = malloc(5);
 				char str[15];
 				sprintf(str, "%d", valor);
+				log_info(logger,"llegue hasta sprintf\n");
 				memcpy((t_archivoConfig->SEM_INIT[i]), str, sizeof(int));
 			}
 
@@ -2262,7 +2266,7 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 
 	bloque.isFree = -1;
 	/*TODO: Poder saber bien cuanto estoy liberando*/
-	log_info(logger,"\n\nEstoy liberando:%d\n\n", bloque.size);
+	//log_info(logger,"\n\nEstoy liberando:%d\n\n", bloque.size);
 
 	memcpy(buffer, &bloque, sizeof(HeapMetaData));
 
@@ -2289,6 +2293,7 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 		}
 		i++;
 	}
+	log_info(logger,"llego hasta aca con pid %d", aux->pid);
 	pthread_mutex_unlock(&mutexListaAdminHeap);
 }
 

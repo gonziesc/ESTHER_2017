@@ -1,5 +1,7 @@
 # Object files
-
+*.mk
+*.o
+*.obj
 
 # Precompiled Headers
 *.gch
