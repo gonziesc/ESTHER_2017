@@ -356,6 +356,7 @@ void procesarScript() {
 			queue_push(colaProcesosConsola, unaConsola);
 			unProceso->pcb = unPcb;
 			unProceso->socketCONSOLA = unScript->socket;
+			unProceso->abortado = false;
 			char * enviocantidadDePaginas = malloc(2 * sizeof(int));
 			memcpy(enviocantidadDePaginas, &processID, sizeof(int));
 			memcpy(enviocantidadDePaginas + 4, &cantidadDePaginasTotales,
@@ -1784,11 +1785,19 @@ void planificadorCortoPlazo() {
 void ejecutar(proceso* procesoAEjecutar, int socket) {
 	pthread_mutex_lock(&mutexColaEx);
 	queue_push(colaExec, procesoAEjecutar);
-	serializarPCB(procesoAEjecutar->pcb, socket, PCB);
-	pthread_mutex_unlock(&mutexColaEx);
-	log_info(logger,
-			"[El proceso de PID %d paso a ejecutarse a la Cpu de socket %d",
-			procesoAEjecutar->pcb->programId, socket);
+	if (procesoAEjecutar->abortado == true) {
+		abortar(procesoAEjecutar, codeFinalizarPrograma);
+		log_info(logger,
+						"[El proceso de PID %d se aborto en ejecutar",
+						procesoAEjecutar->pcb->programId);
+	} else {
+		serializarPCB(procesoAEjecutar->pcb, socket, PCB);
+		pthread_mutex_unlock(&mutexColaEx);
+		log_info(logger,
+						"[El proceso de PID %d paso a ejecutarse a la Cpu de socket %d",
+						procesoAEjecutar->pcb->programId, socket);
+	}
+
 	//el problema esta aca
 }
 
@@ -2335,7 +2344,7 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 			pthread_mutex_unlock(&mutexColaEx);
 		}
 		if (unProceso != NULL) {
-
+			unProceso->abortado = true;
 			Serializar(ABORTOPORCONSOLA, 4, &noInteresa, unProceso->socketCPU);
 			log_info(logger,
 					"Kernel: encontr'e el proceso en exec, mando senal a cpu");
