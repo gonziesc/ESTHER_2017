@@ -88,7 +88,6 @@ pthread_mutex_t mutexListaAdminHeap;
 pthread_mutex_t mutexColaHeap;
 pthread_mutex_t mutexColaLiberaHeap;
 pthread_mutex_t mutexColaCapaFs;
-pthread_mutex_t mutexSyscall;
 pthread_t hiloPlanificadorLargoPlazo;
 pthread_t hiloEnviarProceso;
 pthread_t hiloPlanificadorCortoPlazo;
@@ -509,17 +508,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case MATARPIDPORCONSOLA: {
-		pthread_mutex_lock(&mutexSyscall);
 		int pid;
 		proceso* unProceso;
 		char* fechaFIn = temporal_get_string_time();
 		memcpy(&pid, paquete, sizeof(int));
-		pthread_mutex_lock(&mutexColaEx);
-		unProceso = sacarProcesoDeEjecucion(socket);
-		queue_push(colaExec, unProceso);
-		pthread_mutex_unlock(&mutexColaEx);
 		abortarProgramaPorConsola(pid, codeFinalizarPrograma);
-		pthread_mutex_unlock(&mutexSyscall);
 		break;
 	}
 	case NOENTROPROCESO: {
@@ -582,7 +575,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case FINDEQUATUM: {
-		pthread_mutex_lock(&mutexSyscall);
 		programControlBlock* pcbRecibido = deserializarPCB(paquete);
 		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
 				pcbRecibido->programId);
@@ -598,14 +590,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			pthread_mutex_unlock(&mutexColaCpu);
 			sem_post(&semCpu);
 		}
-		pthread_mutex_unlock(&mutexSyscall);
 
 		log_info(logger, "El proceso de PID %d salio por fin de quantum",
 				unProceso->pcb->programId);
 		break;
 	}
 	case ASIGNOVALORVARIABLECOMPARTIDA: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		int valor;
 		memcpy(&valor, paquete, 4);
@@ -618,14 +608,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexConfig);
 		escribeVariable(variable, valor);
 		pthread_mutex_unlock(&mutexConfig);
-		pthread_mutex_unlock(&mutexSyscall);
 		log_info(logger, "El proceso de PID %d asigno una variable compartida",
 				unProceso->pcb->programId);
 		break;
 	}
 
 	case VALORVARIABLECOMPARTIDA: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		char * variable = malloc(tamanoPaquete);
 		memcpy(variable, paquete, tamanoPaquete);
@@ -638,7 +626,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		Serializar(VALORVARIABLECOMPARTIDA, sizeof(int), &envio, socket);
 		pthread_mutex_unlock(&mutexConfig);
 		free(variable);
-		pthread_mutex_unlock(&mutexSyscall);
 
 		log_info(logger, "El proceso de PID %d pidio una variable compartida",
 				unProceso->pcb->programId);
@@ -646,7 +633,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	}
 
 	case IMPRIMIRPROCESO: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		int tamanioAEnviar;
 		int tamanioTexto = tamanoPaquete - 4;
@@ -660,7 +646,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		Serializar(IMPRESIONPORCONSOLA, tamanioTexto + 4, impresion,
 				unProceso->socketCONSOLA);
 		free(impresion);
-		pthread_mutex_unlock(&mutexSyscall);
 
 		log_info(logger, "El proceso de PID %d se imprimio por consola",
 				unProceso->pcb->programId);
@@ -670,7 +655,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		char* semaforo = malloc(tamanoPaquete);
 		memcpy(semaforo, paquete, tamanoPaquete);
 		proceso* unProceso;
-		//ACAACACACACA
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
 		procesoBloqueado *unProcesoBloqueado = malloc(sizeof(procesoBloqueado));
@@ -703,7 +687,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case PROCESOSIGNAL: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		char* semaforo = malloc(tamanoPaquete);
 		memcpy(semaforo, paquete, tamanoPaquete);
@@ -715,17 +698,18 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		liberaSemaforo(semaforo);
 		pthread_mutex_unlock(&mutexConfig);
 		free(semaforo);
-		pthread_mutex_unlock(&mutexSyscall);
-
 		log_info(logger, "El proceso de PID %d hizo senial de un semaforo",
 				unProceso->pcb->programId);
 		break;
 	}
 	case SEBLOQUEOELPROCESO: {
-		pthread_mutex_lock(&mutexSyscall);
 		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		pthread_mutex_lock(&mutexColaEx);
 		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
 				pcbRecibido->programId);
+		log_info(logger, "El proceso de PID %d se bloqueo",
+				unProceso->pcb->programId);
+		pthread_mutex_unlock(&mutexColaEx);
 		if (unProceso != NULL) {
 			destruirPCB(unProceso->pcb);
 			char* semaforo = conseguirSemaforoDeBloqueado(
@@ -738,15 +722,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCpu, socket);
 		pthread_mutex_unlock(&mutexColaCpu);
 		sem_post(&semCpu);
-		pthread_mutex_unlock(&mutexSyscall);
-
-		log_info(logger, "El proceso de PID %d se bloqueo",
-				unProceso->pcb->programId);
 		break;
 
 	}
 	case PROCESOPIDEHEAP: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		int pid, cantidad;
 		memcpy(&pid, paquete, 4);
@@ -763,14 +742,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaHeap, procesoAHeap);
 		pthread_mutex_unlock(&mutexColaHeap);
 		sem_post(&semProcesoAHeap);
-		pthread_mutex_unlock(&mutexSyscall);
 
 		log_info(logger, "El proceso de PID %d pidio Heap",
 				unProceso->pcb->programId);
 		break;
 	}
 	case PROCESOLIBERAHEAP: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
@@ -791,13 +768,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaLiberaHeap, procesoAHeap);
 		pthread_mutex_unlock(&mutexColaLiberaHeap);
 		sem_post(&semLiberarHeap);
-		pthread_mutex_unlock(&mutexSyscall);
 		log_info(logger, "El proceso de PID %d libero heap",
 				unProceso->pcb->programId);
 		break;
 	}
 	case ABRIRARCHIVO: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
@@ -822,14 +797,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCapaFs, p);
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
-		pthread_mutex_unlock(&mutexSyscall);
 
 		log_info(logger, "El proceso de PID %d abrio un archivo",
 				unProceso->pcb->programId);
 		break;
 	}
 	case BORRARARCHIVO: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
@@ -844,14 +817,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCapaFs, p);
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
-		pthread_mutex_unlock(&mutexSyscall);
 
 		log_info(logger, "El proceso de PID %d borro un archivo",
 				unProceso->pcb->programId);
 		break;
 	}
 	case CERRARARCHIVO: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
@@ -866,13 +837,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCapaFs, p);
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
-		pthread_mutex_unlock(&mutexSyscall);
 		log_info(logger, "El proceso de PID %d cerro un archivo",
 				unProceso->pcb->programId);
 		break;
 	}
 	case ESCRIBIRARCHIVO: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
@@ -891,13 +860,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCapaFs, p);
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
-		pthread_mutex_unlock(&mutexSyscall);
 		log_info(logger, "El proceso de PID %d escribio un archivo",
 				unProceso->pcb->programId);
 		break;
 	}
 	case LEERARCHIVO: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
@@ -913,13 +880,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCapaFs, p);
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
-		pthread_mutex_unlock(&mutexSyscall);
 		log_info(logger, "El proceso de PID %d leyo un archivo",
 				unProceso->pcb->programId);
 		break;
 	}
 	case MOVERCURSOR: {
-		pthread_mutex_lock(&mutexSyscall);
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
@@ -935,7 +900,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		queue_push(colaCapaFs, p);
 		pthread_mutex_unlock(&mutexColaCapaFs);
 		sem_post(&semCapaFs);
-		pthread_mutex_unlock(&mutexSyscall);
 		log_info(logger, "El proceso de PID %d movio el puntero",
 				unProceso->pcb->programId);
 		break;
@@ -1803,12 +1767,14 @@ void planificadorCortoPlazo() {
 		pthread_mutex_unlock(&mutexColaCpu);
 		pthread_mutex_lock(&mutexColaReady);
 		log_info(logger, "mando a ejecutar a la consola %d", socket);
-
 		unProcesoPcp = queue_pop(colaReady);
-		unProcesoPcp->socketCPU = socket;
-		log_info(logger, "[READY->EXECUTING] PID %d",
-				unProcesoPcp->pcb->programId);
-		ejecutar(unProcesoPcp, socket);
+		if (unProcesoPcp != NULL) {
+			unProcesoPcp->socketCPU = socket;
+			log_info(logger, "[READY->EXECUTING] PID %d",
+					unProcesoPcp->pcb->programId);
+			ejecutar(unProcesoPcp, socket);
+		}
+
 		pthread_mutex_unlock(&mutexColaReady);
 
 	}
@@ -1829,14 +1795,12 @@ void ejecutar(proceso* procesoAEjecutar, int socket) {
 proceso* sacarProcesoDeEjecucion(int sock) {
 	int a = 0, t;
 	proceso *procesoABuscar;
-	pthread_mutex_lock(&mutexColaEx);
 	while (procesoABuscar = (proceso*) list_get(colaExec->elements, a)) {
 		if (procesoABuscar->socketCPU == sock)
 			return (proceso*) list_remove(colaExec->elements, a);
 		a++;
 	}
-	pthread_mutex_unlock(&mutexColaEx);
-	log_info(logger, "NO HAY PROCESO\n");
+	log_info(logger, "No encontre el proceso de cpu %d\n", sock);
 
 	return NULL;
 }
@@ -1844,13 +1808,11 @@ proceso* sacarProcesoDeEjecucion(int sock) {
 proceso* sacarProcesoDeEjecucionPorPid(int pid) {
 	int a = 0, t;
 	proceso *procesoABuscar;
-	pthread_mutex_lock(&mutexColaEx);
 	while (procesoABuscar = (proceso*) list_get(colaExec->elements, a)) {
 		if (procesoABuscar->pcb->programId == pid)
 			return (proceso*) list_remove(colaExec->elements, a);
 		a++;
 	}
-	pthread_mutex_unlock(&mutexColaEx);
 	log_info(logger, "NO HAY PROCESO\n");
 
 	return NULL;
@@ -1918,7 +1880,7 @@ void escribeVariable(char *variable, int valor) {
 
 int pideSemaforo(char *semaforo) {
 	int i;
-log_info(logger,"NUCLEO: pide sem %s\n", semaforo);
+	log_info(logger, "NUCLEO: pide sem %s\n", semaforo);
 
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
 			i++) {
@@ -1926,7 +1888,7 @@ log_info(logger,"NUCLEO: pide sem %s\n", semaforo);
 			return atoi(t_archivoConfig->SEM_INIT[i]);
 		}
 	}
-	log_info(logger,"No encontre SEM id, exit\n");
+	log_info(logger, "No encontre SEM id, exit\n");
 	//exit(0);
 }
 
@@ -1934,7 +1896,7 @@ void escribeSemaforo(char *semaforo, int valor) {
 	int i;
 	char str[15];
 	sprintf(str, "%d", valor);
-log_info(logger,"NUCLEO: pide sem %s\n", semaforo);
+	log_info(logger, "NUCLEO: pide sem %s\n", semaforo);
 
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
 			i++) {
@@ -1945,7 +1907,7 @@ log_info(logger,"NUCLEO: pide sem %s\n", semaforo);
 			return;
 		}
 	}
-	log_info(logger,"No encontre SEM id, exit\n");
+	log_info(logger, "No encontre SEM id, exit\n");
 	//exit(0);
 }
 
@@ -1978,7 +1940,7 @@ void liberaSemaforo(char *semaforo) {
 			return;
 		}
 	}
-	log_info(logger,"No encontre SEM id, exit\n");
+	log_info(logger, "No encontre SEM id, exit\n");
 	//exit(0);
 }
 
@@ -1997,7 +1959,7 @@ void bloqueoSemaforo(proceso *proceso, char *semaforo) {
 			}
 		}
 	}
-	log_info(logger,"No encontre SEM id, exit\n");
+	log_info(logger, "No encontre SEM id, exit\n");
 	// exit(0);
 }
 

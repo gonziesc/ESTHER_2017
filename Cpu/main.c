@@ -147,22 +147,26 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case MATARPIDPORCONSOLA: {
+		log_info(logger, "llego senal para abortar por consola: %d\n", unPcb->programId);
 		programaAbortado = 1;
 		codigoAborto = ABORTOPORCONSOLA;
 		break;
 	}
 	case ABORTOPORCONSOLA: {
+		log_info(logger, "llego senal para abortar por consola: %d\n", unPcb->programId);
 		programaAbortado = 1;
 		codigoAborto = ABORTOPORCONSOLA;
 		break;
 	}
 	case ABORTOPORMASRESERVERAQUEPAGINA: {
+		log_info(logger, "llego senal para abortar por reservar mas memoria que heap: %d\n", unPcb->programId);
 		sem_post(&semProcesoPideHeap);
 		programaAbortado = 1;
 		codigoAborto = ABORTOPORMASRESERVERAQUEPAGINA;
 		break;
 	}
 	case ABORTOEXPECIONDEMEMORIA: {
+		log_info(logger, "llego senal para abortar por excepcion de memoria: %d\n", unPcb->programId);
 		sem_post(&semProcesoPideHeap);
 		programaAbortado = 1;
 		codigoAborto = ABORTOEXPECIONDEMEMORIA;
@@ -196,6 +200,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case LEERSENTENCIA: {
+		log_info(logger, "lei una sentencia de memoria: \n");
 		instruccionLeida = malloc(tamanoPaquete);
 		memcpy(instruccionLeida, paquete, tamanoPaquete);
 		sem_post(&semInstruccion);
@@ -212,6 +217,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	case PROCESOWAIT: {
 		memcpy(&programaBloqueado, paquete, 4);
+		log_info(logger, "el proceso tiro wait %d y se bloqueo(1 si, 0 no) %d\n", unPcb->programId, programaBloqueado);
 		sem_post(&semProcesoBloqueado);
 		break;
 	}

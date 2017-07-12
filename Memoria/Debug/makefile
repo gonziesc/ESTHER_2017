@@ -25,13 +25,13 @@ endif
 all: Memoria
 
 dependents:
-	-cd /home/utnso/git/tp-2017-1c-el-grupo-numero/shared/Debug && $(MAKE) all
+	-cd /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug && $(MAKE) all
 
 # Tool invocations
-Memoria: $(OBJS) $(USER_OBJS) /home/utnso/git/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so
+Memoria: $(OBJS) $(USER_OBJS) /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L"/home/utnso/git/tp-2017-1c-el-grupo-numero/shared/Debug" -o "Memoria" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug" -o "Memoria" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -42,6 +42,6 @@ clean:
 
 .PHONY: all clean dependents
 .SECONDARY:
-/home/utnso/git/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so:
+/home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so:
 
 -include ../makefile.targets
