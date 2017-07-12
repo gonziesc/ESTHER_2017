@@ -670,6 +670,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		char* semaforo = malloc(tamanoPaquete);
 		memcpy(semaforo, paquete, tamanoPaquete);
 		proceso* unProceso;
+		//ACAACACACACA
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
 		procesoBloqueado *unProcesoBloqueado = malloc(sizeof(procesoBloqueado));
