@@ -5,6 +5,7 @@ uint32_t tamanoDireccion;
 int abortoPorFaltaDeMemoria;
 script* unScript;
 int32_t fdmax;
+int entraproceso;
 int32_t cpuDisponible;
 int32_t newfd;        // descriptor de socket de nueva conexión aceptada
 int32_t header;    // buffer para datos del cliente
@@ -341,7 +342,7 @@ void procesarScript() {
 		Serializar(TAMANO, sizeof(int), &cantidadDePaginasTotales, clienteMEM);
 		pthread_mutex_unlock(&mutexMemoria);
 		sem_wait(&semEntraElProceso);
-		if (header == OK) {
+		if (entraproceso == OK) {
 			proceso* unProceso = malloc(sizeof(proceso));
 			programControlBlock* unPcb = malloc(sizeof(programControlBlock));
 			procesoConsola* unaConsola = malloc(sizeof(procesoConsola));
@@ -462,10 +463,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	}
 	case ENTRAPROCESO: {
 		sem_post(&semEntraElProceso);
-		memcpy(&header, paquete, 4);
+
+		entraproceso = 0;
 
 		log_info(logger, "Entro al proceso con correctamente. Header: %d\n",
-				header);
+				entraproceso);
 		break;
 	}
 	case PROGRAMATERMINADO: {
@@ -519,6 +521,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case NOENTROPROCESO: {
+		entraproceso = 1;
 		//TODO abortar
 		break;
 	}
