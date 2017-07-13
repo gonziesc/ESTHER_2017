@@ -643,6 +643,9 @@ void finalizar(void) {
 		log_info(logger, "[finalizar]Programa Finalizado\n");
 		programaFinalizado = 1;
 		Serializar(PROGRAMATERMINADO, 4, &noInteresa, cliente);
+		Serializar(PORLASDUDAS, 4, &noInteresa, cliente);
+		Serializar(PORLASDUDAS, 4, &noInteresa, cliente);
+		Serializar(PORLASDUDAS, 4, &noInteresa, cliente);
 		destruirPCB(unPcb);
 		sem_post(&semDestruirPCB);
 	}

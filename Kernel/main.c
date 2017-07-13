@@ -273,7 +273,8 @@ int32_t levantarServidor() {
 						}
 					} else {
 						paquete* paqueteRecibido = Deserializar(i);
-
+						log_info(logger, "me trabe en el recv de socktt %d ",
+										i);
 						// error o conexión cerrada por el cliente
 						if (paqueteRecibido->header == -1) {
 							// conexión cerrada
@@ -416,6 +417,9 @@ void procesarScript() {
 
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
 	switch (id) {
+	case PORLASDUDAS: {
+		break;
+	}
 	case ARCHIVO: {
 		//log_info(logger,"%s\n", paquete);
 		//log_info(logger,"%d\n", tamanoPaquete);
@@ -562,7 +566,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	}
 	case NOENTROPROCESO: {
 		entraproceso = 1;
-		//TODO abortar
 		break;
 	}
 	case ABORTOSTACKOVERFLOW: {
