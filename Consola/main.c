@@ -23,8 +23,8 @@ int pidActual;
 
 int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
-	log= log_create(ARCHIVOLOG, "Consola", 0, LOG_LEVEL_INFO);
-	log_info(log,"Iniciando Consola\n");
+	log = log_create(ARCHIVOLOG, "Consola", 0, LOG_LEVEL_INFO);
+	log_info(log, "Iniciando Consola\n");
 	idHiloConectarseConKernel = pthread_create(&hiloConectarseConKernel, NULL,
 			ConectarseConKernel, noInteresa);
 	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando,
@@ -92,6 +92,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		sem_post(&semPidListo);
 		break;
 	}
+	case ABORTOEXPECIONDEMEMORIA: {
+		pidActual = 0;
+		sem_post(&semPidListo);
+		break;
+	}
 	case ABORTOSTACKOVERFLOW: {
 		int pid;
 		int codigoError;
@@ -105,6 +110,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("el pid %d imprimio la cantidad de : %d \n", pid,
 				procesoTerminado.cantidadDeImpresiones);
 		printf("el pid %d fue abortado por %d \n", pid, codigoError);
+		procesoTerminado.terminado = 1;
 		break;
 	}
 	}
@@ -135,14 +141,6 @@ void leerComando() {
 			printf("Ingrese pid a finalizar\n");
 			scanf("%d", &pidAMatar);
 			Serializar(MATARPIDPORCONSOLA, 4, &pidAMatar, cliente);
-			char* fechaFIn = temporal_get_string_time();
-			ProcesosActuales procesoTerminado = buscarProceso(pidAMatar);
-			printf("el pid %d comenzo a las %s \n", pidAMatar,
-					procesoTerminado.horaInicio);
-			printf("el pid %d finalizo a las %s \n", pidAMatar, fechaFIn);
-			printf("el pid %d imprimio la cantidad de : %d \n", pidAMatar,
-					procesoTerminado.cantidadDeImpresiones);
-			procesoTerminado.terminado = 1;
 			pthread_cancel(procesosActuales[pidAMatar].identificadorHilo);
 			break;
 		}
@@ -168,10 +166,15 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 	int tamano = abrirYLeerArchivo(nombreArchivo, contenidoDelArchivo);
 	Serializar(ARCHIVO, tamano, contenidoDelArchivo, cliente);
 	sem_wait(&semPidListo);
-	procesosActuales[procesosActualesPosicion].PID = pidActual;
-	procesosActuales[procesosActualesPosicion].horaInicio =
-			temporal_get_string_time();
-	printf("process id: %d\n", pidActual);
+	if (pidActual == 0) {
+		printf("el proceso no entro por falta de lugar\n");
+		exit(0);
+	} else {
+		procesosActuales[procesosActualesPosicion].PID = pidActual;
+		procesosActuales[procesosActualesPosicion].horaInicio =
+				temporal_get_string_time();
+		printf("process id: %d\n", pidActual);
+	}
 
 }
 
@@ -196,7 +199,8 @@ void imprimioProceso(int pid) {
 void matarTodosLosProcesos() {
 	int i;
 	for (i = 0; i <= 100; i++) {
-		if (procesosActuales[i].PID != 0 && procesosActuales[i].terminado == 0) {
+		if (procesosActuales[i].PID != 0
+				&& procesosActuales[i].terminado == 0) {
 			char* fechaFIn = temporal_get_string_time();
 			printf("el pid %d comenzo a las %s \n", procesosActuales[i].PID,
 					procesosActuales[i].horaInicio);

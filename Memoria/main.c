@@ -349,6 +349,14 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		//ojo pid actual
 		break;
 	}
+	case LIBERARPAGINAS:{
+		int pid;
+		int pagina;
+		memcpy(&pid, paquete, 4);
+		memcpy(&pagina, paquete +4, 4);
+		liberarPaginaDeProceso(pid, pagina);
+		break;
+	}
 	case DEREFERENCIAR: {
 		int pid;
 		memcpy(&numero_pagina, paquete, sizeof(int));

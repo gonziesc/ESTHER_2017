@@ -76,7 +76,8 @@ typedef enum {
 	MOVERCURSOR = 66,
 	BORRARARCHIVOFS = 67,
 	ABORTOPORCONSOLA = 68,
-	PORLASDUDAS = 69
+	PORLASDUDAS = 69,
+	LIBERARPAGINAS = 70
 
 } codigosSerializador;
 
@@ -92,6 +93,8 @@ typedef enum {
 	codeMasMemoriaQuePaginas = -8,
 	codeNoSePuedeAsignarMasPaginas = -9,
 	codeStackOverflow = -10,
+	codeDesconexionCpu = -11,
+	codeNoHayMasLugarFS = -12;
 	codeDesconocido = -20
 
 }exitCode;

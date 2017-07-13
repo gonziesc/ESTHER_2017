@@ -206,7 +206,9 @@ int32_t ConectarConFS() {
 		return 1;
 	}
 	procesar(paqueteRecibido->package, paqueteRecibido->header,
-			paqueteRecibido->size);    //TODO: FREE PAQUETE
+			paqueteRecibido->size);
+	free(paqueteRecibido);
+	//TODO OJO ACAAAA
 	return 0;
 }
 int32_t levantarServidor() {
@@ -267,18 +269,18 @@ int32_t levantarServidor() {
 							procesarEntrada(codigoOperacion);
 							free(codigoKernel);
 						} else {
-							// fd closed
 							perror("read()");
 						}
 					} else {
-						// gestionar datos de un cliente
 						paquete* paqueteRecibido = Deserializar(i);
 
 						// error o conexión cerrada por el cliente
 						if (paqueteRecibido->header == -1) {
 							// conexión cerrada
-							//PROCESAR: SI ES CONSOLA, ABORTAR PIDS
-							//SI ES CPU, SCAARLA DE LA LISA
+							int esConsola = abortarTodosLosProgramasDeConsola(
+									i);
+							if (esConsola == 0)
+								abortarElProgramaDeCpu(i);
 							close(i); // bye!
 							FD_CLR(i, &master); // eliminar del conjunto maestro
 							log_info(logger,
@@ -301,6 +303,36 @@ int32_t levantarServidor() {
 	}
 }
 
+void abortarElProgramaDeCpu(int socket) {
+	sem_wait(&semCpu);
+	proceso* unProceso;
+	int unaCpu;
+	bool esMiSocket(void * entrada) {
+		proceso * unproceso = (proceso *) entrada;
+		return unproceso->socketCPU == socket;
+	}
+	bool esMiCpu(void * entrada) {
+		int unaCou = (int) entrada;
+		return unaCou == socket;
+	}
+	pthread_mutex_lock(&mutexColaCpu);
+	unaCpu = (int) list_remove_by_condition(colaCpu->elements,
+				esMiCpu);
+	pthread_mutex_unlock(&mutexColaCpu);
+	pthread_mutex_lock(&mutexColaEx);
+	unProceso = (procesoConsola*) list_remove_by_condition(colaExec->elements,
+			esMiSocket);
+	pthread_mutex_unlock(&mutexColaEx);
+	log_info(logger, "murio la cpu %d\n",
+			unaCpu);
+
+	if (unProceso != NULL) {
+		unProceso->abortado = true;
+		abortar(unProceso, codeDesconexionCpu);
+
+	}
+}
+
 void procesarEntrada(int codigoOperacion) {
 	switch (codigoOperacion) {
 	case 1: {
@@ -311,9 +343,7 @@ void procesarEntrada(int codigoOperacion) {
 		int pidAMatar;
 		log_info(logger, "Ingrese pid a finalizar\n");
 		scanf("%d", &pidAMatar);
-		//TODO avisar a consola
-		abortarProgramaPorConsola(pidAMatar, -35);
-		//TODO cambiar codigo
+		abortarProgramaPorConsola(pidAMatar, codeFinalizoCorrectamente);
 		break;
 	}
 	case 3: {
@@ -353,7 +383,6 @@ void procesarScript() {
 			unaConsola->consola = unScript->socket;
 			log_info(logger, "Se acepto el proceso de PID:\n", unaConsola->pid);
 			ultimaPaginaPid[processID] = cantidadDePaginasTotales;
-			//TODO semaforo?
 			queue_push(colaProcesosConsola, unaConsola);
 			unProceso->pcb = unPcb;
 			unProceso->socketCONSOLA = unScript->socket;
@@ -378,6 +407,9 @@ void procesarScript() {
 			free(unScript->codigo);
 			log_info(logger, "Se acepto el proceso a new con un PID:\n",
 					unPcb->programId);
+		} else {
+			Serializar(ABORTOEXPECIONDEMEMORIA, 4, &noInteresa,
+					unScript->socket);
 		}
 		pthread_mutex_unlock(&mutexProcesarScript);
 	}
@@ -480,7 +512,17 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexColaCpu);
 		queue_push(colaCpu, socket);
 		pthread_mutex_unlock(&mutexColaCpu);
-		//TODO liberar paginas procesos memoria
+		int cantTotales = procesoTerminado->pcb->cantidadDePaginas
+				+ t_archivoConfig->STACK_SIZE;
+		for (i = 1; i < cantTotales; i++) {
+			void *envio = malloc(8);
+			memcpy(envio, &procesoTerminado->pcb->programId, 4);
+			memcpy(envio + 4, &i, 4);
+			Serializar(LIBERARPAGINAS, 8, envio, clienteMEM);
+			log_info(logger, "el pid %d libero la pagina %d",
+					procesoTerminado->pcb->programId, i);
+			free(envio);
+		}
 		Serializar(PROGRAMATERMINADO, 4, &procesoTerminado->pcb->programId,
 				procesoTerminado->socketCONSOLA);
 		sem_post(&semCpu);
@@ -533,6 +575,29 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		unProceso->pcb = pcbRecibido;
 		abortar(unProceso, codeStackOverflow);
 		log_info(logger, "El proceso de PID %d se aborto por stack overflow",
+				unProceso->pcb->programId);
+		break;
+	}
+	case ABORTOESCRIBIRSINPERMISOS: {
+		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
+				pcbRecibido->programId);
+		destruirPCB(unProceso->pcb);
+		unProceso->pcb = pcbRecibido;
+		abortar(unProceso, codeEscribirSinPermisos);
+		log_info(logger,
+				"El proceso de PID %d se aborto por ESCRIBIR SIN PERMISOS",
+				unProceso->pcb->programId);
+		break;
+	}
+	case ABORTOLEERSINPERMISOS: {
+		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
+				pcbRecibido->programId);
+		destruirPCB(unProceso->pcb);
+		unProceso->pcb = pcbRecibido;
+		abortar(unProceso, codeLeerSinPermisos);
+		log_info(logger, "El proceso de PID %d se aborto por LEER SIN PERMISOS",
 				unProceso->pcb->programId);
 		break;
 	}
@@ -777,7 +842,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
-		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 0;
@@ -807,7 +872,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
-		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs *p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 1;
@@ -827,7 +892,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
-		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 2;
@@ -846,7 +911,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
-		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 3;
@@ -856,7 +921,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		p->tamano = tamanioTexto;
 		p->data = malloc(tamanioTexto);
 		memcpy(p->data, paquete, tamanioTexto);
-		memcpy(&p->fd, paquete + tamanioTexto, 4); //TODO revisar esto
+		memcpy(&p->fd, paquete + tamanioTexto, 4);
 		pthread_mutex_lock(&mutexColaCapaFs);
 		queue_push(colaCapaFs, p);
 		pthread_mutex_unlock(&mutexColaCapaFs);
@@ -869,7 +934,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
-		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 4;
@@ -889,7 +954,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
-		queue_push(colaExec, unProceso); //todo OJO CON TODOS ESTOS, PUEDE ABORTAR...
+		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 5;
@@ -986,6 +1051,7 @@ void procesarCapaFs() {
 
 int actualizarTablaDelProceso(int pid, char* flags, int indiceEnTablaGlobal) {
 	int tablaProcesoExiste;
+	log_info(logger, "Agregando entrada a tabla por proceso");
 
 	_Bool verificaPid(indiceTablaProceso* entrada) {
 		return entrada->pid == pid;
@@ -998,6 +1064,7 @@ int actualizarTablaDelProceso(int pid, char* flags, int indiceEnTablaGlobal) {
 
 	if (!tablaProcesoExiste) {
 		log_info(logger, "La tabla no existe\n");
+
 		indiceTablaProceso* entradaNuevaTabla = malloc(
 				sizeof(indiceTablaProceso));
 		entradaNuevaTabla->pid = pid;
@@ -1061,7 +1128,7 @@ int agregarEntradaEnTablaGlobal(char* direccion, int tamanioDireccion) {
 	return tablaArchivosGlobal->elements_count - 1;
 }
 
-int verificarEntradaEnTablaGlobal(char* direccion) { /*TODO: Mutex tablaGlobal*/
+int verificarEntradaEnTablaGlobal(char* direccion) {
 
 	_Bool verificaDireccion(entradaTablaGlobal* entrada) {
 		return !strcmp(entrada->path, direccion);
@@ -1088,12 +1155,12 @@ void actualizarIndicesGlobalesEnTablasProcesos(int indiceTablaGlobal) {
 		for (j = 0; j < indiceTabla->tablaProceso->elements_count; j++) {
 			entrada = list_get(indiceTabla->tablaProceso, j);
 			if (entrada->globalFd > indiceTablaGlobal)
-				entrada->globalFd--; /*TODO: No pregunto si es igual porque se supone que no existe mas en esa tabla. Corroborarlo*/
+				entrada->globalFd--;
 		}
 	}
 }
 
-void aumentarOpenEnTablaGlobal(char* direccion) {/*TODO: Mutex tablaGlobal*/
+void aumentarOpenEnTablaGlobal(char* direccion) {
 	_Bool verificaDireccion(entradaTablaGlobal* entrada) {
 		if (!strcmp(entrada->path, direccion))
 			return 1;
@@ -1167,8 +1234,6 @@ int validarArchivo(char* ruta) {
 
 int crearArchivo(int socket_aceptado, char* direccion) {
 
-	//TODO OJO CON LA BARRA DE ATRAS DEL NOMBRE
-
 	int tamanoNombre = sizeof(char) * strlen(direccion);
 	void* envio = malloc(tamanoNombre + 4);
 	memcpy(envio, &tamanoNombre, 4);
@@ -1193,8 +1258,9 @@ void abrirArchivo(procesoACapaFs* unProceso) {
 		tienePermisoCreacion = 1;
 	}
 
-	if (!archivoExistente && !tienePermisoCreacion) { //El archivo no eexiste en FS y no tiene permisos para crear entonces no hace nada
-		//TODO excepcionPermisosCrear(unProceso->socket, unProceso->pid);
+	if (!archivoExistente && !tienePermisoCreacion) {
+		int mal = 0; //El archivo no eexiste en FS y no tiene permisos para crear entonces no hace nada
+		Serializar(ABRIRARCHIVO, 4, mal, unProceso->socket);
 		free(unProceso->path);
 		free(unProceso->permisos);
 		return;
@@ -1258,7 +1324,8 @@ void cerrarArchivo(procesoACapaFs* unProceso) {
 		tablaProcesoExiste = 0;
 
 	if (!tablaProcesoExiste) {
-		//TODO excepcionSinTablaArchivos(unProceso->socket, unProceso->pid);
+		int mal = 0;
+		Serializar(CERRARARCHIVO, 4, mal, unProceso->socket);
 		return;
 	} else {
 
@@ -1273,7 +1340,8 @@ void cerrarArchivo(procesoACapaFs* unProceso) {
 		list_add(listaTablasProcesos, entradaTablaProceso);
 
 		if (!encontroFd) {
-			//todo excepcionFileDescriptorNoAbierto(socket, pid);
+			int mal = 0;
+			Serializar(CERRARARCHIVO, 4, mal, unProceso->socket);
 			return;
 		} else {
 
@@ -1305,8 +1373,8 @@ void escribirArchivo(procesoACapaFs* unProceso) {
 	int encontroFd;
 
 	if (!tablaProcesoExiste) {
-		//TODO excepcionSinTablaArchivos(socket, pid);
-		//free(informacion);
+		int mal = 0;
+		Serializar(ESCRIBIRARCHIVO, 4, mal, unProceso->socket);
 		return;
 	} else {
 
@@ -1319,7 +1387,8 @@ void escribirArchivo(procesoACapaFs* unProceso) {
 			encontroFd = 0;
 
 		if (!encontroFd) {
-			//TODO	excepcionFileDescriptorNoAbierto(socket, pid);
+			int mal = 0;
+			Serializar(ESCRIBIRARCHIVO, 4, mal, unProceso->socket);
 			return;
 		}
 
@@ -1334,8 +1403,8 @@ void escribirArchivo(procesoACapaFs* unProceso) {
 			}
 
 			if (!tiene_permisoEscritura) {
-				//todo excepcionPermisosEscritura(socket, pid);
-				//free(informacion);
+				int mal = 2;
+				Serializar(ESCRIBIRARCHIVO, 4, mal, unProceso->socket);
 				return;
 			}
 
@@ -1387,7 +1456,8 @@ void leerArchivo(procesoACapaFs* unProceso) {
 		tablaProcesoExiste = 0;
 
 	if (!tablaProcesoExiste) {
-		//TODO excepcionSinTablaArchivos(socket, pid);
+		int mal = 0;
+		Serializar(LEERARCHIVO, 4, mal, unProceso->socket);
 		return;
 	} else {
 
@@ -1401,7 +1471,8 @@ void leerArchivo(procesoACapaFs* unProceso) {
 			encontroFd = 0;
 
 		if (!encontroFd) {
-			//TODO excepcionFileDescriptorNoAbierto(socket, pid);
+			int mal = 0;
+			Serializar(LEERARCHIVO, 4, mal, unProceso->socket);
 			return;
 		} else {
 			entradaTablaProceso* entrada = list_remove_by_condition(
@@ -1413,7 +1484,8 @@ void leerArchivo(procesoACapaFs* unProceso) {
 				tiene_permisoLectura = 1;
 			}
 			if (!tiene_permisoLectura) {
-				//TODO excepcionPermisosLectura(socket, pid);
+				int mal = 2;
+				Serializar(LEERARCHIVO, 4, mal, unProceso->socket);
 				return;
 			}
 
@@ -1465,12 +1537,6 @@ void borrarArchivo(procesoACapaFs* unProceso) {
 	_Bool verificaFd(entradaTablaProceso* entrada) {
 		return entrada->fd == unProceso->fd;
 	}
-
-	/*TODO: Necesito ir a buscar la ruta del archivo, para validarla*/
-	/*La busco de la sigueinte forma. Voy a la tabla por proceso, indexo con el fd.
-	 * De ahi saco el globalFd, y voy a la tabla global. Saco la direccion*/
-
-	//verificar que la tabla de ese pid exista
 	int tablaProcesoExiste;
 	if (list_any_satisfy(listaTablasProcesos, (void*) verificaPid))
 		tablaProcesoExiste = 1;
@@ -1478,7 +1544,8 @@ void borrarArchivo(procesoACapaFs* unProceso) {
 		tablaProcesoExiste = 0;
 
 	if (!tablaProcesoExiste) {
-		//TODO excepcionSinTablaArchivos(unProceso->socket, unProceso->pid);
+		int mal = 0;
+		Serializar(BORRARARCHIVO, 4, mal, unProceso->socket);
 		return;
 	} else {
 		int encontroFd;
@@ -1492,7 +1559,8 @@ void borrarArchivo(procesoACapaFs* unProceso) {
 		list_add(listaTablasProcesos, entradaTablaProceso2);
 
 		if (!encontroFd) { /*Si ese archivo no lo tiene abierto no lo puede borrar*/
-			//TODO excepcionFileDescriptorNoAbierto(unProceso->socket, unProceso->pid);
+			int mal = 0;
+			Serializar(BORRARARCHIVO, 4, mal, unProceso->socket);
 			return;
 		} else {
 			entradaTablaProceso* entrada = list_find(
@@ -1507,10 +1575,12 @@ void borrarArchivo(procesoACapaFs* unProceso) {
 			void* envio = malloc(tamanoNombre + 4);
 			memcpy(envio, &tamanoNombre, 4);
 			memcpy(envio + 4, direccion, tamanoNombre);
+
 			Serializar(BORRARARCHIVOFS, tamanoNombre + 4, envio, clientefs);
-			//int indiceGlobalFd = borrarEntradaTablaProceso(unProceso->pid,
-			//unProceso->fd);
-			//disminuirOpenYVerificarExistenciaEntradaGlobal(indiceGlobalFd);
+			int indiceGlobalFd = borrarEntradaTablaProceso(unProceso->pid,
+					unProceso->fd);
+			disminuirOpenYVerificarExistenciaEntradaGlobal(indiceGlobalFd);
+			actualizarIndicesGlobalesEnTablasProcesos(indiceGlobalFd);
 			sem_wait(&semBorrarArchivo);
 		}
 
@@ -1536,7 +1606,8 @@ void moverCursorArchivo(procesoACapaFs* unProceso) {
 		tablaProcesoExiste = 0;
 
 	if (!tablaProcesoExiste) {
-		//TODO excepcionSinTablaArchivos(socket, pid);
+		int mal = 0;
+		Serializar(MOVERCURSOR, 4, mal, unProceso->socket);
 		return;
 	} else {
 		int encontroFd;
@@ -1549,7 +1620,8 @@ void moverCursorArchivo(procesoACapaFs* unProceso) {
 			encontroFd = 0;
 
 		if (!encontroFd) {
-			//TODO excepcionArchivoInexistente(socket, pid);
+			int mal = 0;
+			Serializar(MOVERCURSOR, 4, mal, unProceso->socket);
 		} else {
 
 			entradaTablaProceso* entrada = list_remove_by_condition(
@@ -1573,7 +1645,6 @@ char* conseguirSemaforoDeBloqueado(int pid) {
 			colaProcesosBloqueados->elements, a)) {
 		if (unProceso->pid == pid)
 			return unProceso->semaforo;
-		// TODO: REVISAR ESOTOOOO
 		a++;
 	}
 }
@@ -1585,13 +1656,13 @@ void sacarSemaforosDesbloqueados(char* semaforo) {
 			colaProcesosBloqueados->elements, a)) {
 		if (strcmp((char*) unProceso->semaforo, semaforo) == 0)
 			list_remove(colaProcesosBloqueados->elements, a);
-		// TODO: REVISAR ESOTOOOO
 		a++;
 	}
 }
 
-void abortarTodosLosProgramasDeConsola(int socket) {
+int abortarTodosLosProgramasDeConsola(int socket) {
 	procesoConsola* unProceso;
+	int esConsola = 0;
 	bool esMiSocket(void * entrada) {
 		procesoConsola * unproceso = (procesoConsola *) entrada;
 		return unproceso->consola == socket;
@@ -1599,11 +1670,13 @@ void abortarTodosLosProgramasDeConsola(int socket) {
 	unProceso = (procesoConsola*) list_remove_by_condition(
 			colaProcesosConsola->elements, esMiSocket);
 	while (unProceso != NULL) {
+		esConsola = 1;
 		abortarProgramaPorConsola(unProceso->pid, codeDesconexionConsola);
 		unProceso = (procesoConsola*) list_remove_by_condition(
 				colaProcesosConsola->elements, esMiSocket);
 
 	}
+	return esConsola;
 }
 
 void crearPCB(char* codigo, programControlBlock *unPcb) {
@@ -1888,7 +1961,6 @@ void escribeVariable(char *variable, int valor) {
 	pthread_mutex_unlock(&mutexSemAnsisop);
 	log_info(logger, "No encontre VAR %s id, exit\n", variable);
 	free(variable);
-//TODO abortar
 
 }
 
@@ -1906,7 +1978,6 @@ int pideSemaforo(char *semaforo) {
 	}
 	pthread_mutex_unlock(&mutexSemAnsisop);
 	log_info(logger, "No encontre SEM id, exit\n");
-	//exit(0);
 }
 
 void escribeSemaforo(char *semaforo, int valor) {
@@ -2109,7 +2180,6 @@ datosHeap *verificarEspacioLibreHeap(int size, int pid) {
 
 		if (aux->tamanoDisponible >= size + sizeof(datosHeap)
 				&& aux->pid == pid) {
-			/**TODO: Mutex para compactar?*/
 			compactarPaginaHeap(aux->numeroPagina, aux->pid);
 			puntero->offset = paginaHeapBloqueSuficiente(i, aux->numeroPagina,
 					aux->pid, size);
@@ -2150,7 +2220,7 @@ void reservarBloqueHeap(int pid, int size, datosHeap* puntero) {
 	}
 	pthread_mutex_unlock(&mutexListaAdminHeap);
 	int tamanoLectura = sizeof(HeapMetaData);
-	int otroOffset = puntero->offset - 8; // TODO: FIJARSE SI NO ES +8
+	int otroOffset = puntero->offset - 8;
 
 	void* lecturaPagina = malloc(sizeof(HeapMetaData) + 3 * sizeof(int));
 	memcpy(lecturaPagina, &puntero->pagina, sizeof(processID));
@@ -2240,7 +2310,6 @@ datosHeap* procesoPideHeap(int pid, int tamano) {
 	}
 	puntero = verificarEspacioLibreHeap(tamano, pid);
 	if (puntero->pagina == -1) {
-		//TODO: REVISAR ESTO
 		puntero->pagina = ultimaPaginaPid[pid] + 1;
 		ultimaPaginaPid[processID] += 1;
 
@@ -2248,8 +2317,6 @@ datosHeap* procesoPideHeap(int pid, int tamano) {
 		reservarPaginaHeap(pid, puntero->pagina);
 		pthread_mutex_unlock(&mutexMemoria);
 		puntero->offset = 8;
-
-		//TODO manejar si ya no hay mas recursos
 	}
 	if (abortoPorFaltaDeMemoria == 0) {
 		pthread_mutex_lock(&mutexMemoria);
@@ -2289,8 +2356,6 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 	memcpy(&bloque, buffer, sizeof(HeapMetaData));
 
 	bloque.isFree = -1;
-	/*TODO: Poder saber bien cuanto estoy liberando*/
-	//log_info(logger,"\n\nEstoy liberando:%d\n\n", bloque.size);
 	memcpy(buffer, &bloque, sizeof(HeapMetaData));
 
 	pthread_mutex_lock(&mutexMemoria);
@@ -2321,23 +2386,41 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 }
 
 void abortar(proceso * proceso, int exitCode) {
+	if(!(exitCode == codeDesconexionCpu)){
 	pthread_mutex_lock(&mutexColaCpu);
 	queue_push(colaCpu, (int) proceso->socketCPU);
 	log_info(logger, "disponible la cpu %d", proceso->socketCPU);
+	sem_post(&semCpu);
+	}
 	pthread_mutex_unlock(&mutexColaCpu);
 	proceso->pcb->exitCode = exitCode;
-	sem_post(&semCpu);
-	//TODO revisar semcpu y semgradomulti
-	void* envio = malloc(8);
-	memcpy(envio, &proceso->pcb->programId, 4);
-	memcpy(envio + 4, &exitCode, 4);
-	Serializar(ABORTOSTACKOVERFLOW, 8, envio, proceso->socketCONSOLA);
+
+	int i;
+	int cantTotales = proceso->pcb->cantidadDePaginas
+			+ t_archivoConfig->STACK_SIZE;
+	for (i = 1; i < cantTotales; i++) {
+		void *envio = malloc(8);
+		memcpy(envio, &proceso->pcb->programId, 4);
+		memcpy(envio + 4, &i, 4);
+		Serializar(LIBERARPAGINAS, 8, envio, clienteMEM);
+		log_info(logger, "el pid %d libero la pagina %d",
+				proceso->pcb->programId, i);
+		free(envio);
+	}
+	//TODO semgradomulti
+	if (!(exitCode == codeDesconexionConsola)) {
+		void* envio = malloc(8);
+		memcpy(envio, &proceso->pcb->programId, 4);
+		memcpy(envio + 4, &exitCode, 4);
+		Serializar(ABORTOSTACKOVERFLOW, 8, envio, proceso->socketCONSOLA);
+		free(envio);
+	}
+	log_info(logger, "aborto el pid %d con codigo %d", proceso->pcb->programId,
+			exitCode);
 	pthread_mutex_lock(&mutexColaExit);
 	destruirCONTEXTO(proceso->pcb);
 	queue_push(colaExit, proceso);
 	pthread_mutex_unlock(&mutexColaExit);
-	free(envio);
-//TODO : liberar recursos de memoria
 }
 
 void abortarProgramaPorConsola(int pid, int codigo) {
@@ -2361,9 +2444,9 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 			log_info(logger, "NUCLEO: post wait");
 			abortar(unProceso, codigo);
 		} else {
-				pthread_mutex_lock(&mutexColaEx);
-				unProceso = (proceso*) list_find(colaExec->elements, esMiPid);
-				pthread_mutex_unlock(&mutexColaEx);
+			pthread_mutex_lock(&mutexColaEx);
+			unProceso = (proceso*) list_find(colaExec->elements, esMiPid);
+			pthread_mutex_unlock(&mutexColaEx);
 			if (unProceso != NULL) {
 				unProceso->abortado = true;
 				Serializar(ABORTOPORCONSOLA, 4, &noInteresa,

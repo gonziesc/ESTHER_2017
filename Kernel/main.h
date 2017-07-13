@@ -149,7 +149,7 @@ int crearPaginaEnMemoria( int, int, int);
 void pedirAMemoriaElPunteroDeLaPaginaDondeEstaLibre(int, int) ;
 void abortarProgramaPorConsola(int, int);
 proceso* sacarProcesoDeEjecucionPorPid(int );
-void abortarTodosLosProgramasDeConsola(int);
+int abortarTodosLosProgramasDeConsola(int);
 char* conseguirSemaforoDeBloqueado(int);
 
 

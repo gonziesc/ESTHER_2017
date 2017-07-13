@@ -271,7 +271,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		memcpy(&validado, paquete, 4);
 		if (validado == 0) {
 			programaAbortado = 1;
-			codigoAborto = codeArchivoNoexiste;
+			codigoAborto = ABORTOARCHIVONOEXISTE;
 		} else {
 
 		}
@@ -283,10 +283,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		memcpy(&validado, paquete, 4);
 		if (validado == 0) {
 			programaAbortado = 1;
-			codigoAborto = codeArchivoNoexiste;
+			codigoAborto = ABORTOARCHIVONOEXISTE;
 		} else if (validado == 2) {
 			programaAbortado = 1;
-			codigoAborto = codeLeerSinPermisos;
+			codigoAborto = ABORTOLEERSINPERMISOS;
 		} else {
 			int tamanoLeido;
 			memcpy(&tamanoLeido, paquete, 4);
@@ -301,11 +301,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		memcpy(&validado, paquete, 4);
 		if (validado == 0) {
 			programaAbortado = 1;
-			codigoAborto = codeArchivoNoexiste;
+			codigoAborto = ABORTOARCHIVONOEXISTE;
 		}
 		if (validado == 2) {
 			programaAbortado = 1;
-			codigoAborto = codeEscribirSinPermisos;
+			codigoAborto = ABORTOESCRIBIRSINPERMISOS;
 		}
 		sem_post(&semEscribirArchivo);
 		break;
