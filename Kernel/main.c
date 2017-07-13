@@ -511,6 +511,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	case MATARPIDPORCONSOLA: {
 		int pid;
 		proceso* unProceso;
+		log_info(logger,
+				"****************************entre a abortar****************");
 		char* fechaFIn = temporal_get_string_time();
 		memcpy(&pid, paquete, sizeof(int));
 		abortarProgramaPorConsola(pid, codeFinalizarPrograma);
@@ -2336,54 +2338,37 @@ void abortar(proceso * proceso, int exitCode) {
 }
 
 void abortarProgramaPorConsola(int pid, int codigo) {
+	int flag = 0;
 	proceso* unProceso;
 	bool esMiPid(void * entrada) {
 		proceso * unproceso = (proceso *) entrada;
 		return unproceso->pcb->programId == pid;
 	}
-	pthread_mutex_lock(&mutexColaReady);
-	unProceso = (proceso*) list_remove_by_condition(colaReady->elements,
-			esMiPid);
-	pthread_mutex_unlock(&mutexColaReady);
-	if (unProceso != NULL) {
-		log_info(logger, "NUCLEO: Abortado x consola, en ready. Pre wait");
-		log_info(logger, "aborte pid: %d con codigo %d\n",
-				unProceso->pcb->programId, codigo);
-		//sem_post(&semCpu);
-		log_info(logger, "NUCLEO: post wait");
-		abortar(unProceso, codigo);
-	} else {
-		if (list_size(colaExec) > 0) {
-
-			pthread_mutex_lock(&mutexColaEx);
-			unProceso = (proceso*) list_find(colaExec->elements, esMiPid);
-			pthread_mutex_unlock(&mutexColaEx);
-		}
+	while (flag == 0) {
+		pthread_mutex_lock(&mutexColaReady);
+		unProceso = (proceso*) list_remove_by_condition(colaReady->elements,
+				esMiPid);
+		pthread_mutex_unlock(&mutexColaReady);
 		if (unProceso != NULL) {
-			unProceso->abortado = true;
-			Serializar(ABORTOPORCONSOLA, 4, &noInteresa, unProceso->socketCPU);
-			log_info(logger,
-					"Kernel: encontr'e el proceso en exec, mando senal a cpu");
+			log_info(logger, "NUCLEO: Abortado x consola, en ready. Pre wait");
+			log_info(logger, "aborte pid: %d con codigo %d\n",
+					unProceso->pcb->programId, codigo);
+			//sem_post(&semCpu);
+			flag = 1;
+			log_info(logger, "NUCLEO: post wait");
+			abortar(unProceso, codigo);
 		} else {
-			int i;
-			for (i = 0;
-					i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
-					i++) {
-
-				unProceso = (proceso*) list_remove_by_condition(
-						colas_semaforos[i]->elements, esMiPid);
-				if (unProceso != NULL)
-					break;
-
-			}
+				pthread_mutex_lock(&mutexColaEx);
+				unProceso = (proceso*) list_find(colaExec->elements, esMiPid);
+				pthread_mutex_unlock(&mutexColaEx);
 			if (unProceso != NULL) {
-				log_info(logger, "aborte pid: %d con codigo %d\n",
-						unProceso->pcb->programId, codigo);
-				log_info(logger, "NUCLEO: Abortado x consola, en semaforo");
-				abortar(unProceso, codigo);
-
+				unProceso->abortado = true;
+				Serializar(ABORTOPORCONSOLA, 4, &noInteresa,
+						unProceso->socketCPU);
+				flag = 1;
+				log_info(logger,
+						"Kernel: encontr'e el proceso en exec, mando senal a cpu");
 			} else {
-				//no hay en exec, lo busco en semaforos
 				int i;
 				for (i = 0;
 						i
@@ -2401,8 +2386,32 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 							unProceso->pcb->programId, codigo);
 					log_info(logger, "NUCLEO: Abortado x consola, en semaforo");
 					abortar(unProceso, codigo);
+					flag = 1;
+				} else {
+					//no hay en exec, lo busco en semaforos
+					int i;
+					for (i = 0;
+							i
+									< strlen((char*) t_archivoConfig->SEM_IDS)
+											/ sizeof(char*); i++) {
+
+						unProceso = (proceso*) list_remove_by_condition(
+								colas_semaforos[i]->elements, esMiPid);
+						if (unProceso != NULL)
+							break;
+
+					}
+					if (unProceso != NULL) {
+						log_info(logger, "aborte pid: %d con codigo %d\n",
+								unProceso->pcb->programId, codigo);
+						log_info(logger,
+								"NUCLEO: Abortado x consola, en semaforo");
+						abortar(unProceso, codigo);
+						flag = 1;
+					}
 				}
 			}
 		}
 	}
+
 }
