@@ -48,10 +48,16 @@ int32_t idHiloLeerComando;
 sem_t semPaginas;
 pthread_mutex_t mutexProcesar;
 
+void esperar() {
+
+	usleep(t_archivoConfig->RETARDO_MEMORIA * 1000);
+	log_info(log, "RETARDO");
+}
+
 int32_t main(int argc, char**argv) {
 	configuracion(argv[1]);
-	log= log_create(ARCHIVOLOG, "Memoria", 0, LOG_LEVEL_INFO);
-	log_info(log,"Iniciando Memoria\n");
+	log = log_create(ARCHIVOLOG, "Memoria", 0, LOG_LEVEL_INFO);
+	log_info(log, "Iniciando Memoria\n");
 	infoTablaMemoria tablaMemoria[t_archivoConfig->MARCOS];
 	infoNodoCache tablaCache[t_archivoConfig->ENTRADAS_CACHE];
 	cacheLru tablaUsos[t_archivoConfig->ENTRADAS_CACHE];
@@ -94,7 +100,7 @@ int32_t levantarConexion() {
 		return 1;
 	}
 
-	log_info(log,"Estoy escuchando\n");
+	log_info(log, "Estoy escuchando\n");
 	listen(servidor, 100);
 
 	conectarseConKernel();
@@ -103,7 +109,7 @@ int32_t levantarConexion() {
 
 void conectarseConKernel() {
 	cliente = accept(servidor, (void*) &direccionCliente, &tamanoDireccion);
-	log_info(log,"Recibí una conexión en %d!!\n", cliente);
+	log_info(log, "Recibí una conexión en %d!!\n", cliente);
 	int envio = t_archivoConfig->MARCOS_SIZE;
 	Serializar(MEMORIA, 4, &envio, cliente);
 
@@ -125,7 +131,7 @@ void atenderConexionesCPu() {
 }
 
 int atenderCpu(int socket) {
-	log_info(log,"Recibí una conexión en %d!!\n", socket);
+	log_info(log, "Recibí una conexión en %d!!\n", socket);
 	int envio = t_archivoConfig->MARCOS_SIZE;
 	Serializar(MEMORIA, 4, &envio, socket);
 	while (1) {
@@ -164,7 +170,7 @@ int atenderKernel() {
 
 void leerComando() {
 	while (1) {
-		log_info(log,"\nIngrese comando\n"
+		log_info(log, "\nIngrese comando\n"
 				"1: dump\n"
 				"2: buscar frame\n"
 				"3: leer de pagina\n"
@@ -180,13 +186,13 @@ void leerComando() {
 		case 2: {
 			int32_t pid;
 			int32_t pagina;
-			log_info(log,"ingresar pid\n");
+			log_info(log, "ingresar pid\n");
 			scanf("%d", &pid);
-			log_info(log,"ingresar pagina\n");
+			log_info(log, "ingresar pagina\n");
 			scanf("%d", &pagina);
 			int32_t unFrame = buscarFrame(pid, pagina);
-			log_info(log,"el frame correspondiente: ");
-			log_info(log,"%d\n", unFrame);
+			log_info(log, "el frame correspondiente: ");
+			log_info(log, "%d\n", unFrame);
 			break;
 		}
 		case 3: {
@@ -194,20 +200,20 @@ void leerComando() {
 			int32_t pagina;
 			int32_t offset;
 			int32_t tamano;
-			log_info(log,"ingresar pid\n");
+			log_info(log, "ingresar pid\n");
 			scanf("%d", &pid);
-			log_info(log,"ingresar pagina\n");
+			log_info(log, "ingresar pagina\n");
 			scanf("%d", &pagina);
-			log_info(log,"ingresar offset\n");
+			log_info(log, "ingresar offset\n");
 			scanf("%d", &offset);
-			log_info(log,"ingresar tamano\n");
+			log_info(log, "ingresar tamano\n");
 			scanf("%d", &tamano);
 			char *conten = leerDePagina(pid, pagina, offset, tamano);
 
 			/*else {
 			 conten = leerDeCache(pid, pagina, offset, tamano);
 			 }*/
-			log_info(log,"%s/n", conten);
+			log_info(log, "%s/n", conten);
 			break;
 		}
 
@@ -217,16 +223,16 @@ void leerComando() {
 			int32_t offset;
 			int32_t tamano;
 			//char* contenido = malloc(32); pq de 32 y aca
-			log_info(log,"ingresar pid\n");
+			log_info(log, "ingresar pid\n");
 			scanf("%d", &pid);
-			log_info(log,"ingresar pagina\n");
+			log_info(log, "ingresar pagina\n");
 			scanf("%d", &pagina);
-			log_info(log,"ingresar offset\n");
+			log_info(log, "ingresar offset\n");
 			scanf("%d", &offset);
-			log_info(log,"ingresar tamano\n");
+			log_info(log, "ingresar tamano\n");
 			scanf("%d", &tamano);
 			char* contenido = malloc(tamano);
-			log_info(log,"ingresar contenido\n");
+			log_info(log, "ingresar contenido\n");
 			scanf("%s", contenido);
 			escribirEnCache(pid, pagina, offset, tamano, contenido);
 			escribirEnPagina(pid, pagina, offset, tamano, contenido);
@@ -239,9 +245,9 @@ void leerComando() {
 		case 6: {
 			int32_t pid;
 			int32_t pagina;
-			log_info(log,"ingresar pid\n");
+			log_info(log, "ingresar pid\n");
 			scanf("%d", &pid);
-			log_info(log,"ingresar pagina\n");
+			log_info(log, "ingresar pagina\n");
 			scanf("%d", &pagina);
 			liberarPaginaDeProceso(pid, pagina);
 			break;
@@ -256,27 +262,27 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	int numero_pagina, offset, tamanio, pid_actual;
 	switch (id) {
 	case ARCHIVO: {
-		log_info(log,"%s", paquete);
+		log_info(log, "%s", paquete);
 		break;
 	}
 	case FILESYSTEM: {
-		log_info(log,"Se conecto FS\n");
+		log_info(log, "Se conecto FS\n");
 		break;
 	}
 	case KERNEL: {
-		log_info(log,"Se conecto Kernel\n");
+		log_info(log, "Se conecto Kernel\n");
 		break;
 	}
 	case CPU: {
-		log_info(log,"Se conecto CPU\n");
+		log_info(log, "Se conecto CPU\n");
 		break;
 	}
 	case CONSOLA: {
-		log_info(log,"Se conecto Consola\n");
+		log_info(log, "Se conecto Consola\n");
 		break;
 	}
 	case MEMORIA: {
-		log_info(log,"Se conecto memoria\n");
+		log_info(log, "Se conecto memoria\n");
 		break;
 	}
 	case CODIGO: {
@@ -349,11 +355,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		//ojo pid actual
 		break;
 	}
-	case LIBERARPAGINAS:{
+	case LIBERARPAGINAS: {
 		int pid;
 		int pagina;
 		memcpy(&pid, paquete, 4);
-		memcpy(&pagina, paquete +4, 4);
+		memcpy(&pagina, paquete + 4, 4);
 		liberarPaginaDeProceso(pid, pagina);
 		break;
 	}
@@ -454,14 +460,15 @@ void dump() {
 
 void size() {
 	int32_t size;
-	log_info(log,"size: 0 memoria 1 proceso\n ");
+	log_info(log, "size: 0 memoria 1 proceso\n ");
 	scanf("%d", &size);
 	switch (size) {
 	case 0: {
-		log_info(log,"tamanio total memoria %d\n", frameGeneral.tamanio);
-		log_info(log,"tamanio disponible memoria %d\n",
+		log_info(log, "tamanio total memoria %d\n", frameGeneral.tamanio);
+		log_info(log, "tamanio disponible memoria %d\n",
 				frameGeneral.tamanioDisponible);
-		log_info(log,"tamanio ocupado memoria %d\n", frameGeneral.tamanioOcupado);
+		log_info(log, "tamanio ocupado memoria %d\n",
+				frameGeneral.tamanioOcupado);
 		break;
 	}
 	case 1: {
@@ -473,6 +480,7 @@ void size() {
 
 void inicializarPrograma(int32_t pid, int32_t cantPaginas) {
 	int32_t i;
+	esperar();
 	for (i = 0; i <= cantPaginas - 1; i++) {
 
 		int32_t frame = calcularPosicion(pid, i);
@@ -498,30 +506,32 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas) {
 }
 
 void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas) {
-	if(frameGeneral.framesLibres > 0){
+	esperar();
+	if (frameGeneral.framesLibres > 0) {
 		noIMporta = 1;
-	int32_t i = ultimaPaginaPid[pid] + 1;
-	ultimaPaginaPid[pid] += 1;
-	int32_t frame = calcularPosicion(pid, i);
-	int32_t libre;
-	libre = estaLibre(frame);
-	if (libre == 1) {
+		int32_t i = ultimaPaginaPid[pid] + 1;
+		ultimaPaginaPid[pid] += 1;
+		int32_t frame = calcularPosicion(pid, i);
+		int32_t libre;
+		libre = estaLibre(frame);
+		if (libre == 1) {
 
-		nodoTablaMemoria.numeroPagina = i;
-		nodoTablaMemoria.pid = pid;
-		punteroMemoria[frame] = nodoTablaMemoria;
-		frameGeneral.framesLibres--;
+			nodoTablaMemoria.numeroPagina = i;
+			nodoTablaMemoria.pid = pid;
+			punteroMemoria[frame] = nodoTablaMemoria;
+			frameGeneral.framesLibres--;
 
-	} else {
-		int32_t frameLibre;
-		frameLibre = buscarFrameLibre();
-		agregarSiguienteEnOverflow(frame, frameLibre);
-		nodoTablaMemoria.numeroPagina = i;
-		nodoTablaMemoria.pid = pid;
-		punteroMemoria[frameLibre] = nodoTablaMemoria;
-		frameGeneral.framesLibres--;
+		} else {
+			int32_t frameLibre;
+			frameLibre = buscarFrameLibre();
+			agregarSiguienteEnOverflow(frame, frameLibre);
+			nodoTablaMemoria.numeroPagina = i;
+			nodoTablaMemoria.pid = pid;
+			punteroMemoria[frameLibre] = nodoTablaMemoria;
+			frameGeneral.framesLibres--;
 
-	}}
+		}
+	}
 
 	else
 		noIMporta = 0;
@@ -555,7 +565,7 @@ int32_t buscarFrameLibre() {
 
 void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 	//SIEMPRE LE TIENE QUE LLEGAR TAMANIO<MARCOS_SIZE OJO
-
+	esperar();
 	memcpy(frameGeneral.punteroDisponible, buffer, tamanioBuffer);
 
 	if (pid != pidAnt) {
@@ -579,6 +589,7 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 
 }
 void liberarPaginaDeProceso(int32_t pid, int32_t pagina) {
+	esperar();
 	int32_t frameBorrar = buscarFrame(pid, pagina);
 	//int32_t i;
 	/*
@@ -604,7 +615,7 @@ int32_t buscarFrame(int32_t pid, int32_t numeroPagina) {
 }
 
 char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano) {
-
+	esperar();
 	//int32_t unFrame = buscarFrame(pid, pagina);
 	int32_t unFrame = calcularPosicion(pid, pagina);
 
@@ -630,7 +641,7 @@ char* leerDePagina(int32_t pid, int32_t pagina, int32_t offset, int32_t tamano) 
 
 void escribirEnPagina(int32_t pid, int32_t pagina, int32_t offset,
 		int32_t tamano, char* contenido) {
-
+	esperar();
 	//int32_t unFrame = buscarFrame(pid, pagina);
 	int32_t unFrame = calcularPosicion(pid, pagina);
 	int32_t correcta = esPaginaCorrecta(unFrame, pid, pagina);

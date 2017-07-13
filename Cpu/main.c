@@ -147,26 +147,32 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		break;
 	}
 	case MATARPIDPORCONSOLA: {
-		log_info(logger, "llego senal para abortar por consola: %d\n", unPcb->programId);
+		log_info(logger, "llego senal para abortar por consola: %d\n",
+				unPcb->programId);
 		programaAbortado = 1;
 		codigoAborto = ABORTOPORCONSOLA;
 		break;
 	}
 	case ABORTOPORCONSOLA: {
-		log_info(logger, "llego senal para abortar por consola: %d\n", unPcb->programId);
+		log_info(logger, "llego senal para abortar por consola: %d\n",
+				unPcb->programId);
 		programaAbortado = 1;
 		codigoAborto = ABORTOPORCONSOLA;
 		break;
 	}
 	case ABORTOPORMASRESERVERAQUEPAGINA: {
-		log_info(logger, "llego senal para abortar por reservar mas memoria que heap: %d\n", unPcb->programId);
+		log_info(logger,
+				"llego senal para abortar por reservar mas memoria que heap: %d\n",
+				unPcb->programId);
 		sem_post(&semProcesoPideHeap);
 		programaAbortado = 1;
 		codigoAborto = ABORTOPORMASRESERVERAQUEPAGINA;
 		break;
 	}
 	case ABORTOEXPECIONDEMEMORIA: {
-		log_info(logger, "llego senal para abortar por excepcion de memoria: %d\n", unPcb->programId);
+		log_info(logger,
+				"llego senal para abortar por excepcion de memoria: %d\n",
+				unPcb->programId);
 		sem_post(&semProcesoPideHeap);
 		programaAbortado = 1;
 		codigoAborto = ABORTOEXPECIONDEMEMORIA;
@@ -217,7 +223,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 	}
 	case PROCESOWAIT: {
 		memcpy(&programaBloqueado, paquete, 4);
-		log_info(logger, "el proceso tiro wait %d y se bloqueo(1 si, 0 no) %d\n", unPcb->programId, programaBloqueado);
+		log_info(logger,
+				"el proceso tiro wait %d y se bloqueo(1 si, 0 no) %d\n",
+				unPcb->programId, programaBloqueado);
 		sem_post(&semProcesoBloqueado);
 		break;
 	}
@@ -260,6 +268,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		if (validado == 0) {
 			programaAbortado = 1;
 			codigoAborto = ABORTOARCHIVONOEXISTE;
+		} else if (validado == 2) {
+			programaAbortado = 1;
+			codigoAborto = ABORTONOHAYLUGARFS;
 		} else {
 			memcpy(&descriptorArchivoAbierto, paquete + 4, 4);
 		}

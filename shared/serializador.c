@@ -14,7 +14,7 @@ paquete* Deserializar(int32_t socket) {
 	paquete * paqueteRecibido = malloc(sizeof(paquete));
 	int retorno = 0;
 	retorno = recv(socket, &paqueteRecibido->header, sizeof(int),
-	NULL);
+			NULL);
 
 	if (retorno == 0) {
 		paqueteRecibido->header = -1;
@@ -31,12 +31,12 @@ paquete* Deserializar(int32_t socket) {
 
 	}
 	recv(socket, &paqueteRecibido->size, sizeof(int),
-	NULL);
+			NULL);
 
 	void * informacion_recibida = malloc(paqueteRecibido->size);
 
 	recv(socket, informacion_recibida, paqueteRecibido->size,
-	NULL);
+			NULL);
 
 	paqueteRecibido->package = informacion_recibida;
 
