@@ -142,6 +142,7 @@ void leerComando() {
 			printf("el pid %d finalizo a las %s \n", pidAMatar, fechaFIn);
 			printf("el pid %d imprimio la cantidad de : %d \n", pidAMatar,
 					procesoTerminado.cantidadDeImpresiones);
+			procesoTerminado.terminado = 1;
 			pthread_cancel(procesosActuales[pidAMatar].identificadorHilo);
 			break;
 		}
@@ -195,7 +196,7 @@ void imprimioProceso(int pid) {
 void matarTodosLosProcesos() {
 	int i;
 	for (i = 0; i <= 100; i++) {
-		if (procesosActuales[i].PID != 0) {
+		if (procesosActuales[i].PID != 0 && procesosActuales[i].terminado == 0) {
 			char* fechaFIn = temporal_get_string_time();
 			printf("el pid %d comenzo a las %s \n", procesosActuales[i].PID,
 					procesosActuales[i].horaInicio);
@@ -204,6 +205,7 @@ void matarTodosLosProcesos() {
 			printf("el pid %d imprimio la cantidad de : %d \n",
 					procesosActuales[i].PID,
 					procesosActuales[i].cantidadDeImpresiones);
+			procesosActuales[i].terminado = 1;
 		}
 	}
 }

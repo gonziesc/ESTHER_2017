@@ -26,6 +26,7 @@ typedef struct{
 	int identificadorHilo;
 	char* horaInicio;
 	int cantidadDeImpresiones;
+	int terminado;
 }ProcesosActuales;
 
 void Configuracion(char *);
