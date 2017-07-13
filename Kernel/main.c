@@ -286,6 +286,10 @@ int32_t levantarServidor() {
 							log_info(logger,
 									"selectserver: socket %d hung up\n", i);
 						} else if (paqueteRecibido->header == -2) {
+							int esConsola = abortarTodosLosProgramasDeConsola(
+									i);
+							if (esConsola == 0)
+								abortarElProgramaDeCpu(i);
 							close(i); // bye!
 							FD_CLR(i, &master); // eliminar del conjunto maestro
 							perror("recv");
@@ -1347,7 +1351,7 @@ void cerrarArchivo(procesoACapaFs* unProceso) {
 
 		if (!encontroFd) {
 			int mal = 0;
-			Serializar(CERRARARCHIVO, 4, mal, unProceso->socket);
+			Serializar(CERRARARCHIVO, 4, &mal, unProceso->socket);
 			return;
 		} else {
 

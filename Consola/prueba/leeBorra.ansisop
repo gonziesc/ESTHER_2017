@@ -5,6 +5,5 @@ begin
   leer f a 10
   prints n *a
   borrar f
-  cerrar f
   liberar a
 end
