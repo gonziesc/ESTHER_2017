@@ -409,15 +409,15 @@ void procesarScript() {
 			free(unScript->codigo);
 			log_info(logger, "Se acepto el proceso a new con un PID:\n",
 					unPcb->programId);
+			pthread_mutex_unlock(&mutexProcesarScript);
 		} else {
-			if (cantidadDeProcesos < t_archivoConfig->GRADO_MULTIPROG) {
+			if (cantidadDeProcesos > t_archivoConfig->GRADO_MULTIPROG) {
 				Serializar(ABORTOGRADOMULTIPROG, 4, &noInteresa,
 						unScript->socket);
 			} else {
 				Serializar(ABORTOEXPECIONDEMEMORIA, 4, &noInteresa,
 						unScript->socket);
 			}
-			pthread_mutex_unlock(&mutexProcesarScript);
 		}
 	}
 }
@@ -1868,6 +1868,8 @@ void planificadorCortoPlazo() {
 					unProcesoPcp->pcb->programId);
 			log_info(logger, "mando a ejecutar a la cpu %d", socket);
 			ejecutar(unProcesoPcp, socket);
+		} else {
+			sem_post(&semReady);
 		}
 
 		pthread_mutex_unlock(&mutexColaReady);
