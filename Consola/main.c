@@ -173,11 +173,9 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 	sem_wait(&semPidListo);
 	if (pidActual == 0) {
 		printf("el proceso no entro por falta de lugar\n");
-		exit(0);
 	} else {
 		if (pidActual == 0) {
 			printf("el proceso no entro por el grado de multiprogramacion\n");
-			exit(0);
 		}else {
 			procesosActuales[procesosActualesPosicion].PID = pidActual;
 			procesosActuales[procesosActualesPosicion].horaInicio =
@@ -208,7 +206,7 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 
 	void matarTodosLosProcesos() {
 		int i;
-		for (i = 0; i <= 100; i++) {
+		for (i = 1; i <= 100; i++) {
 			if (procesosActuales[i].PID != 0
 					&& procesosActuales[i].terminado == 0) {
 				char* fechaFIn = temporal_get_string_time();
