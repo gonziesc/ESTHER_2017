@@ -91,6 +91,7 @@ int32_t estaLibre(int32_t);
 int32_t buscarUltimaPag(int32_t);
 int32_t buscarFrameLibre();
 void asignarPaginasAProceso(int, int);
+void flush();
 
 t_list** overflow;
 int CANTIDAD_DE_MARCOS;

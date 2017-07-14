@@ -45,6 +45,15 @@ typedef struct{
 }entradaTablaProceso;
 
 
+typedef struct{
+	int cantidadRafagas;
+	int cantidadSyscalls;
+	int cantidadBytesAlocados;
+	int cantidadBytesLiberados;
+	int cantidadLiberar;
+	int cantidadAlocar;
+}administrativosProcesos;
+
 
 typedef struct {
   int socketCPU;

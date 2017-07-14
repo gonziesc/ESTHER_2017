@@ -85,6 +85,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("el pid %d finalizo a las %s \n", pid, fechaFIn);
 		printf("el pid %d imprimio la cantidad de : %d \n", pid,
 				procesoTerminado.cantidadDeImpresiones);
+		printf("el pid %d termino correcamente \n", pid);
 		break;
 	}
 	case PID: {
@@ -114,7 +115,60 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		printf("el pid %d finalizo a las %s \n", pid, fechaFIn);
 		printf("el pid %d imprimio la cantidad de : %d \n", pid,
 				procesoTerminado.cantidadDeImpresiones);
-		printf("el pid %d fue abortado por %d \n", pid, codigoError);
+		switch (codigoError) {
+		case codeArchivoNoexiste: {
+			printf("el pid %d fue abortado por usar un archivo que no existe\n",
+					pid);
+			break;
+		}
+		case codeDesconexionConsola: {
+			printf("el pid %d fue abortado por desconexion consola \n", pid);
+			break;
+		}
+		case codeDesconexionCpu: {
+			printf("el pid %d fue abortado por desconexion cpu\n", pid);
+			break;
+		}
+		case codeEscribirSinPermisos: {
+			printf("el pid %d fue abortado por escribir sin permisos \n", pid);
+			break;
+		}
+		case codeFaltanRecursos: {
+			printf("el pid %d fue abortado por memoria llena \n", pid);
+			break;
+		}
+		case codeStackOverflow: {
+			printf("el pid %d fue abortado por stack overflow \n", pid);
+			break;
+		}
+		case codeMasMemoriaQuePaginas: {
+			printf(
+					"el pid %d fue abortado por intentar reservar mas memoria que paginas \n",
+					pid);
+			break;
+		}
+		case codeFinalizarPrograma: {
+			printf("el pid %d fue abortado por aborto desde esta consola \n",
+					pid);
+			break;
+		}
+		case codeExcepcionMemoria: {
+			printf("el pid %d fue abortado por memoria llena \n", pid);
+			break;
+		}
+		case codeNoHayMasLugarFS: {
+			printf("el pid %d fue abortado porque no hay mas lugar en el fs \n",
+					pid);
+			break;
+		}
+		case codeNoSePuedeAsignarMasPaginas: {
+			printf(
+					"el pid %d fue abortado porque no se le pueden asignar mas paginas \n",
+					pid);
+			break;
+		}
+		}
+
 		procesoTerminado.terminado = 1;
 		break;
 	}
@@ -176,7 +230,7 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 	} else {
 		if (pidActual == 0) {
 			printf("el proceso no entro por el grado de multiprogramacion\n");
-		}else {
+		} else {
 			procesosActuales[procesosActualesPosicion].PID = pidActual;
 			procesosActuales[procesosActualesPosicion].horaInicio =
 					temporal_get_string_time();
@@ -186,49 +240,49 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 	}
 }
 
-	ProcesosActuales buscarProceso(int pid) {
-		int i;
-		for (i = 0; i <= 100; i++) {
-			if (procesosActuales[i].PID == pid) {
-				return procesosActuales[i];
-			}
+ProcesosActuales buscarProceso(int pid) {
+	int i;
+	for (i = 0; i <= 100; i++) {
+		if (procesosActuales[i].PID == pid) {
+			return procesosActuales[i];
 		}
 	}
+}
 
-	void imprimioProceso(int pid) {
-		int i;
-		for (i = 0; i <= 100; i++) {
-			if (procesosActuales[i].PID == pid) {
-				procesosActuales[i].cantidadDeImpresiones++;
-			}
+void imprimioProceso(int pid) {
+	int i;
+	for (i = 0; i <= 100; i++) {
+		if (procesosActuales[i].PID == pid) {
+			procesosActuales[i].cantidadDeImpresiones++;
 		}
 	}
+}
 
-	void matarTodosLosProcesos() {
-		int i;
-		for (i = 1; i <= 100; i++) {
-			if (procesosActuales[i].PID != 0
-					&& procesosActuales[i].terminado == 0) {
-				char* fechaFIn = temporal_get_string_time();
-				printf("el pid %d comenzo a las %s \n", procesosActuales[i].PID,
-						procesosActuales[i].horaInicio);
-				printf("el pid %d finalizo a las %s \n",
-						procesosActuales[i].PID, fechaFIn);
-				printf("el pid %d imprimio la cantidad de : %d \n",
-						procesosActuales[i].PID,
-						procesosActuales[i].cantidadDeImpresiones);
-				procesosActuales[i].terminado = 1;
-			}
+void matarTodosLosProcesos() {
+	int i;
+	for (i = 1; i <= 100; i++) {
+		if (procesosActuales[i].PID != 0
+				&& procesosActuales[i].terminado == 0) {
+			char* fechaFIn = temporal_get_string_time();
+			printf("el pid %d comenzo a las %s \n", procesosActuales[i].PID,
+					procesosActuales[i].horaInicio);
+			printf("el pid %d finalizo a las %s \n", procesosActuales[i].PID,
+					fechaFIn);
+			printf("el pid %d imprimio la cantidad de : %d \n",
+					procesosActuales[i].PID,
+					procesosActuales[i].cantidadDeImpresiones);
+			procesosActuales[i].terminado = 1;
 		}
 	}
+}
 
-	int abrirYLeerArchivo(char path[], char* string) {
+int abrirYLeerArchivo(char path[], char* string) {
 
-		FILE *f = fopen(path, "rb");
-		fseek(f, 0, SEEK_END);
-		long fsize = ftell(f);
-		fseek(f, 0, SEEK_SET);  //same as rewind(f);
-		fread(string, fsize, 1, f);
-		fclose(f);
-		return fsize;
-	}
+	FILE *f = fopen(path, "rb");
+	fseek(f, 0, SEEK_END);
+	long fsize = ftell(f);
+	fseek(f, 0, SEEK_SET);  //same as rewind(f);
+	fread(string, fsize, 1, f);
+	fclose(f);
+	return fsize;
+}

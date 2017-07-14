@@ -18,10 +18,12 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <commons/log.h>
+#include <signal.h>
 
 int programaBloqueado;
 int programaFinalizado;
 int programaAbortado;
+int Signal;
 
 void Configuracion(char *);
 int32_t ConectarConKernel();
@@ -33,7 +35,7 @@ void cerrar(t_descriptor_archivo );
 void leer(t_descriptor_archivo , t_puntero , t_valor_variable );
 void moverCursor (t_descriptor_archivo , t_valor_variable );
 
-
+void revisarSigusR1(int );
 
 void wait_kernel(t_nombre_semaforo );
 void signal_kernel(t_nombre_semaforo );

@@ -64,6 +64,7 @@ int32_t main(int argc, char**argv) {
 	Configuracion(argv[1]);
 	logger = log_create(ARCHIVOLOG, "CPU", 0, LOG_LEVEL_INFO);
 	log_info(logger, "Iniciando CPU\n");
+	signal(SIGUSR1, revisarSigusR1);
 	pthread_create(&hiloKernel, NULL, ConectarConKernel, NULL);
 	pthread_create(&hiloMemoria, NULL, conectarConMemoria, NULL);
 	pthread_create(&hiloProcesarScript, NULL, procesarScript, NULL);
@@ -72,6 +73,12 @@ int32_t main(int argc, char**argv) {
 	pthread_join(hiloMemoria, NULL);
 	pthread_join(hiloProcesarScript, NULL);
 	return EXIT_SUCCESS;
+}
+void revisarSigusR1(int signo) {
+	if (signo == SIGUSR1) {
+		log_info(logger, "Se recibe SIGUSR1");
+		Signal = 1;
+	}
 }
 void Configuracion(char* dir) {
 	t_archivoConfig = malloc(sizeof(archivoConfigCPU));
@@ -94,6 +101,7 @@ void Configuracion(char* dir) {
 	sem_init(&semEscribirArchivo, 0, 0);
 	sem_init(&semLeerArchivo, 0, 0);
 	sem_init(&semMoverCursor, 0, 0);
+	Signal = 0;
 }
 
 int32_t conectarConMemoria() {
@@ -361,7 +369,7 @@ void procesarScript() {
 		int quantum_aux = quantum;
 		int pid = unPcb->programId;
 		while (validarQuantum(quantum_aux) && !programaBloqueado
-				&& !programaFinalizado && !programaAbortado) {
+				&& !programaFinalizado && !programaAbortado && !Signal) {
 			posicionMemoria* datos_para_memoria = malloc(
 					sizeof(posicionMemoria));
 			crearEstructuraParaMemoria(unPcb, tamanoPag, datos_para_memoria);
@@ -384,6 +392,11 @@ void procesarScript() {
 			serializarPCB(unPcb, cliente, codigoAborto);
 			destruirPCB(unPcb);
 			sem_post(&semDestruirPCB);
+		} else if (Signal) {
+			serializarPCB(unPcb, cliente, ABORTODESCONEXIONCPU);
+			destruirPCB(unPcb);
+			exit(EXIT_FAILURE);
+			sem_post(&semDestruirPCB);
 		} else {
 			if (programaBloqueado) {
 				serializarPCB(unPcb, cliente, SEBLOQUEOELPROCESO);
@@ -391,7 +404,7 @@ void procesarScript() {
 				sem_post(&semDestruirPCB);
 			} else {
 				if (algoritmo == 1 && (quantum_aux == 0) && !programaFinalizado
-						&& !programaBloqueado && !programaAbortado) {
+						&& !programaBloqueado && !programaAbortado && !Signal) {
 
 					serializarPCB(unPcb, cliente, FINDEQUATUM);
 					destruirPCB(unPcb);

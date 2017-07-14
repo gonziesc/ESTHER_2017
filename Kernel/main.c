@@ -73,6 +73,7 @@ int validarBorrarArchivo;
 int validarObtenerDatos;
 void * datosDeFs;
 int validarGuardarDatos;
+administrativosProcesos datosAdmin[100];
 pthread_mutex_t mutexSemAnsisop;
 pthread_mutex_t mutexDatosDeFs;
 pthread_mutex_t mutexColaNew;
@@ -339,7 +340,19 @@ void abortarElProgramaDeCpu(int socket) {
 void procesarEntrada(int codigoOperacion) {
 	switch (codigoOperacion) {
 	case 1: {
-
+		int pid;
+		printf("Ingrese pid a obtener datos\n");
+		scanf("%d", &pid);
+		log_info(logger, "el pid %d ejecuto %d syscalls", pid,
+				datosAdmin[pid].cantidadSyscalls);
+		log_info(logger, "el pid %d aloco %d bytes", pid,
+				datosAdmin[pid].cantidadBytesAlocados);
+		log_info(logger, "el pid %d libero %d bytes", pid,
+				datosAdmin[pid].cantidadBytesLiberados);
+		log_info(logger, "el pid %d llamo a alocar %d veces", pid,
+				datosAdmin[pid].cantidadAlocar);
+		log_info(logger, "el pid %d llamo a liberar %d veces", pid,
+				datosAdmin[pid].cantidadLiberar);
 		break;
 	}
 	case 2: {
@@ -350,7 +363,42 @@ void procesarEntrada(int codigoOperacion) {
 		break;
 	}
 	case 3: {
-
+		int j = 0;
+		// REVISAREEEEEEE
+		log_info(logger, "Imprimiendo todas las colas\n");
+		proceso * aux = malloc(sizeof(proceso));
+		while (j < list_size(colaExec->elements)) {
+			aux = (proceso*) list_get(colaExec, j);
+			log_info(logger, "el pid %d esta en la cola de ejecucion",
+					aux->pcb->programId);
+			j++;
+		}
+		j = 0;
+		while (j < list_size(colaReady->elements)) {
+			aux = (proceso*) list_get(colaReady, j);
+			log_info(logger, "el pid %d esta en la cola de ready",
+					aux->pcb->programId);
+			j++;
+		}
+		j = 0;
+		while (j < list_size(colaNew->elements)) {
+			aux = (proceso*) list_get(colaNew, j);
+			log_info(logger, "el pid %d esta en la cola de colaNew",
+					aux->pcb->programId);
+			j++;
+		}
+		int i;
+		for (i = 0;
+				i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
+				i++) {
+			j = 0;
+			while (j < list_size(colas_semaforos[i]->elements)) {
+				aux = (proceso*) list_get(colas_semaforos[i], j);
+				log_info(logger, "el pid %d esta en la cola de bloqueados",
+						aux->pcb->programId);
+				j++;
+			}
+		}
 		break;
 	}
 	case 4: {
@@ -522,6 +570,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexColaEx);
 		proceso * procesoTerminado = sacarProcesoDeEjecucion(socket);
 		pthread_mutex_unlock(&mutexColaEx);
+		datosAdmin[procesoTerminado->pcb->programId].cantidadRafagas =
+				procesoTerminado->pcb->programCounter;
 		pthread_mutex_lock(&mutexColaExit);
 		queue_push(colaExit, procesoTerminado);
 		pthread_mutex_unlock(&mutexColaExit);
@@ -539,6 +589,38 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 					procesoTerminado->pcb->programId, i);
 			free(envio);
 		}
+		int j;
+		datosAdminHeap * aux = malloc(sizeof(datosAdminHeap));
+		while (j < list_size(listaAdmHeap)) {
+			aux = (datosAdminHeap*) list_get(listaAdmHeap, j);
+
+			if (aux->pid == procesoTerminado->pcb->programId) {
+				void *envio = malloc(8);
+				memcpy(envio, &procesoTerminado->pcb->programId, 4);
+				memcpy(envio + 4, &aux->numeroPagina, 4);
+				Serializar(LIBERARPAGINAS, 8, envio, clienteMEM);
+				log_info(logger, "el pid %d libero la pagina %d",
+						procesoTerminado->pcb->programId, aux->numeroPagina);
+				free(envio);
+			}
+			j++;
+		}
+		free(aux);
+		log_info(logger, "el pid %d ejecuto %d syscalls",
+				procesoTerminado->pcb->programId,
+				datosAdmin[procesoTerminado->pcb->programId].cantidadSyscalls);
+		log_info(logger, "el pid %d aloco %d bytes",
+				procesoTerminado->pcb->programId,
+				datosAdmin[procesoTerminado->pcb->programId].cantidadBytesAlocados);
+		log_info(logger, "el pid %d libero %d bytes",
+				procesoTerminado->pcb->programId,
+				datosAdmin[procesoTerminado->pcb->programId].cantidadBytesLiberados);
+		log_info(logger, "el pid %d llamo a alocar %d veces",
+				procesoTerminado->pcb->programId,
+				datosAdmin[procesoTerminado->pcb->programId].cantidadAlocar);
+		log_info(logger, "el pid %d llamo a liberar %d veces",
+				procesoTerminado->pcb->programId,
+				datosAdmin[procesoTerminado->pcb->programId].cantidadLiberar);
 		Serializar(PROGRAMATERMINADO, 4, &procesoTerminado->pcb->programId,
 				procesoTerminado->socketCONSOLA);
 		sem_post(&semCpu);
@@ -590,6 +672,17 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		unProceso->pcb = pcbRecibido;
 		abortar(unProceso, codeStackOverflow);
 		log_info(logger, "El proceso de PID %d se aborto por stack overflow",
+				unProceso->pcb->programId);
+		break;
+	}
+	case ABORTODESCONEXIONCPU: {
+		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
+				pcbRecibido->programId);
+		destruirPCB(unProceso->pcb);
+		unProceso->pcb = pcbRecibido;
+		abortar(unProceso, codeDesconexionCpu);
+		log_info(logger, "El proceso de PID %d se aborto por SENAL SIGURS1",
 				unProceso->pcb->programId);
 		break;
 	}
@@ -675,6 +768,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 	}
 	case FINDEQUATUM: {
 		programControlBlock* pcbRecibido = deserializarPCB(paquete);
+		datosAdmin[pcbRecibido->programId].cantidadRafagas =
+				pcbRecibido->programCounter;
 		proceso* unProceso = sacarProcesoDeEjecucionPorPid(
 				pcbRecibido->programId);
 		if (unProceso != NULL) {
@@ -703,6 +798,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
 		queue_push(colaExec, unProceso);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		pthread_mutex_unlock(&mutexColaEx);
 		pthread_mutex_lock(&mutexConfig);
 		escribeVariable(variable, valor);
@@ -720,6 +817,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		unProceso = sacarProcesoDeEjecucion(socket);
 		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		pthread_mutex_lock(&mutexConfig);
 		int envio = pideVariable(variable);
 		Serializar(VALORVARIABLECOMPARTIDA, sizeof(int), &envio, socket);
@@ -739,6 +838,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(impresion, paquete, tamanioTexto);
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		memcpy(impresion + tamanioTexto, &(unProceso->pcb->programId), 4);
@@ -756,6 +857,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		procesoBloqueado *unProcesoBloqueado = malloc(sizeof(procesoBloqueado));
 		unProcesoBloqueado->pid = unProceso->pcb->programId;
 		unProcesoBloqueado->semaforo = semaforo;
@@ -789,6 +892,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(semaforo, paquete, tamanoPaquete);
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		liberaSemaforo(semaforo);
@@ -824,6 +929,10 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(&cantidad, paquete + 4, 4);
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
+		datosAdmin[pid].cantidadSyscalls = datosAdmin[pid].cantidadSyscalls + 1;
+		datosAdmin[pid].cantidadAlocar = datosAdmin[pid].cantidadAlocar + 1;
+		datosAdmin[pid].cantidadBytesAlocados =
+				datosAdmin[pid].cantidadBytesAlocados + cantidad;
 		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		hiloHeap* procesoAHeap = malloc(sizeof(hiloHeap));
@@ -851,6 +960,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		memcpy(&offsetPagina, paquete + 8, 4);
 		log_info(logger, "llego hasta aca con pid %d",
 				unProceso->pcb->programId);
+		datosAdmin[pid].cantidadSyscalls = datosAdmin[pid].cantidadSyscalls + 1;
+		datosAdmin[pid].cantidadLiberar = datosAdmin[pid].cantidadLiberar + 1;
 		liberaDatosHeap* procesoAHeap = malloc(sizeof(liberaDatosHeap));
 		procesoAHeap->pid = pid;
 		procesoAHeap->socket = socket;
@@ -869,6 +980,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
 		queue_push(colaExec, unProceso);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 0;
@@ -899,6 +1012,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
 		queue_push(colaExec, unProceso);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs *p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 1;
@@ -919,6 +1034,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
 		queue_push(colaExec, unProceso);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 2;
@@ -938,6 +1055,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
 		queue_push(colaExec, unProceso);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 3;
@@ -961,6 +1080,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
 		queue_push(colaExec, unProceso);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
 		p->codigoOperacion = 4;
@@ -980,6 +1101,8 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
+		datosAdmin[unProceso->pcb->programId].cantidadSyscalls =
+				datosAdmin[unProceso->pcb->programId].cantidadSyscalls + 1;
 		queue_push(colaExec, unProceso);
 		pthread_mutex_unlock(&mutexColaEx);
 		procesoACapaFs* p = malloc(sizeof(procesoACapaFs));
@@ -2384,6 +2507,8 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 	memcpy(&bloque, buffer, sizeof(HeapMetaData));
 
 	bloque.isFree = -1;
+	datosAdmin[pid].cantidadBytesLiberados =
+			datosAdmin[pid].cantidadBytesLiberados + bloque.size;
 	memcpy(buffer, &bloque, sizeof(HeapMetaData));
 
 	pthread_mutex_lock(&mutexMemoria);
@@ -2416,11 +2541,9 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 void abortar(proceso * proceso, int exitCode) {
 	cantidadDeProcesos--;
 	if (!(exitCode == codeDesconexionCpu)) {
-		pthread_mutex_lock(&mutexColaCpu);
 		queue_push(colaCpu, (int) proceso->socketCPU);
 		log_info(logger, "disponible la cpu %d", proceso->socketCPU);
 		sem_post(&semCpu);
-		pthread_mutex_unlock(&mutexColaCpu);
 	}
 	proceso->pcb->exitCode = exitCode;
 
@@ -2436,7 +2559,23 @@ void abortar(proceso * proceso, int exitCode) {
 				proceso->pcb->programId, i);
 		free(envio);
 	}
-	//TODO semgradomulti
+	int j;
+	datosAdminHeap * aux = malloc(sizeof(datosAdminHeap));
+	while (j < list_size(listaAdmHeap)) {
+		aux = (datosAdminHeap*) list_get(listaAdmHeap, j);
+
+		if (aux->pid == proceso->pcb->programId) {
+			void *envio = malloc(8);
+			memcpy(envio, &proceso->pcb->programId, 4);
+			memcpy(envio + 4, &aux->numeroPagina, 4);
+			Serializar(LIBERARPAGINAS, 8, envio, clienteMEM);
+			log_info(logger, "el pid %d libero la pagina %d",
+					proceso->pcb->programId, aux->numeroPagina);
+			free(envio);
+		}
+		j++;
+	}
+	free(aux);
 	if (!(exitCode == codeDesconexionConsola)) {
 		void* envio = malloc(8);
 		memcpy(envio, &proceso->pcb->programId, 4);
@@ -2450,6 +2589,18 @@ void abortar(proceso * proceso, int exitCode) {
 	destruirCONTEXTO(proceso->pcb);
 	queue_push(colaExit, proceso);
 	pthread_mutex_unlock(&mutexColaExit);
+	log_info(logger, "el pid %d ejecuto %d syscalls", proceso->pcb->programId,
+			datosAdmin[proceso->pcb->programId].cantidadSyscalls);
+	log_info(logger, "el pid %d aloco %d bytes", proceso->pcb->programId,
+			datosAdmin[proceso->pcb->programId].cantidadBytesAlocados);
+	log_info(logger, "el pid %d libero %d bytes", proceso->pcb->programId,
+			datosAdmin[proceso->pcb->programId].cantidadBytesLiberados);
+	log_info(logger, "el pid %d llamo a alocar %d veces",
+			proceso->pcb->programId,
+			datosAdmin[proceso->pcb->programId].cantidadAlocar);
+	log_info(logger, "el pid %d llamo a liberar %d veces",
+			proceso->pcb->programId,
+			datosAdmin[proceso->pcb->programId].cantidadLiberar);
 }
 
 void abortarProgramaPorConsola(int pid, int codigo) {
@@ -2527,131 +2678,131 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 	}
 
 	/*void levantarInterfaz(void){
-		//creo los comandos y el parametro
-		comando* comandos = malloc(sizeof(comando)*7);
-		strcpy(comandos[0].comando, "list");
-		comandos[0].funcion = listProcesses;
-		strcpy(comandos[1].comando, "info");
-		comandos[1].funcion = processInfo;
-		strcpy(comandos[2].comando, "tablaArchivos");
-		comandos[2].funcion = getTablaArchivos;
-		strcpy(comandos[3].comando, "grMulti");
-		comandos[3].funcion = gradoMultiprogramacion;
-		strcpy(comandos[4].comando, "kill");
-		comandos[4].funcion = killProcess;
-		strcpy(comandos[5].comando, "stopPlan");
-		comandos[5].funcion = stopPlanification;
-		strcpy(comandos[6].comando, "help");
-		comandos[6].funcion = showHelp;
-		interface_thread_param* params = malloc(sizeof(interface_thread_param));
-		params->comandos = comandos;
-		params->cantComandos = 7;
-		//Lanzo el thread
-		pthread_t threadInterfaz;
-		pthread_attr_t atributos;
-		pthread_attr_init(&atributos);
-		pthread_attr_setdetachstate(&atributos, PTHREAD_CREATE_DETACHED);
-		pthread_create(&threadInterfaz, &atributos, (void*)interface, params);
-		return;
-	}
+	 //creo los comandos y el parametro
+	 comando* comandos = malloc(sizeof(comando)*7);
+	 strcpy(comandos[0].comando, "list");
+	 comandos[0].funcion = listProcesses;
+	 strcpy(comandos[1].comando, "info");
+	 comandos[1].funcion = processInfo;
+	 strcpy(comandos[2].comando, "tablaArchivos");
+	 comandos[2].funcion = getTablaArchivos;
+	 strcpy(comandos[3].comando, "grMulti");
+	 comandos[3].funcion = gradoMultiprogramacion;
+	 strcpy(comandos[4].comando, "kill");
+	 comandos[4].funcion = killProcess;
+	 strcpy(comandos[5].comando, "stopPlan");
+	 comandos[5].funcion = stopPlanification;
+	 strcpy(comandos[6].comando, "help");
+	 comandos[6].funcion = showHelp;
+	 interface_thread_param* params = malloc(sizeof(interface_thread_param));
+	 params->comandos = comandos;
+	 params->cantComandos = 7;
+	 //Lanzo el thread
+	 pthread_t threadInterfaz;
+	 pthread_attr_t atributos;
+	 pthread_attr_init(&atributos);
+	 pthread_attr_setdetachstate(&atributos, PTHREAD_CREATE_DETACHED);
+	 pthread_create(&threadInterfaz, &atributos, (void*)interface, params);
+	 return;
+	 }
 
-	void crearInfoEstadistica(int32_t pid, uint32_t socketConsola){
-		info_estadistica_t* info = malloc(sizeof(info_estadistica_t));
-		info->pid = pid;
-		info->cantLiberar = 0;
-		info->cantAlocar = 0;
-		info->cantOpPrivi = 0;
-		info->cantRafagas = 0;
-		info->cantSyscalls = 0;
-		//TODO gonza, definir cuales son los enums de estado de proceso o ponerle los numeros que van
-		info->estado = NEW;
-		info->socketConsola = socketConsola;
-		info->matarSiguienteRafaga = false;
-		info->cantBytesAlocar = 0;
-		info->cantBytesLiberar = 0;
-		info->cantPagLiberar = 0;
-		info->cantPagReservar = 0;
-		info->exitCode = NULL;
-		list_add(listadoEstadistico, info);
-	}
+	 void crearInfoEstadistica(int32_t pid, uint32_t socketConsola){
+	 info_estadistica_t* info = malloc(sizeof(info_estadistica_t));
+	 info->pid = pid;
+	 info->cantLiberar = 0;
+	 info->cantAlocar = 0;
+	 info->cantOpPrivi = 0;
+	 info->cantRafagas = 0;
+	 info->cantSyscalls = 0;
+	 //TODO gonza, definir cuales son los enums de estado de proceso o ponerle los numeros que van
+	 info->estado = NEW;
+	 info->socketConsola = socketConsola;
+	 info->matarSiguienteRafaga = false;
+	 info->cantBytesAlocar = 0;
+	 info->cantBytesLiberar = 0;
+	 info->cantPagLiberar = 0;
+	 info->cantPagReservar = 0;
+	 info->exitCode = NULL;
+	 list_add(listadoEstadistico, info);
+	 }
 
-	void interface(interface_thread_param* param){
-		//Extraigo los parametros (me ahorro hacer el param-> a cada rato)
-		int cantComandos = param->cantComandos;
-		comando* comandos = param->comandos;
-		//Vars
-		char buffer[buffer_size + 1];//+1 mas para el \0
-		char comando[command_size + 1];
-		char parametro[command_size + 1];
-		int cantParametros;
-		bool comandoCorrecto;
-		for(;;){
-			//Reseteo el flag
-			comandoCorrecto = false;
-			//limpio buffers
-			fflush(stdin);
-			memset(buffer,'\0',buffer_size+1);
-			memset(comando,'\0',command_size);
-			memset(parametro,'\0',command_size);
-			//obtengo los datos de stdin
-			fgets(buffer, buffer_size, stdin);
-			//Formateo los datos
-			cantParametros = sscanf(buffer, "%s %s", comando, parametro);
-			//Paso por todos los comandos. Si el comando coincide con alguno, ejecuta la funcion
-			int i;
-			for(i=0;i<cantComandos;i++){
-				if( !strcmp(comando, comandos[i].comando) ){
-					comandos[i].funcion(comando,parametro);
-					comandoCorrecto = true;
-				}
-			}
-			if(!comandoCorrecto)
-				printf("Comando no reconocido.\n");
-		}
-	}
+	 void interface(interface_thread_param* param){
+	 //Extraigo los parametros (me ahorro hacer el param-> a cada rato)
+	 int cantComandos = param->cantComandos;
+	 comando* comandos = param->comandos;
+	 //Vars
+	 char buffer[buffer_size + 1];//+1 mas para el \0
+	 char comando[command_size + 1];
+	 char parametro[command_size + 1];
+	 int cantParametros;
+	 bool comandoCorrecto;
+	 for(;;){
+	 //Reseteo el flag
+	 comandoCorrecto = false;
+	 //limpio buffers
+	 fflush(stdin);
+	 memset(buffer,'\0',buffer_size+1);
+	 memset(comando,'\0',command_size);
+	 memset(parametro,'\0',command_size);
+	 //obtengo los datos de stdin
+	 fgets(buffer, buffer_size, stdin);
+	 //Formateo los datos
+	 cantParametros = sscanf(buffer, "%s %s", comando, parametro);
+	 //Paso por todos los comandos. Si el comando coincide con alguno, ejecuta la funcion
+	 int i;
+	 for(i=0;i<cantComandos;i++){
+	 if( !strcmp(comando, comandos[i].comando) ){
+	 comandos[i].funcion(comando,parametro);
+	 comandoCorrecto = true;
+	 }
+	 }
+	 if(!comandoCorrecto)
+	 printf("Comando no reconocido.\n");
+	 }
+	 }
 
-	void listProcesses(char* comando, char* param){
+	 void listProcesses(char* comando, char* param){
 
-		int32_t estado;
+	 int32_t estado;
 
-		void listarProcesos(info_estadistica_t* info){
-			int32_t cant = 0;
-			if(info->estado == estado){
-				printf("Proceso pid: %d\n", info->pid);
-				cant++;
-			}
-			if(cant == 0) printf("No existen procesos que se encuentren en ese estado\n");
-		}
-		//TODO gonza, definir cuales son los enums de estado de proceso o ponerle los numeros que van
- 		void listarTodos(info_estadistica_t* info){
-			printf("El proceso con pid %d se encuentra en estado ", info->pid);
-			switch (info->estado) {
-			case NEW:
-				printf("NEW\n");
-				break;
-			case READY:
-				printf("READY\n");
-				break;
-			case EXEC:
-				printf("EXEC\n");
-				break;
-			case FINISH:
-				printf("FINISH\n");
-				break;
-			case BLOQ:
-				printf("BLOQ\n");
-				break;
-			}
-		}
-		if(!strcmp(param, "")){
-			list_iterate(listadoEstadistico, listarTodos);
-			return;
-		}
-		if(!strcmp(param, "new")) estado = NEW;
-		if(!strcmp(param, "ready")) estado = READY;
-		if(!strcmp(param, "exec")) estado = EXEC;
-		if(!strcmp(param, "finish")) estado = FINISH;
-		if(!strcmp(param, "bloq")) estado = BLOQ;
-		list_iterate(listadoEstadistico, listarProcesos);
-	}*/
+	 void listarProcesos(info_estadistica_t* info){
+	 int32_t cant = 0;
+	 if(info->estado == estado){
+	 printf("Proceso pid: %d\n", info->pid);
+	 cant++;
+	 }
+	 if(cant == 0) printf("No existen procesos que se encuentren en ese estado\n");
+	 }
+	 //TODO gonza, definir cuales son los enums de estado de proceso o ponerle los numeros que van
+	 void listarTodos(info_estadistica_t* info){
+	 printf("El proceso con pid %d se encuentra en estado ", info->pid);
+	 switch (info->estado) {
+	 case NEW:
+	 printf("NEW\n");
+	 break;
+	 case READY:
+	 printf("READY\n");
+	 break;
+	 case EXEC:
+	 printf("EXEC\n");
+	 break;
+	 case FINISH:
+	 printf("FINISH\n");
+	 break;
+	 case BLOQ:
+	 printf("BLOQ\n");
+	 break;
+	 }
+	 }
+	 if(!strcmp(param, "")){
+	 list_iterate(listadoEstadistico, listarTodos);
+	 return;
+	 }
+	 if(!strcmp(param, "new")) estado = NEW;
+	 if(!strcmp(param, "ready")) estado = READY;
+	 if(!strcmp(param, "exec")) estado = EXEC;
+	 if(!strcmp(param, "finish")) estado = FINISH;
+	 if(!strcmp(param, "bloq")) estado = BLOQ;
+	 list_iterate(listadoEstadistico, listarProcesos);
+	 }*/
 }

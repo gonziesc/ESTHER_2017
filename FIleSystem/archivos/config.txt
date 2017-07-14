@@ -1,2 +1,2 @@
 PUERTO_KERNEL=5003
-PUERTO_MONTAJE=/home/utnso/workspace/tp-2017-1c-el-grupo-numero/FIleSystem/
+PUERTO_MONTAJE=/home/utnso/tp-2017-1c-el-grupo-numero/FIleSystem/

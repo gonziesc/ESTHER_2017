@@ -69,6 +69,7 @@ int32_t main(int argc, char**argv) {
 	//hacer un malloc , como memoria, hago un malloc del lugar de memoria ademas de tener una tabla
 	crearFrameGeneral();
 	crearCache();
+	flush();
 	idHiloLevantarConexion = pthread_create(&hiloLevantarConexion, NULL,
 			levantarConexion, NULL);
 	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando,
@@ -172,11 +173,8 @@ void leerComando() {
 	while (1) {
 		log_info(log, "\nIngrese comando\n"
 				"1: dump\n"
-				"2: buscar frame\n"
-				"3: leer de pagina\n"
-				"4: escribir en pagina\n"
-				"5: size\n"
-				"6: liberar pagina de proceso\n");
+				"2: flush\n"
+				"3: size\n");
 		scanf("%d", &opcion);
 		switch (opcion) {
 		case 1: {
@@ -184,58 +182,16 @@ void leerComando() {
 			break;
 		}
 		case 2: {
-			int32_t pid;
-			int32_t pagina;
-			log_info(log, "ingresar pid\n");
-			scanf("%d", &pid);
-			log_info(log, "ingresar pagina\n");
-			scanf("%d", &pagina);
-			int32_t unFrame = buscarFrame(pid, pagina);
-			log_info(log, "el frame correspondiente: ");
-			log_info(log, "%d\n", unFrame);
+			flush();
 			break;
 		}
 		case 3: {
-			int32_t pid;
-			int32_t pagina;
-			int32_t offset;
-			int32_t tamano;
-			log_info(log, "ingresar pid\n");
-			scanf("%d", &pid);
-			log_info(log, "ingresar pagina\n");
-			scanf("%d", &pagina);
-			log_info(log, "ingresar offset\n");
-			scanf("%d", &offset);
-			log_info(log, "ingresar tamano\n");
-			scanf("%d", &tamano);
-			char *conten = leerDePagina(pid, pagina, offset, tamano);
-
-			/*else {
-			 conten = leerDeCache(pid, pagina, offset, tamano);
-			 }*/
-			log_info(log, "%s/n", conten);
+			size();
 			break;
 		}
 
 		case 4: {
-			int32_t pid;
-			int32_t pagina;
-			int32_t offset;
-			int32_t tamano;
-			//char* contenido = malloc(32); pq de 32 y aca
-			log_info(log, "ingresar pid\n");
-			scanf("%d", &pid);
-			log_info(log, "ingresar pagina\n");
-			scanf("%d", &pagina);
-			log_info(log, "ingresar offset\n");
-			scanf("%d", &offset);
-			log_info(log, "ingresar tamano\n");
-			scanf("%d", &tamano);
-			char* contenido = malloc(tamano);
-			log_info(log, "ingresar contenido\n");
-			scanf("%s", contenido);
-			escribirEnCache(pid, pagina, offset, tamano, contenido);
-			escribirEnPagina(pid, pagina, offset, tamano, contenido);
+
 			break;
 		}
 		case 5: {
@@ -243,15 +199,7 @@ void leerComando() {
 			break;
 		}
 		case 6: {
-			int32_t pid;
-			int32_t pagina;
-			log_info(log, "ingresar pid\n");
-			scanf("%d", &pid);
-			log_info(log, "ingresar pagina\n");
-			scanf("%d", &pagina);
-			liberarPaginaDeProceso(pid, pagina);
 			break;
-
 		}
 
 		}
