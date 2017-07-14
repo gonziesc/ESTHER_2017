@@ -603,6 +603,7 @@ void liberarPaginaDeProceso(int32_t pid, int32_t pagina) {
 	 punteroMemoria[i-1] = punteroMemoria[i];
 	 }
 	 */
+	frameGeneral.framesLibres++;
 	frameGeneral.tamanioOcupado -= t_archivoConfig->MARCOS_SIZE;
 	frameGeneral.tamanioDisponible += t_archivoConfig->MARCOS_SIZE;
 	(punteroMemoria + frameBorrar)->pid = 0;
