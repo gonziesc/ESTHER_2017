@@ -278,8 +278,6 @@ int32_t levantarServidor() {
 						}
 					} else {
 						paquete* paqueteRecibido = Deserializar(i);
-						log_info(logger, "me trabe en el recv de socktt %d ",
-								i);
 						// error o conexión cerrada por el cliente
 						if (paqueteRecibido->header == -1) {
 							// conexión cerrada
@@ -588,7 +586,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		pthread_mutex_unlock(&mutexColaCpu);
 		int cantTotales = procesoTerminado->pcb->cantidadDePaginas
 				+ t_archivoConfig->STACK_SIZE;
-		for (i = 1; i < cantTotales; i++) {
+		for (i = 1; i <= cantTotales; i++) {
 			void *envio = malloc(8);
 			memcpy(envio, &procesoTerminado->pcb->programId, 4);
 			memcpy(envio + 4, &i, 4);
@@ -613,7 +611,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			}
 			j++;
 		}
-		free(aux);
 		log_info(logger, "el pid %d ejecuto %d syscalls",
 				procesoTerminado->pcb->programId,
 				datosAdmin[procesoTerminado->pcb->programId].cantidadSyscalls);
@@ -2558,7 +2555,7 @@ void abortar(proceso * proceso, int exitCode) {
 	int i;
 	int cantTotales = proceso->pcb->cantidadDePaginas
 			+ t_archivoConfig->STACK_SIZE;
-	for (i = 1; i < cantTotales; i++) {
+	for (i = 1; i <= cantTotales; i++) {
 		void *envio = malloc(8);
 		memcpy(envio, &proceso->pcb->programId, 4);
 		memcpy(envio + 4, &i, 4);
@@ -2583,7 +2580,6 @@ void abortar(proceso * proceso, int exitCode) {
 		}
 		j++;
 	}
-	free(aux);
 	if (!(exitCode == codeDesconexionConsola)) {
 		void* envio = malloc(8);
 		memcpy(envio, &proceso->pcb->programId, 4);

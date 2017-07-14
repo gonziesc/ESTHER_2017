@@ -583,7 +583,7 @@ void almacernarPaginaEnFrame(int32_t pid, int32_t tamanioBuffer, char* buffer) {
 
 //frameGeneral.punteroDisponible += t_archivoConfig->MARCOS_SIZE;
 	frameGeneral.tamanioOcupado += t_archivoConfig->MARCOS_SIZE;
-	frameGeneral.tamanioDisponible -= tamanioBuffer;
+	frameGeneral.tamanioDisponible -= t_archivoConfig->MARCOS_SIZE;
 	nodoTablaMemoria.pid = pid;
 	punteroMemoria[indiceTabla] = nodoTablaMemoria;
 	indiceTabla++;
@@ -603,6 +603,8 @@ void liberarPaginaDeProceso(int32_t pid, int32_t pagina) {
 	 punteroMemoria[i-1] = punteroMemoria[i];
 	 }
 	 */
+	frameGeneral.tamanioOcupado -= t_archivoConfig->MARCOS_SIZE;
+	frameGeneral.tamanioDisponible += t_archivoConfig->MARCOS_SIZE;
 	(punteroMemoria + frameBorrar)->pid = 0;
 	(punteroMemoria + frameBorrar)->numeroPagina = 0;
 }
@@ -716,7 +718,8 @@ void almacenarFrameEnCache(int32_t pid, int32_t pagina) {
 	nodoUso.pid = pid;
 	nodoUso.pagina = pagina;
 	nodoUso.uso = 0;
-	if (entradasCache < t_archivoConfig->ENTRADAS_CACHE && t_archivoConfig->CACHE_X_PROC > 0) {
+	if (entradasCache < t_archivoConfig->ENTRADAS_CACHE
+			&& t_archivoConfig->CACHE_X_PROC > 0) {
 		if (buscarPidCache(pid) == 0) {
 
 			memcpy(cache1.punteroDisponible, buffer, tamanioBuffer);
@@ -833,7 +836,7 @@ int32_t buscarPidCache(int32_t pid) {
 }
 int32_t buscarNodoCache(int32_t pid, int32_t pagina) {
 	int32_t i;
-	if(t_archivoConfig->CACHE_X_PROC == 0){
+	if (t_archivoConfig->CACHE_X_PROC == 0) {
 		return -1;
 	}
 	for (i = 0; i <= t_archivoConfig->ENTRADAS_CACHE; i++) {

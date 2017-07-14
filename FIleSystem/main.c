@@ -84,10 +84,11 @@ void adx_store_data(const char *filepath, const char *data) {
 	}
 }
 
-void adx_store_data_with_size(const char *filepath, const char *data, int size) {
+void adx_store_data_with_size(const char *filepath, const char *data, int size, int offset) {
 	FILE* archivo = fopen(filepath, "r+");
+	fseek(archivo, offset, SEEK_SET);
 
-		fwrite(data, size, 1, archivo);
+	fwrite(data, size, 1, archivo);
 
 		fclose(archivo);
 }
@@ -297,7 +298,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 					- ((obtTamanioArchivo(nombreArchivoRecibido)));
 			log_info(log,"Cantidad restante :%d\n", cantRestante);
 			if (tamanoBuffer < cantRestante) {
-				adx_store_data_with_size(nombreBloque, buffer, tamanoBuffer);
+				adx_store_data_with_size(nombreBloque, buffer, tamanoBuffer, puntero);
 				char *dataAPonerEnFile = string_new();
 				string_append(&dataAPonerEnFile, "TAMANIO=");
 
@@ -329,7 +330,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 			} else {
 				void* guardar = malloc(cantRestante);
 				memcpy(guardar, buffer, cantRestante);
-				adx_store_data_with_size(nombreBloque, guardar, cantRestante);
+				adx_store_data_with_size(nombreBloque, guardar, cantRestante, puntero);
 				free(guardar);
 				tamanoBuffer -= cantRestante;
 				int cuantosBloquesMasNecesito = (tamanoBuffer)
@@ -378,7 +379,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 									t_archivoConfig->TAMANIO_BLOQUES);
 							memcpy(recortado, buffer + offsetAux,
 									t_archivoConfig->TAMANIO_BLOQUES);
-							adx_store_data_with_size(nombreBloque, recortado, t_archivoConfig->TAMANIO_BLOQUES);
+							adx_store_data_with_size(nombreBloque, recortado, t_archivoConfig->TAMANIO_BLOQUES, puntero);
 							offsetAux += t_archivoConfig->TAMANIO_BLOQUES;
 							tamanoBuffer -= t_archivoConfig->TAMANIO_BLOQUES;
 							free(recortado);
@@ -386,7 +387,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 							void* recortado = malloc(tamanoBuffer);
 							memcpy(recortado, buffer + offsetAux, tamanoBuffer);
 							//mandarlo to do de una
-							adx_store_data_with_size(nombreBloque, recortado, tamanoBuffer);
+							adx_store_data_with_size(nombreBloque, recortado, tamanoBuffer, puntero);
 							free(recortado);
 						}
 
