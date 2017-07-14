@@ -91,6 +91,9 @@ pthread_mutex_t mutexListaAdminHeap;
 pthread_mutex_t mutexColaHeap;
 pthread_mutex_t mutexColaLiberaHeap;
 pthread_mutex_t mutexColaCapaFs;
+pthread_mutex_t mutexSyscallHeap;
+pthread_mutex_t mutexHiloHeap;
+pthread_mutex_t mutexWaitSignal;
 pthread_t hiloPlanificadorLargoPlazo;
 pthread_t hiloEnviarProceso;
 pthread_t hiloPlanificadorCortoPlazo;
@@ -280,10 +283,10 @@ int32_t levantarServidor() {
 						// error o conexión cerrada por el cliente
 						if (paqueteRecibido->header == -1) {
 							// conexión cerrada
-							int esConsola = abortarTodosLosProgramasDeConsola(
-									i);
-							if (esConsola == 0)
-								abortarElProgramaDeCpu(i);
+							// int esConsola = abortarTodosLosProgramasDeConsola(
+							//		i);
+							//if (esConsola == 0)
+							//abortarElProgramaDeCpu(i);
 							close(i); // bye!
 							FD_CLR(i, &master); // eliminar del conjunto maestro
 							log_info(logger,
@@ -580,6 +583,21 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 				entraproceso);
 		break;
 	}
+	case DESTRUICPUSINPID: {
+		int unaCpu, a =0;
+		bool esMiSocket(void * entrada) {
+			proceso * unproceso = (proceso *) entrada;
+			return unproceso->socketCPU == socket;
+		}
+		while (unaCpu = (int) list_get(colaCpu->elements, a)) {
+			if (unaCpu == socket)
+				list_remove(colaCpu->elements, a);
+			a++;
+		}
+		log_info(logger, "murio la cpu %d\n",
+						socket);
+		break;
+	}
 	case PROGRAMATERMINADO: {
 		cantidadDeProcesos--;
 		pthread_mutex_lock(&mutexColaEx);
@@ -777,6 +795,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		//procesar pid muerto
 		//semaforear los procesar
 	case DESCONECTARCONSOLA: {
+		log_info(logger, "murio la consola %d", socket);
 		abortarTodosLosProgramasDeConsola(socket);
 		break;
 	}
@@ -866,6 +885,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case PROCESOWAIT: {
+		pthread_mutex_lock(&mutexWaitSignal);
 		char* semaforo = malloc(tamanoPaquete);
 		memcpy(semaforo, paquete, tamanoPaquete);
 		proceso* unProceso;
@@ -898,9 +918,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		log_info(logger, "El proceso de PID %d esta esperando un semaforo",
 				unProceso->pcb->programId);
+		pthread_mutex_unlock(&mutexWaitSignal);
 		break;
 	}
 	case PROCESOSIGNAL: {
+		pthread_mutex_lock(&mutexWaitSignal);
 		proceso* unProceso;
 		char* semaforo = malloc(tamanoPaquete);
 		memcpy(semaforo, paquete, tamanoPaquete);
@@ -914,6 +936,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		free(semaforo);
 		log_info(logger, "El proceso de PID %d hizo senial de un semaforo",
 				unProceso->pcb->programId);
+		pthread_mutex_unlock(&mutexWaitSignal);
 		break;
 	}
 	case SEBLOQUEOELPROCESO: {
@@ -937,6 +960,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 	}
 	case PROCESOPIDEHEAP: {
+		pthread_mutex_lock(&mutexSyscallHeap);
 		proceso* unProceso;
 		int pid, cantidad;
 		memcpy(&pid, paquete, 4);
@@ -960,9 +984,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		log_info(logger, "El proceso de PID %d pidio Heap",
 				unProceso->pcb->programId);
+		pthread_mutex_unlock(&mutexSyscallHeap);
 		break;
 	}
 	case PROCESOLIBERAHEAP: {
+		pthread_mutex_lock(&mutexSyscallHeap);
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
@@ -987,6 +1013,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semLiberarHeap);
 		log_info(logger, "El proceso de PID %d libero heap",
 				unProceso->pcb->programId);
+		pthread_mutex_unlock(&mutexSyscallHeap);
 		break;
 	}
 	case ABRIRARCHIVO: {
@@ -1937,6 +1964,7 @@ void procesarHeap() {
 
 	while (1) {
 		sem_wait(&semProcesoAHeap);
+		pthread_mutex_lock(&mutexHiloHeap);
 		pthread_mutex_lock(&mutexColaHeap);
 		heap = queue_pop(colaHeap);
 		pthread_mutex_unlock(&mutexColaHeap);
@@ -1958,6 +1986,7 @@ void procesarHeap() {
 		free(heap);
 
 		free(data);
+		pthread_mutex_unlock(&mutexHiloHeap);
 	}
 
 }
@@ -1967,12 +1996,14 @@ void liberarHeap() {
 
 	while (1) {
 		sem_wait(&semLiberarHeap);
+		pthread_mutex_lock(&mutexHiloHeap);
 		pthread_mutex_lock(&mutexColaLiberaHeap);
 		heap = queue_pop(colaLiberaHeap);
 		pthread_mutex_unlock(&mutexColaLiberaHeap);
 		procesoLiberaHeap(heap->pid, heap->pagina, heap->offset);
 		Serializar(PROCESOTERMINALIBERAHEAP, 4, &noInteresa, heap->socket);
 		free(heap);
+		pthread_mutex_unlock(&mutexHiloHeap);
 	}
 
 }

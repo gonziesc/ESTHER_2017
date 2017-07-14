@@ -39,6 +39,7 @@ sem_t semBorrarArchivo;
 sem_t semLeerArchivo;
 sem_t semEscribirArchivo;
 sem_t semMoverCursor;
+int hayScriptEjecutando = 0;
 int noInteresa;
 int valorDerenferenciado;
 int algoritmo;
@@ -65,6 +66,7 @@ int32_t main(int argc, char**argv) {
 	logger = log_create(ARCHIVOLOG, "CPU", 0, LOG_LEVEL_INFO);
 	log_info(logger, "Iniciando CPU\n");
 	signal(SIGUSR1, revisarSigusR1);
+	signal(SIGINT, revisarSigusR1);
 	pthread_create(&hiloKernel, NULL, ConectarConKernel, NULL);
 	pthread_create(&hiloMemoria, NULL, conectarConMemoria, NULL);
 	pthread_create(&hiloProcesarScript, NULL, procesarScript, NULL);
@@ -77,6 +79,14 @@ int32_t main(int argc, char**argv) {
 void revisarSigusR1(int signo) {
 	if (signo == SIGUSR1) {
 		log_info(logger, "Se recibe SIGUSR1");
+		Signal = 1;
+	}
+	if (signo == SIGINT) {
+		log_info(logger, "Se recibe control c");
+		if(hayScriptEjecutando == 0){
+			Serializar(DESTRUICPUSINPID, 4, &noInteresa, cliente);
+			exit(EXIT_FAILURE);
+		}
 		Signal = 1;
 	}
 }
@@ -363,6 +373,7 @@ bool validarQuantum(int valor) {
 void procesarScript() {
 	while (1) {
 		sem_wait(&semHayScript);
+		hayScriptEjecutando = 1;
 		programaBloqueado = 0;
 		programaFinalizado = 0;
 		programaAbortado = 0;
@@ -389,23 +400,25 @@ void procesarScript() {
 			usleep(quantumSleep * 1000);
 		}
 		if (programaAbortado) {
+			hayScriptEjecutando = 0;
 			serializarPCB(unPcb, cliente, codigoAborto);
 			destruirPCB(unPcb);
 			sem_post(&semDestruirPCB);
 		} else if (Signal) {
+			hayScriptEjecutando = 0;
 			serializarPCB(unPcb, cliente, ABORTODESCONEXIONCPU);
 			destruirPCB(unPcb);
 			exit(EXIT_FAILURE);
-			sem_post(&semDestruirPCB);
 		} else {
 			if (programaBloqueado) {
+				hayScriptEjecutando = 0;
 				serializarPCB(unPcb, cliente, SEBLOQUEOELPROCESO);
 				destruirPCB(unPcb);
 				sem_post(&semDestruirPCB);
 			} else {
 				if (algoritmo == 1 && (quantum_aux == 0) && !programaFinalizado
 						&& !programaBloqueado && !programaAbortado && !Signal) {
-
+					hayScriptEjecutando = 0;
 					serializarPCB(unPcb, cliente, FINDEQUATUM);
 					destruirPCB(unPcb);
 					sem_post(&semDestruirPCB);
@@ -660,6 +673,7 @@ void finalizar(void) {
 		Serializar(PORLASDUDAS, 4, &noInteresa, cliente);
 		Serializar(PORLASDUDAS, 4, &noInteresa, cliente);
 		destruirPCB(unPcb);
+		hayScriptEjecutando = 0;
 		sem_post(&semDestruirPCB);
 	}
 }

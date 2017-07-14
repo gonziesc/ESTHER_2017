@@ -18,6 +18,7 @@
 #include <parser/metadata_program.h>
 #include <semaphore.h>
 #include <commons/log.h>
+#include <signal.h>
 
 t_log* log;
 

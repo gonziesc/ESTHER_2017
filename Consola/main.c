@@ -20,8 +20,21 @@ ProcesosActuales procesosActuales[100];
 int noInteresa;
 sem_t semPidListo;
 int pidActual;
+int Signal = 0;
+
+void revisarSenal(int signo) {
+	if (signo == SIGINT) {
+		printf("Se recibe control c");
+		matarTodosLosProcesos();
+		Serializar(DESCONECTARCONSOLA, 4, &noInteresa, cliente);
+		close(cliente);
+		pthread_cancel(idHiloConectarseConKernel);
+		exit(EXIT_FAILURE);
+	}
+}
 
 int32_t main(int argc, char**argv) {
+	signal(SIGINT, revisarSenal);
 	Configuracion(argv[1]);
 	log = log_create(ARCHIVOLOG, "Consola", 0, LOG_LEVEL_INFO);
 	log_info(log, "Iniciando Consola\n");
@@ -29,6 +42,7 @@ int32_t main(int argc, char**argv) {
 			ConectarseConKernel, noInteresa);
 	idHiloLeerComando = pthread_create(&hiloLeerComando, NULL, leerComando,
 	NULL);
+
 	pthread_join(hiloConectarseConKernel, NULL);
 	pthread_join(hiloLeerComando, NULL);
 	return EXIT_SUCCESS;
