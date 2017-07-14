@@ -367,22 +367,29 @@ void procesarEntrada(int codigoOperacion) {
 		// REVISAREEEEEEE
 		log_info(logger, "Imprimiendo todas las colas\n");
 		proceso * aux = malloc(sizeof(proceso));
+		pthread_mutex_lock(&mutexColaEx);
 		while (j < list_size(colaExec->elements)) {
-			aux = (proceso*) list_get(colaExec, j);
+			aux = (proceso*) list_get(colaExec->elements, j);
+			if(aux != NULL)
 			log_info(logger, "el pid %d esta en la cola de ejecucion",
 					aux->pcb->programId);
 			j++;
 		}
+		pthread_mutex_unlock(&mutexColaEx);
 		j = 0;
+		pthread_mutex_lock(&mutexColaReady);
 		while (j < list_size(colaReady->elements)) {
-			aux = (proceso*) list_get(colaReady, j);
+			aux = (proceso*) list_get(colaReady->elements, j);
+			if(aux != NULL)
 			log_info(logger, "el pid %d esta en la cola de ready",
 					aux->pcb->programId);
 			j++;
 		}
+		pthread_mutex_unlock(&mutexColaReady);
 		j = 0;
 		while (j < list_size(colaNew->elements)) {
-			aux = (proceso*) list_get(colaNew, j);
+			aux = (proceso*) list_get(colaNew->elements, j);
+			if(aux != NULL)
 			log_info(logger, "el pid %d esta en la cola de colaNew",
 					aux->pcb->programId);
 			j++;
@@ -393,7 +400,8 @@ void procesarEntrada(int codigoOperacion) {
 				i++) {
 			j = 0;
 			while (j < list_size(colas_semaforos[i]->elements)) {
-				aux = (proceso*) list_get(colas_semaforos[i], j);
+				aux = (proceso*) list_get(colas_semaforos[i]->elements, j);
+				if(aux != NULL)
 				log_info(logger, "el pid %d esta en la cola de bloqueados",
 						aux->pcb->programId);
 				j++;
@@ -589,12 +597,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 					procesoTerminado->pcb->programId, i);
 			free(envio);
 		}
-		int j;
+		int j = 0;
 		datosAdminHeap * aux = malloc(sizeof(datosAdminHeap));
 		while (j < list_size(listaAdmHeap)) {
 			aux = (datosAdminHeap*) list_get(listaAdmHeap, j);
 
-			if (aux->pid == procesoTerminado->pcb->programId) {
+			if (aux != NULL && aux->pid == procesoTerminado->pcb->programId) {
 				void *envio = malloc(8);
 				memcpy(envio, &procesoTerminado->pcb->programId, 4);
 				memcpy(envio + 4, &aux->numeroPagina, 4);
@@ -2559,12 +2567,12 @@ void abortar(proceso * proceso, int exitCode) {
 				proceso->pcb->programId, i);
 		free(envio);
 	}
-	int j;
+	int j = 0;
 	datosAdminHeap * aux = malloc(sizeof(datosAdminHeap));
 	while (j < list_size(listaAdmHeap)) {
 		aux = (datosAdminHeap*) list_get(listaAdmHeap, j);
 
-		if (aux->pid == proceso->pcb->programId) {
+		if (aux != NULL && aux->pid == proceso->pcb->programId) {
 			void *envio = malloc(8);
 			memcpy(envio, &proceso->pcb->programId, 4);
 			memcpy(envio + 4, &aux->numeroPagina, 4);
