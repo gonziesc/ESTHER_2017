@@ -83,7 +83,7 @@ int32_t buscarNodoCache(int32_t , int32_t );
 void ordenarPorUso();
 char* leerDeCache(int32_t , int32_t ,int32_t, int32_t );
 void escribirEnCache(int32_t , int32_t , int32_t , int32_t , char* );
-void almacenarFrameEnCache(int32_t , int32_t , char* , int32_t);
+void almacenarFrameEnCache(int32_t , int32_t);
 int32_t buscarPosicionContenido(int32_t, int32_t );
 void inicializarPrograma(int32_t, int32_t );
 void inicializarMemoria();

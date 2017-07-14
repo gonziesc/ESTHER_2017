@@ -30,6 +30,7 @@ int32_t ultimaPaginaPid[100];
 int32_t bytesRecibidos;
 int32_t tamanoPaquete;
 int32_t processID = 0;
+int cantidadDeProcesos = 0;
 struct sockaddr_in direccionFs;
 struct sockaddr_in direccionServidor;
 t_queue* colaHeap;
@@ -274,7 +275,7 @@ int32_t levantarServidor() {
 					} else {
 						paquete* paqueteRecibido = Deserializar(i);
 						log_info(logger, "me trabe en el recv de socktt %d ",
-										i);
+								i);
 						// error o conexión cerrada por el cliente
 						if (paqueteRecibido->header == -1) {
 							// conexión cerrada
@@ -371,7 +372,9 @@ void procesarScript() {
 		Serializar(TAMANO, sizeof(int), &cantidadDePaginasTotales, clienteMEM);
 		pthread_mutex_unlock(&mutexMemoria);
 		sem_wait(&semEntraElProceso);
-		if (entraproceso == OK) {
+		if (entraproceso == OK
+				&& cantidadDeProcesos < t_archivoConfig->GRADO_MULTIPROG) {
+			cantidadDeProcesos++;
 			proceso* unProceso = malloc(sizeof(proceso));
 			programControlBlock* unPcb = malloc(sizeof(programControlBlock));
 			procesoConsola* unaConsola = malloc(sizeof(procesoConsola));
@@ -407,12 +410,16 @@ void procesarScript() {
 			log_info(logger, "Se acepto el proceso a new con un PID:\n",
 					unPcb->programId);
 		} else {
-			Serializar(ABORTOEXPECIONDEMEMORIA, 4, &noInteresa,
-					unScript->socket);
+			if (cantidadDeProcesos < t_archivoConfig->GRADO_MULTIPROG) {
+				Serializar(ABORTOGRADOMULTIPROG, 4, &noInteresa,
+						unScript->socket);
+			} else {
+				Serializar(ABORTOEXPECIONDEMEMORIA, 4, &noInteresa,
+						unScript->socket);
+			}
+			pthread_mutex_unlock(&mutexProcesarScript);
 		}
-		pthread_mutex_unlock(&mutexProcesarScript);
 	}
-
 }
 
 void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket) {
@@ -505,6 +512,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case PROGRAMATERMINADO: {
+		cantidadDeProcesos--;
 		pthread_mutex_lock(&mutexColaEx);
 		proceso * procesoTerminado = sacarProcesoDeEjecucion(socket);
 		pthread_mutex_unlock(&mutexColaEx);
@@ -2399,6 +2407,7 @@ void procesoLiberaHeap(int pid, int pagina, int offsetPagina) {
 }
 
 void abortar(proceso * proceso, int exitCode) {
+	cantidadDeProcesos--;
 	if (!(exitCode == codeDesconexionCpu)) {
 		pthread_mutex_lock(&mutexColaCpu);
 		queue_push(colaCpu, (int) proceso->socketCPU);
@@ -2509,5 +2518,4 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 			}
 		}
 	}
-
 }

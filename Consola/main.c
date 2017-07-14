@@ -97,6 +97,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete) {
 		sem_post(&semPidListo);
 		break;
 	}
+	case ABORTOGRADOMULTIPROG: {
+		pidActual = -5;
+		sem_post(&semPidListo);
+		break;
+	}
 	case ABORTOSTACKOVERFLOW: {
 		int pid;
 		int codigoError;
@@ -170,57 +175,62 @@ void crearNuevoProceso(int procesosActualesPosicion) {
 		printf("el proceso no entro por falta de lugar\n");
 		exit(0);
 	} else {
-		procesosActuales[procesosActualesPosicion].PID = pidActual;
-		procesosActuales[procesosActualesPosicion].horaInicio =
-				temporal_get_string_time();
-		printf("process id: %d\n", pidActual);
-	}
+		if (pidActual == 0) {
+			printf("el proceso no entro por el grado de multiprogramacion\n");
+			exit(0);
+		}else {
+			procesosActuales[procesosActualesPosicion].PID = pidActual;
+			procesosActuales[procesosActualesPosicion].horaInicio =
+					temporal_get_string_time();
+			printf("process id: %d\n", pidActual);
+		}
 
+	}
 }
 
-ProcesosActuales buscarProceso(int pid) {
-	int i;
-	for (i = 0; i <= 100; i++) {
-		if (procesosActuales[i].PID == pid) {
-			return procesosActuales[i];
+	ProcesosActuales buscarProceso(int pid) {
+		int i;
+		for (i = 0; i <= 100; i++) {
+			if (procesosActuales[i].PID == pid) {
+				return procesosActuales[i];
+			}
 		}
 	}
-}
 
-void imprimioProceso(int pid) {
-	int i;
-	for (i = 0; i <= 100; i++) {
-		if (procesosActuales[i].PID == pid) {
-			procesosActuales[i].cantidadDeImpresiones++;
+	void imprimioProceso(int pid) {
+		int i;
+		for (i = 0; i <= 100; i++) {
+			if (procesosActuales[i].PID == pid) {
+				procesosActuales[i].cantidadDeImpresiones++;
+			}
 		}
 	}
-}
 
-void matarTodosLosProcesos() {
-	int i;
-	for (i = 0; i <= 100; i++) {
-		if (procesosActuales[i].PID != 0
-				&& procesosActuales[i].terminado == 0) {
-			char* fechaFIn = temporal_get_string_time();
-			printf("el pid %d comenzo a las %s \n", procesosActuales[i].PID,
-					procesosActuales[i].horaInicio);
-			printf("el pid %d finalizo a las %s \n", procesosActuales[i].PID,
-					fechaFIn);
-			printf("el pid %d imprimio la cantidad de : %d \n",
-					procesosActuales[i].PID,
-					procesosActuales[i].cantidadDeImpresiones);
-			procesosActuales[i].terminado = 1;
+	void matarTodosLosProcesos() {
+		int i;
+		for (i = 0; i <= 100; i++) {
+			if (procesosActuales[i].PID != 0
+					&& procesosActuales[i].terminado == 0) {
+				char* fechaFIn = temporal_get_string_time();
+				printf("el pid %d comenzo a las %s \n", procesosActuales[i].PID,
+						procesosActuales[i].horaInicio);
+				printf("el pid %d finalizo a las %s \n",
+						procesosActuales[i].PID, fechaFIn);
+				printf("el pid %d imprimio la cantidad de : %d \n",
+						procesosActuales[i].PID,
+						procesosActuales[i].cantidadDeImpresiones);
+				procesosActuales[i].terminado = 1;
+			}
 		}
 	}
-}
 
-int abrirYLeerArchivo(char path[], char* string) {
+	int abrirYLeerArchivo(char path[], char* string) {
 
-	FILE *f = fopen(path, "rb");
-	fseek(f, 0, SEEK_END);
-	long fsize = ftell(f);
-	fseek(f, 0, SEEK_SET);  //same as rewind(f);
-	fread(string, fsize, 1, f);
-	fclose(f);
-	return fsize;
-}
+		FILE *f = fopen(path, "rb");
+		fseek(f, 0, SEEK_END);
+		long fsize = ftell(f);
+		fseek(f, 0, SEEK_SET);  //same as rewind(f);
+		fread(string, fsize, 1, f);
+		fclose(f);
+		return fsize;
+	}
