@@ -414,9 +414,11 @@ void procesarScript() {
 			if (cantidadDeProcesos > t_archivoConfig->GRADO_MULTIPROG) {
 				Serializar(ABORTOGRADOMULTIPROG, 4, &noInteresa,
 						unScript->socket);
+				pthread_mutex_unlock(&mutexProcesarScript);
 			} else {
 				Serializar(ABORTOEXPECIONDEMEMORIA, 4, &noInteresa,
 						unScript->socket);
+				pthread_mutex_unlock(&mutexProcesarScript);
 			}
 		}
 	}
@@ -1862,6 +1864,7 @@ void planificadorCortoPlazo() {
 		pthread_mutex_unlock(&mutexColaCpu);
 		pthread_mutex_lock(&mutexColaReady);
 		unProcesoPcp = queue_pop(colaReady);
+		pthread_mutex_unlock(&mutexColaReady);
 		if (unProcesoPcp != NULL && socket != NULL && socket != 0) {
 			unProcesoPcp->socketCPU = socket;
 			log_info(logger, "[READY->EXECUTING] PID %d",
@@ -1871,8 +1874,6 @@ void planificadorCortoPlazo() {
 		} else {
 			sem_post(&semReady);
 		}
-
-		pthread_mutex_unlock(&mutexColaReady);
 
 	}
 
