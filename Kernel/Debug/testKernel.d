@@ -1,1 +1,0 @@
-testKernel.d: ../testKernel.c

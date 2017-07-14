@@ -25,13 +25,13 @@ endif
 all: FIleSystem
 
 dependents:
-	-cd /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug && $(MAKE) all
+	-cd /home/utnso/workspace/tp-2017-1c-el-grupo-numero/shared/Debug && $(MAKE) all
 
 # Tool invocations
-FIleSystem: $(OBJS) $(USER_OBJS) /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so
+FIleSystem: $(OBJS) $(USER_OBJS) /home/utnso/workspace/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C Linker'
-	gcc -L"/home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug" -o "FIleSystem" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc -L"/home/utnso/workspace/tp-2017-1c-el-grupo-numero/shared/Debug" -o "FIleSystem" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -42,6 +42,6 @@ clean:
 
 .PHONY: all clean dependents
 .SECONDARY:
-/home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so:
+/home/utnso/workspace/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so:
 
 -include ../makefile.targets

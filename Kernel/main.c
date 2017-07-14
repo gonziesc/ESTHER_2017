@@ -103,6 +103,7 @@ datosHeap tablaHeap[100];
 int indiceLibreHeap = 0;
 t_list* tablaArchivosGlobal;
 t_list* listaTablasProcesos;
+t_list* listadoEstadistico;
 t_log* logger;
 
 int32_t main(int argc, char**argv) {
@@ -111,6 +112,7 @@ int32_t main(int argc, char**argv) {
 	log_info(logger, "Iniciando Kernel\n");
 	conectarConMemoria();
 	ConectarConFS();
+	//levantarInterfaz();
 	pthread_create(&hiloPlanificadorLargoPlazo, NULL, planificadorLargoPlazo,
 	NULL);
 	pthread_create(&hiloPlanificadorCortoPlazo, NULL, planificadorCortoPlazo,
@@ -163,6 +165,7 @@ void configuracion(char*dir) {
 	colaLiberaHeap = queue_create();
 	tablaArchivosGlobal = list_create();
 	listaTablasProcesos = list_create();
+	listadoEstadistico = list_create();
 	colas_semaforos = malloc(
 			strlen((char*) t_archivoConfig->SEM_INIT) * sizeof(char*));
 
@@ -404,6 +407,7 @@ void procesarScript() {
 			sem_wait(&semEnvioPaginas);
 			pthread_mutex_lock(&mutexColaNew);
 			queue_push(colaNew, unProceso);
+			//crearInfoEstadistica(unPcb->programId, unaConsola->consola);
 			pthread_mutex_unlock(&mutexColaNew);
 			sem_post(&semNew);
 			free(unScript->codigo);
@@ -2521,4 +2525,133 @@ void abortarProgramaPorConsola(int pid, int codigo) {
 			}
 		}
 	}
+
+	/*void levantarInterfaz(void){
+		//creo los comandos y el parametro
+		comando* comandos = malloc(sizeof(comando)*7);
+		strcpy(comandos[0].comando, "list");
+		comandos[0].funcion = listProcesses;
+		strcpy(comandos[1].comando, "info");
+		comandos[1].funcion = processInfo;
+		strcpy(comandos[2].comando, "tablaArchivos");
+		comandos[2].funcion = getTablaArchivos;
+		strcpy(comandos[3].comando, "grMulti");
+		comandos[3].funcion = gradoMultiprogramacion;
+		strcpy(comandos[4].comando, "kill");
+		comandos[4].funcion = killProcess;
+		strcpy(comandos[5].comando, "stopPlan");
+		comandos[5].funcion = stopPlanification;
+		strcpy(comandos[6].comando, "help");
+		comandos[6].funcion = showHelp;
+		interface_thread_param* params = malloc(sizeof(interface_thread_param));
+		params->comandos = comandos;
+		params->cantComandos = 7;
+		//Lanzo el thread
+		pthread_t threadInterfaz;
+		pthread_attr_t atributos;
+		pthread_attr_init(&atributos);
+		pthread_attr_setdetachstate(&atributos, PTHREAD_CREATE_DETACHED);
+		pthread_create(&threadInterfaz, &atributos, (void*)interface, params);
+		return;
+	}
+
+	void crearInfoEstadistica(int32_t pid, uint32_t socketConsola){
+		info_estadistica_t* info = malloc(sizeof(info_estadistica_t));
+		info->pid = pid;
+		info->cantLiberar = 0;
+		info->cantAlocar = 0;
+		info->cantOpPrivi = 0;
+		info->cantRafagas = 0;
+		info->cantSyscalls = 0;
+		//TODO gonza, definir cuales son los enums de estado de proceso o ponerle los numeros que van
+		info->estado = NEW;
+		info->socketConsola = socketConsola;
+		info->matarSiguienteRafaga = false;
+		info->cantBytesAlocar = 0;
+		info->cantBytesLiberar = 0;
+		info->cantPagLiberar = 0;
+		info->cantPagReservar = 0;
+		info->exitCode = NULL;
+		list_add(listadoEstadistico, info);
+	}
+
+	void interface(interface_thread_param* param){
+		//Extraigo los parametros (me ahorro hacer el param-> a cada rato)
+		int cantComandos = param->cantComandos;
+		comando* comandos = param->comandos;
+		//Vars
+		char buffer[buffer_size + 1];//+1 mas para el \0
+		char comando[command_size + 1];
+		char parametro[command_size + 1];
+		int cantParametros;
+		bool comandoCorrecto;
+		for(;;){
+			//Reseteo el flag
+			comandoCorrecto = false;
+			//limpio buffers
+			fflush(stdin);
+			memset(buffer,'\0',buffer_size+1);
+			memset(comando,'\0',command_size);
+			memset(parametro,'\0',command_size);
+			//obtengo los datos de stdin
+			fgets(buffer, buffer_size, stdin);
+			//Formateo los datos
+			cantParametros = sscanf(buffer, "%s %s", comando, parametro);
+			//Paso por todos los comandos. Si el comando coincide con alguno, ejecuta la funcion
+			int i;
+			for(i=0;i<cantComandos;i++){
+				if( !strcmp(comando, comandos[i].comando) ){
+					comandos[i].funcion(comando,parametro);
+					comandoCorrecto = true;
+				}
+			}
+			if(!comandoCorrecto)
+				printf("Comando no reconocido.\n");
+		}
+	}
+
+	void listProcesses(char* comando, char* param){
+
+		int32_t estado;
+
+		void listarProcesos(info_estadistica_t* info){
+			int32_t cant = 0;
+			if(info->estado == estado){
+				printf("Proceso pid: %d\n", info->pid);
+				cant++;
+			}
+			if(cant == 0) printf("No existen procesos que se encuentren en ese estado\n");
+		}
+		//TODO gonza, definir cuales son los enums de estado de proceso o ponerle los numeros que van
+ 		void listarTodos(info_estadistica_t* info){
+			printf("El proceso con pid %d se encuentra en estado ", info->pid);
+			switch (info->estado) {
+			case NEW:
+				printf("NEW\n");
+				break;
+			case READY:
+				printf("READY\n");
+				break;
+			case EXEC:
+				printf("EXEC\n");
+				break;
+			case FINISH:
+				printf("FINISH\n");
+				break;
+			case BLOQ:
+				printf("BLOQ\n");
+				break;
+			}
+		}
+		if(!strcmp(param, "")){
+			list_iterate(listadoEstadistico, listarTodos);
+			return;
+		}
+		if(!strcmp(param, "new")) estado = NEW;
+		if(!strcmp(param, "ready")) estado = READY;
+		if(!strcmp(param, "exec")) estado = EXEC;
+		if(!strcmp(param, "finish")) estado = FINISH;
+		if(!strcmp(param, "bloq")) estado = BLOQ;
+		list_iterate(listadoEstadistico, listarProcesos);
+	}*/
 }

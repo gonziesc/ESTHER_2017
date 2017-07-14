@@ -1,6 +1,9 @@
 #ifndef MAIN_H_
 #define MAIN_H_
 
+#define command_size 50
+#define buffer_size command_size * 2
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -116,6 +119,33 @@ int pid;
 char* semaforo;
 }procesoBloqueado;
 
+typedef struct{
+char comando[command_size];
+void (*funcion)(char* , char* );
+}comando;
+
+typedef struct{
+comando* comandos;
+int cantComandos;
+}interface_thread_param;
+
+typedef struct{
+uint32_t pid;
+uint8_t estado;
+uint32_t socketConsola;
+uint32_t cantRafagas;
+uint32_t cantSyscalls;
+uint32_t cantOpPrivi;
+uint32_t cantAlocar;
+uint32_t cantLiberar;
+uint32_t cantBytesAlocar;
+uint32_t cantBytesLiberar;
+bool matarSiguienteRafaga;
+uint32_t exitCode;
+uint32_t cantPagReservar;
+uint32_t cantPagLiberar;
+}info_estadistica_t;
+
 
 void abrirArchivo(procesoACapaFs*);
 void moverCursorArchivo(procesoACapaFs*);
@@ -151,6 +181,6 @@ void abortarProgramaPorConsola(int, int);
 proceso* sacarProcesoDeEjecucionPorPid(int );
 int abortarTodosLosProgramasDeConsola(int);
 char* conseguirSemaforoDeBloqueado(int);
-
+void interface(interface_thread_param*);
 
 #endif
