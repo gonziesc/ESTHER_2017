@@ -960,7 +960,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 	}
 	case PROCESOPIDEHEAP: {
-		pthread_mutex_lock(&mutexSyscallHeap);
+		//pthread_mutex_lock(&mutexSyscallHeap);
 		proceso* unProceso;
 		int pid, cantidad;
 		memcpy(&pid, paquete, 4);
@@ -984,11 +984,11 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		log_info(logger, "El proceso de PID %d pidio Heap",
 				unProceso->pcb->programId);
-		pthread_mutex_unlock(&mutexSyscallHeap);
+		//pthread_mutex_unlock(&mutexSyscallHeap);
 		break;
 	}
 	case PROCESOLIBERAHEAP: {
-		pthread_mutex_lock(&mutexSyscallHeap);
+		//pthread_mutex_lock(&mutexSyscallHeap);
 		proceso* unProceso;
 		pthread_mutex_lock(&mutexColaEx);
 		unProceso = sacarProcesoDeEjecucion(socket);
@@ -1013,7 +1013,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		sem_post(&semLiberarHeap);
 		log_info(logger, "El proceso de PID %d libero heap",
 				unProceso->pcb->programId);
-		pthread_mutex_unlock(&mutexSyscallHeap);
+		//pthread_mutex_unlock(&mutexSyscallHeap);
 		break;
 	}
 	case ABRIRARCHIVO: {
@@ -1979,7 +1979,7 @@ void procesarHeap() {
 
 	while (1) {
 		sem_wait(&semProcesoAHeap);
-		pthread_mutex_lock(&mutexHiloHeap);
+		//pthread_mutex_lock(&mutexHiloHeap);
 		pthread_mutex_lock(&mutexColaHeap);
 		heap = queue_pop(colaHeap);
 		pthread_mutex_unlock(&mutexColaHeap);
@@ -2001,7 +2001,7 @@ void procesarHeap() {
 		free(heap);
 
 		free(data);
-		pthread_mutex_unlock(&mutexHiloHeap);
+		//pthread_mutex_unlock(&mutexHiloHeap);
 	}
 
 }
@@ -2011,14 +2011,14 @@ void liberarHeap() {
 
 	while (1) {
 		sem_wait(&semLiberarHeap);
-		pthread_mutex_lock(&mutexHiloHeap);
+		//pthread_mutex_lock(&mutexHiloHeap);
 		pthread_mutex_lock(&mutexColaLiberaHeap);
 		heap = queue_pop(colaLiberaHeap);
 		pthread_mutex_unlock(&mutexColaLiberaHeap);
 		procesoLiberaHeap(heap->pid, heap->pagina, heap->offset);
 		Serializar(PROCESOTERMINALIBERAHEAP, 4, &noInteresa, heap->socket);
 		free(heap);
-		pthread_mutex_unlock(&mutexHiloHeap);
+	//	pthread_mutex_unlock(&mutexHiloHeap);
 	}
 
 }
@@ -2521,7 +2521,7 @@ datosHeap* procesoPideHeap(int pid, int tamano) {
 	puntero = verificarEspacioLibreHeap(tamano, pid);
 	if (puntero->pagina == -1) {
 		puntero->pagina = ultimaPaginaPid[pid];
-		ultimaPaginaPid[processID] += 1;
+		ultimaPaginaPid[pid] += 1;
 
 		pthread_mutex_lock(&mutexMemoria);
 		reservarPaginaHeap(pid, puntero->pagina);
