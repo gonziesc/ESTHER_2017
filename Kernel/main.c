@@ -2195,7 +2195,6 @@ void escribeSemaforo(char *semaforo, int valor) {
 			memcpy((t_archivoConfig->SEM_INIT[i]), str, sizeof(int));
 			log_info(logger, "el nuevo valor del semaforo %s es %s\n", semaforo,
 					t_archivoConfig->SEM_INIT[i]);
-			pthread_mutex_unlock(&mutexSemAnsisop);
 			return;
 		}
 	}
@@ -2206,6 +2205,9 @@ void escribeSemaforo(char *semaforo, int valor) {
 void liberaSemaforo(char *semaforo) {
 	int i;
 	proceso *proceso;
+	log_info(logger,
+						"entre a liberar el semaforo %s\n",
+						semaforo);
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
 			i++) {
 		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
