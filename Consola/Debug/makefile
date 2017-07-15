@@ -25,7 +25,7 @@ endif
 all: Consola
 
 dependents:
-	-cd /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug && $(MAKE) all
+	-cd /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug && $(MAKE) clean all
 
 # Tool invocations
 Consola: $(OBJS) $(USER_OBJS) /home/utnso/tp-2017-1c-el-grupo-numero/shared/Debug/libshared.so
