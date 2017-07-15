@@ -303,6 +303,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			contenido = leerDePagina(pid, numero_pagina, offset, tamanio);
 			almacenarFrameEnCache(pid, numero_pagina);
 			Serializar(id, tamanio, contenido, socket);
+			free(contenido);
 		} else {
 
 			contenido = leerDeCache(pid, numero_pagina, offset, tamanio);
@@ -310,6 +311,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 					"lei en cache pid %d pagina %d tamano %d contenido %s\n",
 					pid, numero_pagina, tamanio, contenido);
 			Serializar(id, tamanio, contenido, socket);
+			free(contenido);
 		}
 
 		//log_info(log,"lei: %s\n", contenido);
@@ -336,6 +338,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		//log_info(log,"lei: %s\n", contenido);
 		Serializar(id, tamanio, contenido, socket);
+		free(contenido);
 		//ojo pid actual
 		break;
 	}
@@ -370,6 +373,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		}
 		//log_info(log,"lei: %s\n", contenido);
 		Serializar(DEREFERENCIAR, tamanio, contenido, socket);
+		free(contenido);
 		//ojo pid actual
 		break;
 	}
@@ -515,7 +519,7 @@ void asignarPaginasAProceso(int32_t pid, int32_t cantPaginas) {
 	esperar();
 	if (frameGeneral.framesLibres > 0) {
 		noIMporta = 1;
-		int32_t i = ultimaPaginaPid[pid] + 1;
+		int32_t i = ultimaPaginaPid[pid];
 		ultimaPaginaPid[pid] += 1;
 		int32_t frame = calcularPosicion(pid, i);
 		int32_t libre;
@@ -754,6 +758,7 @@ void almacenarFrameEnCache(int32_t pid, int32_t pagina) {
 		}
 
 	}
+	free(buffer);
 }
 
 void escribirEnCache(int32_t pid, int32_t pagina, int32_t offset,

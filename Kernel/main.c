@@ -2505,7 +2505,7 @@ datosHeap* procesoPideHeap(int pid, int tamano) {
 	}
 	puntero = verificarEspacioLibreHeap(tamano, pid);
 	if (puntero->pagina == -1) {
-		puntero->pagina = ultimaPaginaPid[pid] + 1;
+		puntero->pagina = ultimaPaginaPid[pid];
 		ultimaPaginaPid[processID] += 1;
 
 		pthread_mutex_lock(&mutexMemoria);
@@ -2628,10 +2628,8 @@ void abortar(proceso * proceso, int exitCode) {
 	}
 	log_info(logger, "aborto el pid %d con codigo %d", proceso->pcb->programId,
 			exitCode);
-	pthread_mutex_lock(&mutexColaExit);
 	destruirCONTEXTO(proceso->pcb);
 	queue_push(colaExit, proceso);
-	pthread_mutex_unlock(&mutexColaExit);
 	log_info(logger, "el pid %d ejecuto %d syscalls", proceso->pcb->programId,
 			datosAdmin[proceso->pcb->programId].cantidadSyscalls);
 	log_info(logger, "el pid %d aloco %d bytes", proceso->pcb->programId,
