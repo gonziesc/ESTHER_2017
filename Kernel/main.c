@@ -905,6 +905,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 			pthread_mutex_lock(&mutexProcesosBloqueados);
 			queue_push(colaProcesosBloqueados, unProcesoBloqueado);
 			pthread_mutex_unlock(&mutexProcesosBloqueados);
+			char* semaforo = conseguirSemaforoDeBloqueado(
+					unProcesoBloqueado->pid);
+			bloqueoSemaforo(unProceso, semaforo);
 
 		} else {
 			escribeSemaforo(semaforo, pideSemaforo(semaforo) - 1);
@@ -944,10 +947,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 				unProceso->pcb->programId);
 		if (unProceso != NULL) {
 			destruirPCB(unProceso->pcb);
-			char* semaforo = conseguirSemaforoDeBloqueado(
-					pcbRecibido->programId);
 			unProceso->pcb = pcbRecibido;
-			bloqueoSemaforo(unProceso, semaforo);
 			pthread_mutex_lock(&mutexColaCpu);
 			queue_push(colaCpu, socket);
 			pthread_mutex_unlock(&mutexColaCpu);
