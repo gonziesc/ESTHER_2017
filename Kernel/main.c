@@ -885,7 +885,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case PROCESOWAIT: {
-		pthread_mutex_lock(&mutexWaitSignal);
 		char* semaforo = malloc(tamanoPaquete);
 		memcpy(semaforo, paquete, tamanoPaquete);
 		proceso* unProceso;
@@ -918,11 +917,9 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 
 		log_info(logger, "El proceso de PID %d esta esperando un semaforo",
 				unProceso->pcb->programId);
-		pthread_mutex_unlock(&mutexWaitSignal);
 		break;
 	}
 	case PROCESOSIGNAL: {
-		pthread_mutex_lock(&mutexWaitSignal);
 		proceso* unProceso;
 		char* semaforo = malloc(tamanoPaquete);
 		memcpy(semaforo, paquete, tamanoPaquete);
@@ -936,7 +933,6 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		free(semaforo);
 		log_info(logger, "El proceso de PID %d hizo senial de un semaforo",
 				unProceso->pcb->programId);
-		pthread_mutex_unlock(&mutexWaitSignal);
 		break;
 	}
 	case SEBLOQUEOELPROCESO: {
@@ -2139,7 +2135,6 @@ void modificarCantidadDePaginas(int pid) {
 
 int pideVariable(char *variable) {
 	int i;
-	pthread_mutex_lock(&mutexSemAnsisop);
 	for (i = 0;
 			i < strlen((char*) t_archivoConfig->SHARED_VARS) / sizeof(char*);
 			i++) {
@@ -2149,7 +2144,6 @@ int pideVariable(char *variable) {
 			return atoi(t_archivoConfig->SHARED_VARS_INIT[i]);
 		}
 	}
-	pthread_mutex_unlock(&mutexSemAnsisop);
 	log_info(logger, "No encontre variable %s %d id, exit\n", variable,
 			strlen(variable));
 //TODO abortar
@@ -2158,7 +2152,6 @@ int pideVariable(char *variable) {
 void escribeVariable(char *variable, int valor) {
 	int i;
 	char str[15];
-	pthread_mutex_lock(&mutexSemAnsisop);
 	sprintf(str, "%d", valor);
 	for (i = 0;
 			i < strlen((char*) t_archivoConfig->SHARED_VARS) / sizeof(char*);
@@ -2169,7 +2162,6 @@ void escribeVariable(char *variable, int valor) {
 			return;
 		}
 	}
-	pthread_mutex_unlock(&mutexSemAnsisop);
 	log_info(logger, "No encontre VAR %s id, exit\n", variable);
 	free(variable);
 
@@ -2177,7 +2169,6 @@ void escribeVariable(char *variable, int valor) {
 
 int pideSemaforo(char *semaforo) {
 	int i;
-	pthread_mutex_lock(&mutexSemAnsisop);
 	log_info(logger, "NUCLEO: pide sem %s\n", semaforo);
 
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
@@ -2187,14 +2178,12 @@ int pideSemaforo(char *semaforo) {
 			return atoi(t_archivoConfig->SEM_INIT[i]);
 		}
 	}
-	pthread_mutex_unlock(&mutexSemAnsisop);
 	log_info(logger, "No encontre SEM id, exit\n");
 }
 
 void escribeSemaforo(char *semaforo, int valor) {
 	int i;
 	char str[15];
-	pthread_mutex_lock(&mutexSemAnsisop);
 	sprintf(str, "%d", valor);
 	log_info(logger, "NUCLEO: pide sem %s\n", semaforo);
 
@@ -2210,7 +2199,6 @@ void escribeSemaforo(char *semaforo, int valor) {
 			return;
 		}
 	}
-	pthread_mutex_unlock(&mutexSemAnsisop);
 	log_info(logger, "No encontre SEM id, exit\n");
 	//exit(0);
 }
@@ -2218,7 +2206,6 @@ void escribeSemaforo(char *semaforo, int valor) {
 void liberaSemaforo(char *semaforo) {
 	int i;
 	proceso *proceso;
-	pthread_mutex_lock(&mutexSemAnsisop);
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
 			i++) {
 		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
@@ -2243,18 +2230,15 @@ void liberaSemaforo(char *semaforo) {
 				log_info(logger, "el nuevo valor del semaforo %s es %s\n",
 						semaforo, t_archivoConfig->SEM_INIT[i]);
 			}
-			pthread_mutex_unlock(&mutexSemAnsisop);
 			return;
 		}
 	}
-	pthread_mutex_unlock(&mutexSemAnsisop);
 	log_info(logger, "No encontre SEM id, exit\n");
 	//exit(0);
 }
 
 void bloqueoSemaforo(proceso *proceso, char *semaforo) {
 	int i;
-	pthread_mutex_lock(&mutexSemAnsisop);
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
 			i++) {
 		if (semaforo != NULL && proceso != NULL
@@ -2264,13 +2248,11 @@ void bloqueoSemaforo(proceso *proceso, char *semaforo) {
 						"Meti en la cola de semaforos %d el pid %d del semaforo %s\n",
 						i, proceso->pcb->programId, semaforo);
 				queue_push(colas_semaforos[i], proceso);
-				pthread_mutex_unlock(&mutexSemAnsisop);
 				return;
 
 			}
 		}
 	}
-	pthread_mutex_unlock(&mutexSemAnsisop);
 	log_info(logger, "No encontre SEM id, exit\n");
 	// exit(0);
 }
