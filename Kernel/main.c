@@ -584,7 +584,7 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 		break;
 	}
 	case DESTRUICPUSINPID: {
-		int unaCpu, a =0;
+		int unaCpu, a = 0;
 		bool esMiSocket(void * entrada) {
 			proceso * unproceso = (proceso *) entrada;
 			return unproceso->socketCPU == socket;
@@ -594,12 +594,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 				list_remove(colaCpu->elements, a);
 			a++;
 		}
-		log_info(logger, "murio la cpu %d\n",
-						socket);
+		log_info(logger, "murio la cpu %d\n", socket);
 		break;
 	}
 	case PROGRAMATERMINADO: {
 		cantidadDeProcesos--;
+
 		pthread_mutex_lock(&mutexColaEx);
 		proceso * procesoTerminado = sacarProcesoDeEjecucion(socket);
 		pthread_mutex_unlock(&mutexColaEx);
@@ -1851,6 +1851,20 @@ void sacarSemaforosDesbloqueados(char* semaforo) {
 	}
 }
 
+int buscarPidEnExit(int pid) {
+	int flag = 0;
+	proceso* aux;
+	int j = 0;
+	while (j < list_size(colaExit->elements)) {
+		aux = (proceso*) list_get(colaExit->elements, j);
+		if (aux != NULL && aux->pcb->programId == pid)
+			flag = 1;
+		j++;
+	}
+	return flag;
+
+}
+
 int abortarTodosLosProgramasDeConsola(int socket) {
 	procesoConsola* unProceso;
 	int esConsola = 0;
@@ -1862,7 +1876,8 @@ int abortarTodosLosProgramasDeConsola(int socket) {
 			colaProcesosConsola->elements, esMiSocket);
 	while (unProceso != NULL) {
 		esConsola = 1;
-		abortarProgramaPorConsola(unProceso->pid, codeDesconexionConsola);
+		if(buscarPidEnExit(unProceso->pid) == 0)
+			abortarProgramaPorConsola(unProceso->pid, codeDesconexionConsola);
 		unProceso = (procesoConsola*) list_remove_by_condition(
 				colaProcesosConsola->elements, esMiSocket);
 
