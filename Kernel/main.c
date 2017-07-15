@@ -948,10 +948,12 @@ void procesar(char * paquete, int32_t id, int32_t tamanoPaquete, int32_t socket)
 					pcbRecibido->programId);
 			unProceso->pcb = pcbRecibido;
 			bloqueoSemaforo(unProceso, semaforo);
+			pthread_mutex_lock(&mutexColaCpu);
+			queue_push(colaCpu, socket);
+			pthread_mutex_unlock(&mutexColaCpu);
+			sem_post(&semCpu);
 		}
 		pthread_mutex_unlock(&mutexColaEx);
-		queue_push(colaCpu, socket);
-		sem_post(&semCpu);
 		break;
 
 	}
@@ -1872,7 +1874,7 @@ int abortarTodosLosProgramasDeConsola(int socket) {
 			colaProcesosConsola->elements, esMiSocket);
 	while (unProceso != NULL) {
 		esConsola = 1;
-		if(buscarPidEnExit(unProceso->pid) == 0)
+		if (buscarPidEnExit(unProceso->pid) == 0)
 			abortarProgramaPorConsola(unProceso->pid, codeDesconexionConsola);
 		unProceso = (procesoConsola*) list_remove_by_condition(
 				colaProcesosConsola->elements, esMiSocket);
@@ -2014,7 +2016,7 @@ void liberarHeap() {
 		procesoLiberaHeap(heap->pid, heap->pagina, heap->offset);
 		Serializar(PROCESOTERMINALIBERAHEAP, 4, &noInteresa, heap->socket);
 		free(heap);
-	//	pthread_mutex_unlock(&mutexHiloHeap);
+		//	pthread_mutex_unlock(&mutexHiloHeap);
 	}
 
 }
@@ -2205,9 +2207,7 @@ void escribeSemaforo(char *semaforo, int valor) {
 void liberaSemaforo(char *semaforo) {
 	int i;
 	proceso *proceso;
-	log_info(logger,
-						"entre a liberar el semaforo %s\n",
-						semaforo);
+	log_info(logger, "entre a liberar el semaforo %s\n", semaforo);
 	for (i = 0; i < strlen((char*) t_archivoConfig->SEM_IDS) / sizeof(char*);
 			i++) {
 		if (strcmp((char*) t_archivoConfig->SEM_IDS[i], semaforo) == 0) {
