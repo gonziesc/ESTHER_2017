@@ -500,6 +500,7 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas) {
 
 			nodoTablaMemoria.numeroPagina = i;
 			nodoTablaMemoria.pid = pid;
+			log_info(log, "el frame guardado fue %d\n", frame);
 			punteroMemoria[frame] = nodoTablaMemoria;
 			frameGeneral.framesLibres--;
 
@@ -509,6 +510,7 @@ void inicializarPrograma(int32_t pid, int32_t cantPaginas) {
 			agregarSiguienteEnOverflow(frame, frameLibre);
 			nodoTablaMemoria.numeroPagina = i;
 			nodoTablaMemoria.pid = pid;
+			log_info(log, "el frame guardado por overflow fue %d\n", frameLibre);
 			punteroMemoria[frameLibre] = nodoTablaMemoria;
 			frameGeneral.framesLibres--;
 		}
@@ -607,6 +609,7 @@ void liberarPaginaDeProceso(int32_t pid, int32_t pagina) {
 	 punteroMemoria[i-1] = punteroMemoria[i];
 	 }
 	 */
+	log_info(log, "el frame liberado fue %d del pid %d\n", frameBorrar, pid);
 	frameGeneral.framesLibres++;
 	frameGeneral.tamanioOcupado -= t_archivoConfig->MARCOS_SIZE;
 	frameGeneral.tamanioDisponible += t_archivoConfig->MARCOS_SIZE;
